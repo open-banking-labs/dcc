@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/ddl,classpath:db/migration/dml,classpath:db/migration/function,classpath:db/migration/index
+    encoding: UTF-8
+    sql-migration-separator: __
+    sql-migration-prefix: V
+    sql-migration-suffixes: .sql
+    baseline-version: 20260901000000
+    baseline-on-migrate: true
+    out-of-order: false
+    table: flyway_schema_history
+    validate-on-migrate: true
+    connect-retries: 3
+    connect-retries-interval: 5
+    placeholders:
+      tenant_id: "default_tenant"
+      sys_operator: "system"
+    placeholder-prefix: "${"
+    placeholder-suffix: "}"
+    skip-default-callbacks: false
+    init-sqls:
+      - SET SESSION lock_timeout = '2s'
+      - SET SESSION idle_session_timeout = '600s'

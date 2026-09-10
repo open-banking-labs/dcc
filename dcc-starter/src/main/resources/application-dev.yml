@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_HOST_PORT:5432}/${POSTGRES_DB:dcc_dev}
+    username: ${POSTGRES_USER:dcc_user}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    show-sql: true
+  flyway:
+    clean-disabled: false
+    placeholders:
+      env_tag: "dev"

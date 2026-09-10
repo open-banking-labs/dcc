@@ -1,0 +1,324 @@
+# ============================================================================
+# Git attributes configuration file - for multi-module Spring Boot Maven projects
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. Line ending normalization
+# ----------------------------------------------------------------------------
+# Automatically detect and convert line endings in text files
+* text=auto
+
+# ----------------------------------------------------------------------------
+# 2. Source code files (force LF)
+# ----------------------------------------------------------------------------
+# Java source code
+*.java           text eol=lf diff=java
+*.kt             text eol=lf diff=kotlin
+*.groovy         text eol=lf diff=groovy
+
+# Configuration files
+*.xml            text eol=lf diff=xml
+*.properties     text eol=lf diff=properties
+*.yml            text eol=lf diff=yaml
+*.yaml           text eol=lf diff=yaml
+*.json           text eol=lf diff=json
+*.toml           text eol=lf diff=toml
+*.conf           text eol=lf
+*.config         text eol=lf
+
+# Script files
+*.sh             text eol=lf
+*.bash           text eol=lf
+*.zsh            text eol=lf
+*.fish           text eol=lf
+*.py             text eol=lf diff=python
+*.rb             text eol=lf diff=ruby
+*.pl             text eol=lf diff=perl
+
+# Front-end files
+*.js             text eol=lf diff=javascript
+*.ts             text eol=lf diff=typescript
+*.jsx            text eol=lf diff=javascript
+*.tsx            text eol=lf diff=typescript
+*.css            text eol=lf diff=css
+*.scss           text eol=lf diff=css
+*.less           text eol=lf diff=css
+*.html           text eol=lf diff=html
+*.htm            text eol=lf diff=html
+*.vue            text eol=lf diff=html
+*.svelte         text eol=lf diff=html
+
+# Documentation files
+*.md             text eol=lf diff=markdown
+*.markdown       text eol=lf diff=markdown
+*.adoc           text eol=lf diff=asciidoc
+*.rst            text eol=lf diff=rst
+*.txt            text eol=lf diff=text
+*.log            text eol=lf
+
+# Database/SQL
+*.sql            text eol=lf diff=sql
+*.ddl            text eol=lf
+*.dml            text eol=lf
+
+# Template engines
+*.ftl            text eol=lf
+*.vm             text eol=lf
+*.jsp            text eol=lf
+*.tag            text eol=lf
+*.th             text eol=lf
+
+# Other text formats
+*.csv            text eol=lf
+*.tsv            text eol=lf
+*.ps1            text eol=lf
+*.gradle         text eol=lf
+*.kt             text eol=lf
+*.kts            text eol=lf
+
+# ----------------------------------------------------------------------------
+# 3. Windows scripts (force CRLF)
+# ----------------------------------------------------------------------------
+*.bat            text eol=crlf
+*.cmd            text eol=crlf
+
+# ----------------------------------------------------------------------------
+# 4. Maven Wrapper (important)
+# ----------------------------------------------------------------------------
+# Linux/Mac scripts must be LF; otherwise you may see "/bin/bash^M: bad interpreter"
+/mvnw            text eol=lf
+/mvnw.cmd        text eol=crlf
+
+# Files under .mvn/wrapper
+.mvn/wrapper/maven-wrapper.properties  text eol=lf
+.mvn/wrapper/maven-wrapper.jar         binary
+
+# ----------------------------------------------------------------------------
+# 5. Binary files (do not convert line endings)
+# ----------------------------------------------------------------------------
+# Java build artifacts
+*.jar            binary
+*.war            binary
+*.ear            binary
+*.class          binary
+*.jmod           binary
+*.jimage         binary
+
+# Executables
+*.exe            binary
+*.dll            binary
+*.so             binary
+*.dylib          binary
+*.bin            binary
+*.out            binary
+
+# Archives
+*.zip            binary
+*.tar            binary
+*.gz             binary
+*.bz2            binary
+*.xz             binary
+*.7z            binary
+*.rar            binary
+*.tgz            binary
+*.zst            binary
+
+# Images
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.bmp            binary
+*.tif            binary
+*.tiff           binary
+*.webp           binary
+# SVG is text in practice, but is usually treated as an image
+*.svg            text diff=svg
+
+# Fonts
+*.ttf            binary
+*.otf            binary
+*.woff           binary
+*.woff2          binary
+*.eot            binary
+
+# Audio/video
+*.mp3            binary
+*.mp4            binary
+*.avi            binary
+*.mov            binary
+*.wav            binary
+*.flac           binary
+*.mkv            binary
+*.webm           binary
+
+# Documents
+*.pdf            binary
+*.doc            binary
+*.docx           binary
+*.xls            binary
+*.xlsx           binary
+*.ppt            binary
+*.pptx           binary
+
+# Other
+*.p12            binary
+*.pfx            binary
+*.jks            binary
+*.keystore       binary
+*.truststore     binary
+*.ser            binary
+*.hprof          binary
+*.dump           binary
+*.pdb            binary
+
+# ----------------------------------------------------------------------------
+# 6. IDE and tool configuration files (do not convert line endings)
+# ----------------------------------------------------------------------------
+# IntelliJ IDEA
+*.iml            -text -diff
+*.ipr            -text -diff
+*.iws            -text -diff
+.idea/           -text -diff
+
+# Eclipse
+.classpath       -text -diff
+.project         -text -diff
+.settings/       -text -diff
+
+# Visual Studio Code
+.vscode/         -text -diff
+
+# NetBeans
+nbproject/       -text -diff
+
+# ----------------------------------------------------------------------------
+# 7. Diff configuration
+# ----------------------------------------------------------------------------
+# Use specialized diff algorithms
+*.java           diff=java
+*.xml            diff=xml
+*.json           diff=json
+*.yml            diff=yaml
+*.yaml           diff=yaml
+*.properties     diff=properties
+*.sql            diff=sql
+*.md             diff=markdown
+
+# Binary files do not show diff
+*.jar            -diff
+*.war            -diff
+*.class          -diff
+*.png            -diff
+*.jpg            -diff
+*.gif            -diff
+
+# Enable word-level diff for smarter comparison
+*.java           diff=java
+*.xml            diff=xml
+*.json           diff=json
+*.yml            diff=yaml
+*.md             diff=markdown
+
+# ----------------------------------------------------------------------------
+# 8. Merge strategy
+# ----------------------------------------------------------------------------
+# Use a special merge strategy for lock files (keep both sides)
+*.lock           merge=union
+package-lock.json merge=union
+yarn.lock        merge=union
+pnpm-lock.yaml   merge=union
+poetry.lock      merge=union
+
+# Do not merge binary files (direct conflict)
+*.jar            merge=binary
+*.png            merge=binary
+*.jpg            merge=binary
+
+# ----------------------------------------------------------------------------
+# 9. GitHub language statistics
+# ----------------------------------------------------------------------------
+# Mark as generated code / third-party code (excluded from language statistics)
+*.iml            linguist-vendored
+.idea/           linguist-vendored
+.vscode/         linguist-vendored
+*.jar            linguist-vendored
+*.war            linguist-vendored
+*.class          linguist-vendored
+target/          linguist-vendored
+.mvn/            linguist-vendored
+node_modules/    linguist-vendored
+dist/            linguist-vendored
+build/           linguist-vendored
+out/             linguist-vendored
+gradle/wrapper/  linguist-vendored
+
+# Mark as documentation
+*.md             linguist-documentation
+*.txt            linguist-documentation
+*.adoc           linguist-documentation
+*.rst            linguist-documentation
+LICENSE          linguist-documentation
+README.md        linguist-documentation
+HELP.md          linguist-documentation
+CHANGELOG.md     linguist-documentation
+CONTRIBUTING.md  linguist-documentation
+
+# Mark specific languages
+*.java           linguist-language=Java
+*.kt             linguist-language=Kotlin
+*.groovy         linguist-language=Groovy
+*.xml            linguist-language=XML
+*.yml            linguist-language=YAML
+*.properties     linguist-language=Properties
+*.sql            linguist-language=SQL
+
+# ----------------------------------------------------------------------------
+# 10. Special file handling
+# ----------------------------------------------------------------------------
+# Sensitive files (encrypt if needed)
+*.p12            binary
+*.pfx            binary
+*.jks            binary
+*.keystore       binary
+*.truststore     binary
+
+# Log files (preserve line endings)
+*.log            text eol=lf
+
+# Git internal files
+.gitignore       text eol=lf
+.gitattributes   text eol=lf
+.gitmodules      text eol=lf
+
+# Dockerfile
+Dockerfile       text eol=lf
+.dockerignore    text eol=lf
+
+# CI/CD
+Jenkinsfile      text eol=lf
+.gitlab-ci.yml   text eol=lf
+.github/         text eol=lf
+
+# ----------------------------------------------------------------------------
+# 11. Export options
+# ----------------------------------------------------------------------------
+# Exclude files when exporting the project
+.gitattributes   export-ignore
+.gitignore       export-ignore
+.gitmodules      export-ignore
+.git/            export-ignore
+.mvn/wrapper/maven-wrapper.jar  export-ignore
+
+# ----------------------------------------------------------------------------
+# 12. Custom attributes
+# ----------------------------------------------------------------------------
+# Mark file types for custom operations
+*.java           filter=java
+*.xml            filter=xml
+*.json           filter=json
+
+# ============================================================================
+# End
+# ============================================================================
