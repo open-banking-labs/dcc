@@ -3,7 +3,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://adoptium.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Status](https://img.shields.io/badge/Status-Alpha-orange.svg)]()
 
 A lightweight data model management layer for financial systems.
@@ -40,7 +40,7 @@ We are building this to solve real problems in open banking infrastructure. If t
 
 ## Tech stack
 
-- Java 17 / Spring Boot 3
+- Java 17 / Spring Boot 4
 - Vue 3 / Element Plus
 - PostgreSQL (metadata storage)
 - Redis (session/cache)
