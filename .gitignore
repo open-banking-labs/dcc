@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### Zed ###
+.zed/
+
 # System files
 .DS_Store
 Thumbs.db
