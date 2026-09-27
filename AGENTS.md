@@ -67,6 +67,7 @@ docker compose up -d
 
 - 为新增或修改的行为补充单元测试或 Spring 集成测试，测试放在对应模块的 `src/test/java` 下。
 - 提交前至少运行受影响模块的测试；跨模块改动运行 `./mvnw clean verify`。
+- `dcc-starter` 的上下文冒烟测试需要运行中的 PostgreSQL 和 `dev` profile（数据源配置在 `application-dev.yml`）；未准备时它会因缺少数据源而失败，先执行 `./scripts/dcc-start.sh` 并激活 profile。`dcc-core`、`dcc-api` 目前为库模块，无测试。
 - 测试失败时优先确认 Java/Maven 版本、外部服务和环境变量是否正确，再判断是否为代码回归。
 - 不要为了让测试通过而删除、跳过或弱化已有断言。
 

@@ -9,7 +9,7 @@ Read `README.md`, `AGENTS.md`, the relevant module documentation under `docs/mod
 1. Create a focused branch or change set.
 2. Keep edits within the owning module and avoid unrelated formatting changes.
 3. Add or update tests next to the changed module.
-4. Run `./mvnw test`; for cross-module changes run `./mvnw clean verify`.
+4. Run `./mvnw test`; for cross-module changes run `./mvnw clean verify`. The `dcc-starter` smoke test needs PostgreSQL and the `dev` profile - see [docs/setup.md](docs/setup.md).
 5. Review `git diff` and `git status` before committing.
 
 ## Style
