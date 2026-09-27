@@ -63,3 +63,6 @@ docker-compose.override.yml
 # env
 env/*.env
 !env/.env.example
+
+# Reasonix Code tool cache
+.reasonix/
