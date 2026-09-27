@@ -26,5 +26,5 @@ spring:
     placeholder-suffix: "}"
     skip-default-callbacks: false
     init-sqls:
-      - SET SESSION lock_timeout = '2s'
-      - SET SESSION idle_session_timeout = '600s'
+      - SET SESSION lock_timeout = '2s';
+      - SET SESSION idle_session_timeout = '600s';
