@@ -1,4 +1,4 @@
-package cn.org.openbanking.dccstarter;
+package cn.org.openbanking.dcc;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
