@@ -1,0 +1,63 @@
+# Docker build context exclusions.
+#
+# This file only takes effect when the repository itself is the build context,
+# i.e. `docker build .` or a compose `build:` section. The images that
+# docker-compose.yml pulls (postgres, redis, ...) are prebuilt and ignore it.
+#
+# Keep the spirit in sync with .gitignore: exclude local, generated and
+# secret-bearing paths, but keep everything a build needs (pom.xml, mvnw,
+# .mvn/, and each module's src/).
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Build output
+target
+**/target
+build
+**/build
+
+# IDE / editor project config (see docs/ide-artifacts.md)
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode
+.zed
+.settings
+.project
+.classpath
+.factorypath
+.apt_generated
+.springBeans
+.sts4-cache
+
+# AI coding assistant local state
+.claude
+.aider*
+.reasonix
+
+# Local configuration and secrets - never ship these into an image
+env
+*.env
+application-local.yml
+**/application-local.yml
+docker-compose.override.yml
+
+# Repository docs and infrastructure not needed to build the jar
+docs
+*.md
+LICENSE
+scripts
+init-scripts
+rabbitmq-definitions
+docker-compose.yml
+
+# Logs and OS cruft
+*.log
+hs_err_pid*
+replay_pid*
+.DS_Store
+Thumbs.db
