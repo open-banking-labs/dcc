@@ -22,6 +22,14 @@ set -a; source env/dev.env; set +a      # export generated credentials
 ./mvnw test -Dspring.profiles.active=dev
 ```
 
+Alternatively, instead of exporting environment variables, keep the machine-specific value in a git-ignored `dcc-starter/src/main/resources/application-local.yml` and activate both profiles:
+
+```bash
+./mvnw test -Dspring.profiles.active=dev,local
+```
+
+That is the layout IDEs expect: set the active profiles to `dev,local`, then run the application or the tests — no environment variables to wire up. The file is listed in `.gitignore`; keep its `spring.datasource.password` in sync with `env/dev.env`.
+
 `dcc-core` and `dcc-api` are library modules and currently ship no tests, so they do not need infrastructure.
 
 ## Infrastructure

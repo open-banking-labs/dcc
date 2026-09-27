@@ -67,6 +67,9 @@ docker-compose.override.yml
 env/*.env
 !env/.env.example
 
+# Local Spring profile overrides (per-developer secrets, never commit)
+application-local.yml
+
 # ---------------------------------------------------------------------------
 # AI coding assistants - local, machine-specific state only.
 # Shared rule/memory files are intentionally versioned and NOT ignored:
