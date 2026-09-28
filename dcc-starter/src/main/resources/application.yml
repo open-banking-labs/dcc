@@ -28,3 +28,11 @@ spring:
     init-sqls:
       - SET SESSION lock_timeout = '2s';
       - SET SESSION idle_session_timeout = '600s';
+
+# Application warm-up (see docs/modules/dcc-starter.md)
+dcc:
+  warmup:
+    enabled: true     # run the warm-up at all
+    order: 0          # position of the warm-up runner among ApplicationRunners
+    async: false      # run off the startup thread
+    fail-fast: true   # true = stop the application on failure, false = ignore
