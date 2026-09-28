@@ -35,4 +35,13 @@ dcc:
     enabled: true     # run the warm-up at all
     async: false      # run off the startup thread
     fail-fast: true   # true = shut down and exit on failure, false = ignore
-    steps: []         # ordered WarmupTask names, e.g. [load-reference-data, warm-cache]
+    steps:            # ordered WarmupTask names; add "warmup-redis" once Redis is running
+      - warmup-hikari
+      - warmup-jvm-cache
+
+# Redis is an optional integration; keep it out of the overall /actuator/health
+# until it becomes a required dependency (then flip this to true).
+management:
+  health:
+    redis:
+      enabled: false

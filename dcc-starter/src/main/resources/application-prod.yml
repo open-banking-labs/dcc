@@ -9,3 +9,8 @@ spring:
     clean-disabled: true
     placeholders:
       env_tag: "prod"
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_HOST_PORT}
+      password: ${REDIS_PASSWORD}
