@@ -1,3 +1,3 @@
 # dcc-api
 
-`dcc-api` owns the HTTP-facing surface: Spring MVC endpoints, request/response DTOs and OpenAPI documentation. Keep transport mapping here and delegate business behavior to reusable services rather than embedding persistence logic in controllers.
+`dcc-api` holds the main business logic. Keep it protocol-agnostic - it must not depend on HTTP, RPC or other transport types - so it is reused unchanged when a new exposure layer is added. It may use `dcc-core` for persistence and shared primitives.

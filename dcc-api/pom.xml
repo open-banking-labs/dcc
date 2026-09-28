@@ -30,14 +30,12 @@
         <java.version>17</java.version>
     </properties>
     <dependencies>
+        <!-- Business logic lives here and stays protocol-agnostic, so exposing it
+             over HTTP (dcc-starter), RPC or MCP does not change it. -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.1.0</version>
+            <groupId>cn.org.openbanking</groupId>
+            <artifactId>dcc-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -51,19 +49,10 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

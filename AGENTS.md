@@ -7,8 +7,8 @@ DCC（Data Contract Center）是一个基于 Java 17 和 Spring Boot 4.1.1 的�
 仓库根目录是 Maven 聚合项目，当前模块职责如下：
 
 - `dcc-core/`：核心领域与持久化能力，包含 JPA、PostgreSQL 相关代码。
-- `dcc-api/`：Web/API 层，包含 Spring MVC、OpenAPI 配置和接口测试。
-- `dcc-starter/`：应用启动与运行时集成，包含 Actuator、Flyway 配置和环境配置。
+- `dcc-api/`：主要业务逻辑，与协议无关（不依赖 HTTP/RPC 等传输类型），便于被多种暴露层复用。
+- `dcc-starter/`：Web 暴露层 + 可执行应用，调用 `dcc-api`，包含 HTTP/OpenAPI、Actuator、Flyway 配置与环境配置。
 - `docs/`：开发、运维及 Flyway 文档。
 - `scripts/`：启动和部署脚本。
 - `init-scripts/`、`rabbitmq-definitions/`：基础设施初始化文件和说明。

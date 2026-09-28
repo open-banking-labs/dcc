@@ -6,23 +6,23 @@ DCC is a Java 17 / Spring Boot 4.1.1 Maven multi-module project for managing dat
 
 ## Modules
 
-- `dcc-core`: domain and persistence capabilities; JPA and PostgreSQL integration.
-- `dcc-api`: HTTP API surface, MVC endpoints, DTOs and OpenAPI support.
-- `dcc-starter`: executable Spring Boot application, runtime configuration, Actuator and Flyway integration.
+- `dcc-core`: foundation and persistence capabilities; JPA and PostgreSQL integration. No transport knowledge.
+- `dcc-api`: the main business logic. Protocol-agnostic, so it can be exposed over HTTP, RPC or MCP without change.
+- `dcc-starter`: the executable Spring Boot application and the web exposure layer - it calls `dcc-api` and adds HTTP/OpenAPI, profile configuration, Actuator and Flyway integration.
 
-The modules currently build independently. The intended dependency direction is `dcc-starter -> dcc-api -> dcc-core`; add Maven dependencies only when code is actually shared across those boundaries.
+The dependencies are wired as `dcc-starter -> dcc-api -> dcc-core`. Add a new exposure protocol (RPC, MCP, ...) as its own layer on top of the unchanged `dcc-api`.
 
 ## Runtime Flow
 
 1. `dcc-starter` loads the active Spring profile and infrastructure configuration.
 2. Flyway validates and applies migrations before application startup.
-3. API requests are handled by the web layer and delegated to domain/persistence services.
+3. The web layer (`dcc-starter`) handles requests and delegates to the business logic in `dcc-api`, which uses `dcc-core`.
 4. PostgreSQL stores metadata; Redis and RabbitMQ are infrastructure integrations defined by Docker Compose and environment configuration.
 
 ## Architectural Rules
 
-- Keep domain and persistence concerns in `dcc-core`.
-- Keep transport concerns (HTTP, DTOs, OpenAPI) in `dcc-api`.
-- Keep bootstrapping, environment wiring and operational endpoints in `dcc-starter`.
+- Keep persistence and shared primitives in `dcc-core`.
+- Keep business logic in `dcc-api` and free of transport concerns (HTTP, RPC, DTOs), so it is reusable across exposure layers.
+- Keep transport concerns (HTTP endpoints, DTOs, OpenAPI) plus bootstrapping, environment wiring and operational endpoints in `dcc-starter`.
 - Treat Flyway history as immutable; corrections are new forward migrations.
 - Keep secrets and environment-specific values outside source control.
