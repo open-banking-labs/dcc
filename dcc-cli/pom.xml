@@ -9,11 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>cn.org.openbanking</groupId>
-    <artifactId>dcc</artifactId>
+    <artifactId>dcc-cli</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>dcc</name>
-    <description>dcc</description>
+    <name>dcc-cli</name>
+    <description>dcc-cli</description>
     <url/>
     <licenses>
         <license/>
@@ -27,31 +26,30 @@
         <tag/>
         <url/>
     </scm>
-    <modules>
-        <module>dcc-core</module>
-        <module>dcc-generator</module>
-        <module>dcc-application</module>
-        <module>dcc-bootstrap</module>
-        <module>dcc-security</module>
-        <module>dcc-web</module>
-        <module>dcc-cli</module>
-        <module>dcc-mcp</module>
-    </modules>
-
     <properties>
         <java.version>17</java.version>
     </properties>
     <dependencies>
+        <!-- Thin HTTP client over /cli/v1: JDK HttpClient for transport, Jackson
+             (managed by the Boot BOM) for JSON. It deliberately holds no business
+             logic - dcc-core is the single implementation. -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Repackage into a runnable jar bundling dependencies (java -jar). -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>cn.org.openbanking.dcc.cli.DccCli</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

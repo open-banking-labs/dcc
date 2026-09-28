@@ -205,7 +205,7 @@ services:
       # Reached only through the gateway; no host port is published, so the
       # exposure layer cannot be bypassed.
       - "traefik.enable=true"
-      - "traefik.http.routers.dcc-web.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.dcc-web.rule=PathPrefix(`/api`) || PathPrefix(`/cli`)"
       - "traefik.http.routers.dcc-web.entrypoints=web"
       - "traefik.http.routers.dcc-web.middlewares=dcc-ratelimit@docker"
       - "traefik.http.services.dcc-web.loadbalancer.server.port=8080"
