@@ -1,4 +1,4 @@
-package cn.org.openbanking.dcc.config;
+package cn.org.openbanking.dcc.flyway;
 
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;

@@ -304,7 +304,7 @@ dcc/
 │           ├── java/
 │           │   └── cn/org/openbanking/dcc/
 │           │       ├── DccApplication.java
-│           │       └── config/
+│           │       └── flyway/
 │           │           ├── FlywayConfig.java
 │           │           └── FlywayCallbackHandler.java
 │           └── resources/

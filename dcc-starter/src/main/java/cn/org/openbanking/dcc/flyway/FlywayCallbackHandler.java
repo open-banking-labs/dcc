@@ -1,4 +1,4 @@
-package cn.org.openbanking.dcc.config;
+package cn.org.openbanking.dcc.flyway;
 
 import java.sql.SQLException;
 import java.sql.Statement;
