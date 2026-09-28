@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>cn.org.openbanking</groupId>
-    <artifactId>dcc-mcp</artifactId>
+    <artifactId>dcc-web</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>dcc-mcp</name>
-    <description>dcc-mcp</description>
+    <name>dcc-web</name>
+    <description>dcc-web</description>
     <url/>
     <licenses>
         <license/>
@@ -28,21 +28,7 @@
     </scm>
     <properties>
         <java.version>17</java.version>
-        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -52,21 +38,29 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
-        <!-- MCP exposure layer: serves the same business logic from dcc-application over
-             MCP (Streamable HTTP), alongside the REST layer in dcc-web. -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
-        </dependency>
+        <!-- Web exposure layer: exposes business logic from dcc-application. -->
         <dependency>
             <groupId>cn.org.openbanking</groupId>
             <artifactId>dcc-application</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <dependency>
@@ -87,7 +81,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-flyway-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

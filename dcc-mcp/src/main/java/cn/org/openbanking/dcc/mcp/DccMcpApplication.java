@@ -8,12 +8,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
  * MCP exposure layer - a standalone Spring Boot application that exposes the
- * protocol-agnostic business logic in {@code dcc-api} (and its JPA entities and
+ * protocol-agnostic business logic in {@code dcc-application} (and its JPA entities and
  * repositories in {@code dcc-core}) over MCP (Streamable HTTP).
  *
  * <p>This app owns no business logic and never migrates the schema: Flyway is
- * owned by {@code dcc-starter} / the deployment. It scans the shared
- * {@code cn.org.openbanking.dcc} base package so the beans from {@code dcc-api}
+ * owned by {@code dcc-web} / the deployment. It scans the shared
+ * {@code cn.org.openbanking.dcc} base package so the beans from {@code dcc-application}
  * and {@code dcc-core} that live outside this module's own package are picked up.
  */
 @SpringBootApplication(scanBasePackages = "cn.org.openbanking.dcc")

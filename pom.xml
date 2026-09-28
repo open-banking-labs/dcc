@@ -29,8 +29,8 @@
     </scm>
     <modules>
         <module>dcc-core</module>
-        <module>dcc-api</module>
-        <module>dcc-starter</module>
+        <module>dcc-application</module>
+        <module>dcc-web</module>
         <module>dcc-mcp</module>
     </modules>
 

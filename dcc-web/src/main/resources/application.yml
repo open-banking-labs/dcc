@@ -1,0 +1,52 @@
+server:
+  port: 8080
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/ddl,classpath:db/migration/dml,classpath:db/migration/function,classpath:db/migration/index
+    encoding: UTF-8
+    sql-migration-separator: __
+    sql-migration-prefix: V
+    sql-migration-suffixes: .sql
+    baseline-version: 20260901000000
+    baseline-on-migrate: true
+    out-of-order: false
+    table: flyway_schema_history
+    validate-on-migrate: true
+    connect-retries: 3
+    connect-retries-interval: 5
+    placeholders:
+      tenant_id: "default_tenant"
+      sys_operator: "system"
+    placeholder-prefix: "${"
+    placeholder-suffix: "}"
+    skip-default-callbacks: false
+    init-sqls:
+      - SET SESSION lock_timeout = '2s';
+      - SET SESSION idle_session_timeout = '600s';
+
+# Application warm-up (see docs/modules/dcc-web.md)
+dcc:
+  warmup:
+    enabled: true     # run the warm-up at all
+    async: false      # run off the startup thread
+    fail-fast: true   # true = shut down and exit on failure, false = ignore
+    steps:            # ordered WarmupTask names; add "warmup-redis" once Redis is running
+      - warmup-hikari
+      - warmup-jvm-cache
+  security:
+    # HS256 secret used to verify bearer tokens when no JWKS is configured.
+    # Override (via DCC_JWT_SECRET) outside dev, or set dcc.security.jwk-set-uri
+    # to verify asymmetric tokens from your identity provider.
+    jwt-secret: ${DCC_JWT_SECRET:dev-only-change-me-please-use-32-bytes}
+
+# Redis is an optional integration; keep it out of the overall /actuator/health
+# until it becomes a required dependency (then flip this to true).
+management:
+  health:
+    redis:
+      enabled: false

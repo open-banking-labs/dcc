@@ -7,8 +7,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-  # Flyway is owned by dcc-starter / the deployment; this application never
-  # migrates the schema, so no Flyway dependency is pulled in here.
+  # Flyway is owned by dcc-web / the deployment. dcc-bootstrap puts Flyway on
+  # the classpath, but this application never migrates the schema, so it is
+  # disabled here and only validates (ddl-auto: validate above).
+  flyway:
+    enabled: false
   ai:
     mcp:
       server:
@@ -28,3 +31,8 @@ management:
     web:
       exposure:
         include: health,info
+
+# Shared security: verify the caller's bearer JWT (see dcc-security).
+dcc:
+  security:
+    jwt-secret: ${DCC_JWT_SECRET:dev-only-change-me-please-use-32-bytes}

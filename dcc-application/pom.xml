@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>cn.org.openbanking</groupId>
-    <artifactId>dcc-mcp</artifactId>
+    <artifactId>dcc-application</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>dcc-mcp</name>
-    <description>dcc-mcp</description>
+    <name>dcc-application</name>
+    <description>dcc-application</description>
     <url/>
     <licenses>
         <license/>
@@ -28,45 +28,14 @@
     </scm>
     <properties>
         <java.version>17</java.version>
-        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-        <!-- MCP exposure layer: serves the same business logic from dcc-application over
-             MCP (Streamable HTTP), alongside the REST layer in dcc-web. -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
-        </dependency>
+        <!-- Business logic lives here and stays protocol-agnostic, so exposing it
+             over HTTP (dcc-web), RPC or MCP does not change it. -->
         <dependency>
             <groupId>cn.org.openbanking</groupId>
-            <artifactId>dcc-application</artifactId>
+            <artifactId>dcc-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -80,24 +49,10 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
