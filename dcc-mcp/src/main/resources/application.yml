@@ -1,0 +1,30 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: dcc-mcp
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  # Flyway is owned by dcc-starter / the deployment; this application never
+  # migrates the schema, so no Flyway dependency is pulled in here.
+  ai:
+    mcp:
+      server:
+        name: dcc-mcp
+        version: 0.0.1
+        # Streamable HTTP transport, served by the webmvc layer on the port above.
+        protocol: streamable
+        streamable-http:
+          mcp-endpoint: /mcp
+        instructions: >-
+          DCC (Data Contract Center) exposes data-model metadata. Use these tools
+          to read model definitions and to generate code/SQL from the central
+          model definition.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

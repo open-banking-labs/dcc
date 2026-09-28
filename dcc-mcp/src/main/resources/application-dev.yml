@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_HOST_PORT:5432}/${POSTGRES_DB:dcc_dev}
+    username: ${POSTGRES_USER:dcc_user}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    show-sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_HOST_PORT:6379}
+      password: ${REDIS_PASSWORD:}

@@ -32,6 +32,8 @@ That is the layout IDEs expect: set the active profiles to `dev,local`, then run
 
 `dcc-core` and `dcc-api` are library modules and currently ship no tests, so they do not need infrastructure.
 
+`dcc-mcp` is a second runnable module; its `contextLoads` test needs the same PostgreSQL instance and `dev` profile as `dcc-starter`.
+
 ## Infrastructure
 
 Copy `env/.env.example` to a local environment file as described by `scripts/dcc-start.sh`, then start the required services:

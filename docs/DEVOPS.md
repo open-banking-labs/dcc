@@ -58,14 +58,14 @@ dcc-core          # Foundation: persistence and shared primitives
     │
 dcc-api           # Main business logic (protocol-agnostic)
     ↑
-    │
-dcc-starter       # Web exposure layer + executable application
+    ├── dcc-starter   # REST exposure layer + executable application (web UI)
+    └── dcc-mcp       # MCP exposure layer + executable application (Streamable HTTP)
 ```
 
-The dependencies are wired: `dcc-starter → dcc-api → dcc-core`. Business logic
-lives in `dcc-api` and stays free of transport concerns, so a future RPC or MCP
-exposure layer can reuse it by depending on `dcc-api` the same way the web layer
-does.
+The dependencies are wired: `dcc-starter → dcc-api → dcc-core` and
+`dcc-mcp → dcc-api → dcc-core`. Business logic lives in `dcc-api` and stays free
+of transport concerns, so each exposure layer (REST in `dcc-starter`, MCP in
+`dcc-mcp`) reuses it unchanged by depending on `dcc-api`.
 
 ---
 
@@ -317,6 +317,10 @@ dcc/
 │                   ├── function/
 │                   └── index/
 │
+├── dcc-mcp/                            # MCP exposure module (Streamable HTTP)
+│   ├── pom.xml
+│   └── src/
+│
 ├── dcc-core/                           # Core utilities module
 │   ├── pom.xml
 │   └── src/
@@ -333,6 +337,12 @@ dcc/
 The runnable service (`dcc-starter`) is built from the repository-root
 `Dockerfile` and runs as the `dcc-app` compose service. It sits behind the `app`
 profile, so the default `up -d` still starts PostgreSQL only.
+
+`dcc-mcp` is a second runnable application
+(`dcc-mcp/target/dcc-mcp-0.0.1-SNAPSHOT.jar`, default port `8081`, MCP endpoint
+`/mcp`). It reuses the same database but never runs Flyway, so deploy it only
+after the schema has been migrated by `dcc-starter`. Its own container image and
+compose service are not wired up yet.
 
 ### Build and run
 
@@ -818,5 +828,6 @@ docker-compose exec postgres psql -U dcc_user -d dcc_dev  # Connect to DB
 |--------|---------------|------------|
 | **dcc-core** | Persistence and shared primitives | None |
 | **dcc-api** | Main business logic (protocol-agnostic) | dcc-core |
-| **dcc-starter** | Web exposure layer + application entry point | dcc-api |
+| **dcc-starter** | REST exposure layer + application entry point (web UI) | dcc-api |
+| **dcc-mcp** | MCP exposure layer + application entry point (Streamable HTTP) | dcc-api |
 
