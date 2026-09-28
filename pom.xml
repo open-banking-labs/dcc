@@ -29,6 +29,7 @@
     </scm>
     <modules>
         <module>dcc-core</module>
+        <module>dcc-generator</module>
         <module>dcc-application</module>
         <module>dcc-bootstrap</module>
         <module>dcc-security</module>
