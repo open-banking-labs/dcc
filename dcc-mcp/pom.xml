@@ -63,6 +63,18 @@
             <artifactId>dcc-application</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Shared startup wiring: Flyway integration + warm-up framework. -->
+        <dependency>
+            <groupId>cn.org.openbanking</groupId>
+            <artifactId>dcc-bootstrap</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Shared in-process security: JWT verification + tenant context + authz + op rate limit. -->
+        <dependency>
+            <groupId>cn.org.openbanking</groupId>
+            <artifactId>dcc-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

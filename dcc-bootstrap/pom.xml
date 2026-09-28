@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>cn.org.openbanking</groupId>
-    <artifactId>dcc-web</artifactId>
+    <artifactId>dcc-bootstrap</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>dcc-web</name>
-    <description>dcc-web</description>
+    <name>dcc-bootstrap</name>
+    <description>dcc-bootstrap</description>
     <url/>
     <licenses>
         <license/>
@@ -30,45 +30,28 @@
         <java.version>17</java.version>
     </properties>
     <dependencies>
+        <!-- Shared runtime/bootstrap wiring reused by the runnable apps
+             (dcc-web, dcc-mcp): Flyway startup integration and the warm-up
+             framework. It carries no transport or business logic. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- Warm-up: connection pool (Hikari) and Redis are warmed at startup. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
-        <!-- Web exposure layer: exposes business logic from dcc-application. -->
-        <dependency>
-            <groupId>cn.org.openbanking</groupId>
-            <artifactId>dcc-application</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!-- Shared startup wiring: Flyway integration + warm-up framework. -->
-        <dependency>
-            <groupId>cn.org.openbanking</groupId>
-            <artifactId>dcc-bootstrap</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!-- Shared in-process security: JWT verification + tenant context + authz + op rate limit. -->
-        <dependency>
-            <groupId>cn.org.openbanking</groupId>
-            <artifactId>dcc-security</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.1.0</version>
-        </dependency>
+        <!-- Flyway startup integration. The schema owner (dcc-web) runs the
+             migrations; other apps put Flyway on the classpath via this module
+             but disable it with spring.flyway.enabled=false. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-flyway</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -88,22 +71,13 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-flyway-test</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

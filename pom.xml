@@ -30,6 +30,8 @@
     <modules>
         <module>dcc-core</module>
         <module>dcc-application</module>
+        <module>dcc-bootstrap</module>
+        <module>dcc-security</module>
         <module>dcc-web</module>
         <module>dcc-mcp</module>
     </modules>

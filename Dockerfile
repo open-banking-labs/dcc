@@ -19,6 +19,8 @@ WORKDIR /workspace
 COPY pom.xml ./
 COPY dcc-core/pom.xml dcc-core/pom.xml
 COPY dcc-application/pom.xml dcc-application/pom.xml
+COPY dcc-bootstrap/pom.xml dcc-bootstrap/pom.xml
+COPY dcc-security/pom.xml dcc-security/pom.xml
 COPY dcc-web/pom.xml dcc-web/pom.xml
 COPY dcc-mcp/pom.xml dcc-mcp/pom.xml
 RUN mvn -B -q dependency:go-offline
