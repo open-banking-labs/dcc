@@ -6,6 +6,13 @@
 
 set -e
 
+# Prefer the Docker Compose v2 plugin, fall back to the standalone v1 binary.
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,6 +36,7 @@ ${GREEN}Component options:${NC}
   --rabbitmq     Start RabbitMQ
   --minio        Start MinIO
   --adminer      Start Adminer
+  --app          Build and start the application (dcc-app)
   --full         Start all components
   (PostgreSQL starts by default)
 
@@ -36,6 +44,7 @@ ${GREEN}Examples:${NC}
   ./scripts/dcc-start.sh              # Database only
   ./scripts/dcc-start.sh --redis      # Database + Redis
   ./scripts/dcc-start.sh --full       # All components
+  ./scripts/dcc-start.sh --app        # Database + application container
 
 EOF
 }
@@ -95,6 +104,7 @@ check_dev_env() {
 # ============================================
 PROFILES=""
 COMPONENTS="Database"
+BUILD_APP=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -120,7 +130,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --full)
             PROFILES="--profile full"
-            COMPONENTS="Database, Redis, RabbitMQ, MinIO, Adminer"
+            COMPONENTS="Database, Application, Redis, RabbitMQ, MinIO, Adminer"
+            BUILD_APP="dcc-app"
+            shift
+            ;;
+        --app)
+            PROFILES="$PROFILES --profile app"
+            COMPONENTS="$COMPONENTS, Application"
+            BUILD_APP="dcc-app"
             shift
             ;;
         --help|-h)
@@ -157,15 +174,21 @@ echo -e "${GREEN}📋 Startup information:${NC}"
 echo -e "  Components: ${COMPONENTS}"
 echo ""
 
+# Build the application image when requested
+if [ -n "$BUILD_APP" ]; then
+    echo -e "${YELLOW}🔨 Building application image...${NC}"
+    $COMPOSE --env-file env/dev.env $PROFILES build "$BUILD_APP"
+fi
+
 # Start services
 echo -e "${YELLOW}⏳ Starting services...${NC}"
-docker-compose --env-file env/dev.env $PROFILES up -d
+$COMPOSE --env-file env/dev.env $PROFILES up -d
 
 # Show status
 echo ""
 echo -e "${GREEN}✅ Services started successfully!${NC}"
 echo ""
-docker-compose --env-file env/dev.env $PROFILES ps
+$COMPOSE --env-file env/dev.env $PROFILES ps
 
 # Access information
 echo ""
@@ -175,6 +198,6 @@ echo -e "  Username: ${POSTGRES_USER:-dcc_user}"
 echo -e "  Password: ${POSTGRES_PASSWORD}"
 echo ""
 echo -e "${BLUE}📝 Common commands:${NC}"
-echo -e "  View logs: docker-compose --env-file env/dev.env $PROFILES logs -f"
-echo -e "  Stop services: docker-compose --env-file env/dev.env $PROFILES down"
+echo -e "  View logs: $COMPOSE --env-file env/dev.env $PROFILES logs -f"
+echo -e "  Stop services: $COMPOSE --env-file env/dev.env $PROFILES down"
 echo ""

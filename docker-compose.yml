@@ -164,6 +164,46 @@ services:
       - "dcc.component=admin"
       - "dcc.environment=${ENV:-dev}"
 
+  # ========================================
+  # Application: dcc-starter (Spring Boot)
+  # ========================================
+  dcc-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${PROJECT_NAME:-dcc}-app:${ENV:-dev}
+    container_name: ${PROJECT_NAME:-dcc}-app-${ENV:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Activate the matching Spring profile (application-<env>.yml).
+      SPRING_PROFILES_ACTIVE: ${ENV:-dev}
+      # Inside the network the database is reached by service name on the
+      # container port, not the host-mapped POSTGRES_HOST_PORT.
+      POSTGRES_HOST: postgres
+      POSTGRES_HOST_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-dcc_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-dcc_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "${APP_HOST_PORT:-8080}:8080"
+    networks:
+      - dcc-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: ${APP_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${APP_MEMORY_RESERVATION:-256M}
+    labels:
+      - "dcc.component=app"
+      - "dcc.environment=${ENV:-dev}"
+    profiles:
+      - app
+      - full
+
 networks:
   dcc-network:
     driver: bridge

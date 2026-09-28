@@ -7,6 +7,13 @@
 
 set -e
 
+# Prefer the Docker Compose v2 plugin, fall back to the standalone v1 binary.
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -32,6 +39,7 @@ ${GREEN}Component options:${NC}
   --redis        Include Redis
   --rabbitmq     Include RabbitMQ
   --minio        Include MinIO
+  --app          Build and include the application (dcc-app)
   --full         Include all components
 
 ${GREEN}Environment variables:${NC}
@@ -41,6 +49,9 @@ ${GREEN}Environment variables:${NC}
 ${GREEN}Examples:${NC}
   # Development environment (database only, passwords auto-generated)
   ./scripts/dcc-deploy.sh dev
+
+  # Development environment with the application container
+  ./scripts/dcc-deploy.sh dev --app
 
   # Development environment (with Redis, explicit passwords)
   POSTGRES_PASSWORD=dev123 REDIS_PASSWORD=dev_redis ./scripts/dcc-deploy.sh dev --redis
@@ -135,6 +146,9 @@ MINIO_MEMORY_LIMIT=1G
 ADMINER_VERSION=latest
 ADMINER_HOST_PORT=8081
 ADMINER_THEME=dracula
+APP_HOST_PORT=8080
+APP_MEMORY_LIMIT=512M
+APP_MEMORY_RESERVATION=256M
 HEALTHCHECK_INTERVAL=10s
 HEALTHCHECK_TIMEOUT=5s
 HEALTHCHECK_RETRIES=5
@@ -176,6 +190,9 @@ MINIO_MEMORY_LIMIT=8G
 ADMINER_VERSION=latest
 ADMINER_HOST_PORT=8085
 ADMINER_THEME=default
+APP_HOST_PORT=8080
+APP_MEMORY_LIMIT=2G
+APP_MEMORY_RESERVATION=1G
 HEALTHCHECK_INTERVAL=30s
 HEALTHCHECK_TIMEOUT=10s
 HEALTHCHECK_RETRIES=3
@@ -231,6 +248,7 @@ shift
 
 PROFILES=""
 COMPONENTS="Database"
+BUILD_APP=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -251,7 +269,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --full)
             PROFILES="--profile full"
-            COMPONENTS="Database, Redis, RabbitMQ, MinIO"
+            COMPONENTS="Database, Application, Redis, RabbitMQ, MinIO"
+            BUILD_APP="dcc-app"
+            shift
+            ;;
+        --app)
+            PROFILES="$PROFILES --profile app"
+            COMPONENTS="$COMPONENTS, Application"
+            BUILD_APP="dcc-app"
             shift
             ;;
         --help|-h)
@@ -302,16 +327,23 @@ if [[ "$ENV" == "prod" ]]; then
     fi
 fi
 
+# Build the application image when requested
+if [ -n "$BUILD_APP" ]; then
+    echo ""
+    echo -e "${YELLOW}🔨 Building application image...${NC}"
+    $COMPOSE --env-file "env/${ENV}.env" $PROFILES build "$BUILD_APP"
+fi
+
 # Start services
 echo ""
 echo -e "${YELLOW}⏳ Starting services...${NC}"
-docker-compose --env-file "env/${ENV}.env" $PROFILES up -d
+$COMPOSE --env-file "env/${ENV}.env" $PROFILES up -d
 
 # Show status
 echo ""
 echo -e "${GREEN}✅ ${ENV^^} deployment completed!${NC}"
 echo ""
-docker-compose --env-file "env/${ENV}.env" $PROFILES ps
+$COMPOSE --env-file "env/${ENV}.env" $PROFILES ps
 
 # Show access information
 echo ""
@@ -325,6 +357,6 @@ fi
 echo ""
 
 echo -e "${BLUE}📝 Commands:${NC}"
-echo -e "  View logs: docker-compose --env-file env/${ENV}.env $PROFILES logs -f"
-echo -e "  Stop services: docker-compose --env-file env/${ENV}.env $PROFILES down"
+echo -e "  View logs: $COMPOSE --env-file env/${ENV}.env $PROFILES logs -f"
+echo -e "  Stop services: $COMPOSE --env-file env/${ENV}.env $PROFILES down"
 echo ""

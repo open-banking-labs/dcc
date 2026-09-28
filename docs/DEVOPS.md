@@ -13,6 +13,7 @@ DevOps documentation for DCC project - Docker Compose setup, multi-environment d
 - [Local Development](#local-development)
 - [Multi-Environment Deployment](#multi-environment-deployment)
 - [Project Structure](#project-structure)
+- [Application Docker Deployment](#application-docker-deployment)
 - [Docker Compose Services](#docker-compose-services)
 - [Configuration Management](#configuration-management)
 - [Common Commands](#common-commands)
@@ -52,21 +53,19 @@ DevOps documentation for DCC project - Docker Compose setup, multi-environment d
 ### Module Dependencies
 
 ```
-dcc-core          # Core utilities, shared models, base classes
+dcc-core          # Foundation: persistence and shared primitives
     ↑
     │
-dcc-api           # REST API controllers, DTOs, request/response
+dcc-api           # Main business logic (protocol-agnostic)
     ↑
     │
-dcc-starter       # Spring Boot starter, configuration, main class
+dcc-starter       # Web exposure layer + executable application
 ```
 
-> **Not wired up yet.** The layering above describes the intended design, but
-> the three modules do not currently declare dependencies on one another — each
-> `<dependency>` block lists only Spring Boot artifacts. Every module therefore
-> builds standalone. Add the inter-module dependencies (dcc-api → dcc-core,
-> dcc-starter → dcc-api) when the shared code actually moves out of
-> `dcc-starter`.
+The dependencies are wired: `dcc-starter → dcc-api → dcc-core`. Business logic
+lives in `dcc-api` and stays free of transport concerns, so a future RPC or MCP
+exposure layer can reuse it by depending on `dcc-api` the same way the web layer
+does.
 
 ---
 
@@ -155,6 +154,11 @@ This will:
 **Option 3: Using JAR file**
 ```bash
 java -jar dcc-starter/target/dcc-starter-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+```
+
+**Option 4: Using Docker** (builds the image and runs it alongside PostgreSQL)
+```bash
+./scripts/dcc-deploy.sh dev --app
 ```
 
 ### 5. Verify Services
@@ -324,6 +328,41 @@ dcc/
 
 ---
 
+## Application Docker Deployment
+
+The runnable service (`dcc-starter`) is built from the repository-root
+`Dockerfile` and runs as the `dcc-app` compose service. It sits behind the `app`
+profile, so the default `up -d` still starts PostgreSQL only.
+
+### Build and run
+
+```bash
+# Start PostgreSQL + the application (builds the image first)
+./scripts/dcc-deploy.sh dev --app
+
+# Or drive Compose directly
+docker compose --env-file env/dev.env --profile app up -d --build
+```
+
+The app listens on `http://localhost:8080` (`/actuator/health` backs the
+container health check). Inside the compose network it reaches PostgreSQL as
+`postgres:5432` - not the host-mapped port.
+
+### Configuration
+
+The container activates the Spring profile named by `ENV` (`dev` or `prod`) and
+gets its datasource coordinates from the service's `environment:` block.
+`.dockerignore` excludes `env/` and `application-local.yml`, so no secrets or
+local overrides are baked into the image - supply them as container environment
+variables instead.
+
+### Rebuild after a code change
+
+```bash
+docker compose --env-file env/dev.env --profile app build dcc-app
+docker compose --env-file env/dev.env --profile app up -d
+```
+
 ## Docker Compose Services
 
 ### Service Overview
@@ -331,6 +370,7 @@ dcc/
 | Service | Image | Port (External) | Profiles | Required |
 |---------|-------|-----------------|----------|----------|
 | PostgreSQL | `postgres:18-alpine` | 5432 | `default` | **Yes** |
+| dcc-app | built from `Dockerfile` | 8080 | `app` | Optional |
 | Redis | `redis:7-alpine` | 6379 | `redis` | Optional |
 | RabbitMQ | `rabbitmq:4-management-alpine` | 5672, 15672 | `rabbitmq` | Optional |
 | MinIO | `minio/minio:latest` | 9000, 9090 | `minio` | Optional |
@@ -453,6 +493,16 @@ docker-compose down -v
 | `ADMINER_VERSION` | `latest` | Adminer image version |
 | `ADMINER_HOST_PORT` | `8081` | External port (the app owns 8080) |
 | `ADMINER_THEME` | `dracula` | Adminer UI theme |
+
+#### Application Variables
+
+Used by the `dcc-app` service.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_HOST_PORT` | `8080` | Host port mapped to the app's `8080` |
+| `APP_MEMORY_LIMIT` | `512M` | Container memory limit (JVM heap scales with it) |
+| `APP_MEMORY_RESERVATION` | `256M` | Container memory reservation |
 
 #### Health Check Variables
 
@@ -766,7 +816,7 @@ docker-compose exec postgres psql -U dcc_user -d dcc_dev  # Connect to DB
 
 | Module | Responsibility | Depends On |
 |--------|---------------|------------|
-| **dcc-core** | Core utilities, shared models, base classes | None |
-| **dcc-api** | REST endpoints, DTOs, request/response | dcc-core |
-| **dcc-starter** | Application entry point, configuration | *(none declared yet — see above)* |
+| **dcc-core** | Persistence and shared primitives | None |
+| **dcc-api** | Main business logic (protocol-agnostic) | dcc-core |
+| **dcc-starter** | Web exposure layer + application entry point | dcc-api |
 
