@@ -150,10 +150,12 @@ MINIO_MEMORY_LIMIT=1G
 ADMINER_VERSION=latest
 ADMINER_HOST_PORT=8081
 ADMINER_THEME=dracula
-APP_HOST_PORT=8080
+GATEWAY_HOST_PORT=8080
+TRAEFIK_VERSION=v3.1
+GATEWAY_RATE_AVERAGE=20
+GATEWAY_RATE_BURST=40
 APP_MEMORY_LIMIT=512M
 APP_MEMORY_RESERVATION=256M
-MCP_HOST_PORT=8082
 MCP_MEMORY_LIMIT=512M
 MCP_MEMORY_RESERVATION=256M
 HEALTHCHECK_INTERVAL=10s
@@ -197,10 +199,12 @@ MINIO_MEMORY_LIMIT=8G
 ADMINER_VERSION=latest
 ADMINER_HOST_PORT=8085
 ADMINER_THEME=default
-APP_HOST_PORT=8080
+GATEWAY_HOST_PORT=8080
+TRAEFIK_VERSION=v3.1
+GATEWAY_RATE_AVERAGE=100
+GATEWAY_RATE_BURST=200
 APP_MEMORY_LIMIT=2G
 APP_MEMORY_RESERVATION=1G
-MCP_HOST_PORT=8086
 MCP_MEMORY_LIMIT=2G
 MCP_MEMORY_RESERVATION=1G
 HEALTHCHECK_INTERVAL=30s
@@ -372,15 +376,10 @@ if [[ "$ENV" == "dev" ]]; then
 else
     echo -e "  PostgreSQL: localhost:5437"
 fi
-if [[ "$BUILD_SERVICES" == *dcc-app* ]]; then
-    echo -e "  dcc-app (REST): http://localhost:8080"
-fi
-if [[ "$BUILD_SERVICES" == *dcc-mcp* ]]; then
-    if [[ "$ENV" == "dev" ]]; then
-        echo -e "  dcc-mcp (MCP):  http://localhost:8082/mcp"
-    else
-        echo -e "  dcc-mcp (MCP):  http://localhost:8086/mcp"
-    fi
+if [[ "$BUILD_SERVICES" == *dcc-app* || "$BUILD_SERVICES" == *dcc-mcp* ]]; then
+    echo -e "  Gateway (only public entry): http://localhost:8080"
+    echo -e "    REST: http://localhost:8080/api"
+    echo -e "    MCP:  http://localhost:8080/mcp"
 fi
 echo ""
 

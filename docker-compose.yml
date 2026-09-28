@@ -165,7 +165,7 @@ services:
       - "dcc.environment=${ENV:-dev}"
 
   # ========================================
-  # Application: dcc-starter (Spring Boot)
+  # Application: dcc-web (Spring Boot)
   # ========================================
   dcc-app:
     build:
@@ -190,8 +190,6 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_HOST_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    ports:
-      - "${APP_HOST_PORT:-8080}:8080"
     networks:
       - dcc-network
     restart: ${RESTART_POLICY:-unless-stopped}
@@ -204,6 +202,16 @@ services:
     labels:
       - "dcc.component=app"
       - "dcc.environment=${ENV:-dev}"
+      # Reached only through the gateway; no host port is published, so the
+      # exposure layer cannot be bypassed.
+      - "traefik.enable=true"
+      - "traefik.http.routers.dcc-web.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.dcc-web.entrypoints=web"
+      - "traefik.http.routers.dcc-web.middlewares=dcc-ratelimit@docker"
+      - "traefik.http.services.dcc-web.loadbalancer.server.port=8080"
+      # Coarse, subject/IP-level rate limit at the edge (defined once, shared).
+      - "traefik.http.middlewares.dcc-ratelimit.ratelimit.average=${GATEWAY_RATE_AVERAGE:-20}"
+      - "traefik.http.middlewares.dcc-ratelimit.ratelimit.burst=${GATEWAY_RATE_BURST:-40}"
     profiles:
       - app
       - full
@@ -238,9 +246,6 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_HOST_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    ports:
-      # Host 8082 by default: 8080 is dcc-app and 8081 is Adminer on the host.
-      - "${MCP_HOST_PORT:-8082}:8081"
     networks:
       - dcc-network
     restart: ${RESTART_POLICY:-unless-stopped}
@@ -253,7 +258,43 @@ services:
     labels:
       - "dcc.component=mcp"
       - "dcc.environment=${ENV:-dev}"
+      # Reached only through the gateway; no host port is published. Traefik
+      # streams the SSE/Streamable HTTP response without buffering.
+      - "traefik.enable=true"
+      - "traefik.http.routers.dcc-mcp.rule=PathPrefix(`/mcp`)"
+      - "traefik.http.routers.dcc-mcp.entrypoints=web"
+      - "traefik.http.routers.dcc-mcp.middlewares=dcc-ratelimit@docker"
+      - "traefik.http.services.dcc-mcp.loadbalancer.server.port=8081"
     profiles:
+      - mcp
+      - full
+
+  # ========================================
+  # Edge gateway: the single public entry. Terminates TLS (add a certresolver),
+  # routes /api -> dcc-web and /mcp -> dcc-mcp, and applies a coarse rate limit.
+  # The exposure layers publish no host ports, so they are reachable only here.
+  # ========================================
+  gateway:
+    image: traefik:${TRAEFIK_VERSION:-v3.1}
+    container_name: ${PROJECT_NAME:-dcc}-gateway-${ENV:-dev}
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "${GATEWAY_HOST_PORT:-8080}:80"
+    volumes:
+      # Read-only: lets Traefik discover the routed services by their labels.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dcc-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    labels:
+      - "dcc.component=gateway"
+      - "dcc.environment=${ENV:-dev}"
+    profiles:
+      - gateway
+      - app
       - mcp
       - full
 
