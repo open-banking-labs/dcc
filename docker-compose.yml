@@ -208,6 +208,55 @@ services:
       - app
       - full
 
+  # ========================================
+  # Application: dcc-mcp (MCP over Streamable HTTP)
+  # ========================================
+  dcc-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: dcc-mcp
+        SERVER_PORT: 8081
+    image: ${PROJECT_NAME:-dcc}-mcp:${ENV:-dev}
+    container_name: ${PROJECT_NAME:-dcc}-mcp-${ENV:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # The schema is owned by dcc-app; wait until it is healthy (Flyway done)
+      # before starting the MCP layer, which only validates the schema.
+      dcc-app:
+        condition: service_healthy
+    environment:
+      # Activate the matching Spring profile (application-<env>.yml).
+      SPRING_PROFILES_ACTIVE: ${ENV:-dev}
+      POSTGRES_HOST: postgres
+      POSTGRES_HOST_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-dcc_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-dcc_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_HOST_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      # Host 8082 by default: 8080 is dcc-app and 8081 is Adminer on the host.
+      - "${MCP_HOST_PORT:-8082}:8081"
+    networks:
+      - dcc-network
+    restart: ${RESTART_POLICY:-unless-stopped}
+    deploy:
+      resources:
+        limits:
+          memory: ${MCP_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${MCP_MEMORY_RESERVATION:-256M}
+    labels:
+      - "dcc.component=mcp"
+      - "dcc.environment=${ENV:-dev}"
+    profiles:
+      - mcp
+      - full
+
 networks:
   dcc-network:
     driver: bridge

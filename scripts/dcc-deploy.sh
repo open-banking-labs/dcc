@@ -40,6 +40,7 @@ ${GREEN}Component options:${NC}
   --rabbitmq     Include RabbitMQ
   --minio        Include MinIO
   --app          Build and include the application (dcc-app)
+  --mcp          Build and include the MCP layer (dcc-mcp; implies --app)
   --full         Include all components
 
 ${GREEN}Environment variables:${NC}
@@ -52,6 +53,9 @@ ${GREEN}Examples:${NC}
 
   # Development environment with the application container
   ./scripts/dcc-deploy.sh dev --app
+
+  # Development environment with the REST app and the MCP layer
+  ./scripts/dcc-deploy.sh dev --mcp
 
   # Development environment (with Redis, explicit passwords)
   POSTGRES_PASSWORD=dev123 REDIS_PASSWORD=dev_redis ./scripts/dcc-deploy.sh dev --redis
@@ -149,6 +153,9 @@ ADMINER_THEME=dracula
 APP_HOST_PORT=8080
 APP_MEMORY_LIMIT=512M
 APP_MEMORY_RESERVATION=256M
+MCP_HOST_PORT=8082
+MCP_MEMORY_LIMIT=512M
+MCP_MEMORY_RESERVATION=256M
 HEALTHCHECK_INTERVAL=10s
 HEALTHCHECK_TIMEOUT=5s
 HEALTHCHECK_RETRIES=5
@@ -193,6 +200,9 @@ ADMINER_THEME=default
 APP_HOST_PORT=8080
 APP_MEMORY_LIMIT=2G
 APP_MEMORY_RESERVATION=1G
+MCP_HOST_PORT=8086
+MCP_MEMORY_LIMIT=2G
+MCP_MEMORY_RESERVATION=1G
 HEALTHCHECK_INTERVAL=30s
 HEALTHCHECK_TIMEOUT=10s
 HEALTHCHECK_RETRIES=3
@@ -248,7 +258,7 @@ shift
 
 PROFILES=""
 COMPONENTS="Database"
-BUILD_APP=""
+BUILD_SERVICES=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -269,14 +279,22 @@ while [[ $# -gt 0 ]]; do
             ;;
         --full)
             PROFILES="--profile full"
-            COMPONENTS="Database, Application, Redis, RabbitMQ, MinIO"
-            BUILD_APP="dcc-app"
+            COMPONENTS="Database, Application, MCP, Redis, RabbitMQ, MinIO"
+            BUILD_SERVICES="dcc-app dcc-mcp"
             shift
             ;;
         --app)
             PROFILES="$PROFILES --profile app"
             COMPONENTS="$COMPONENTS, Application"
-            BUILD_APP="dcc-app"
+            BUILD_SERVICES="dcc-app"
+            shift
+            ;;
+        --mcp)
+            # dcc-mcp only validates the schema, so it needs dcc-app (the schema
+            # owner) in the same run; include both profiles and build both images.
+            PROFILES="$PROFILES --profile app --profile mcp"
+            COMPONENTS="$COMPONENTS, Application, MCP"
+            BUILD_SERVICES="dcc-app dcc-mcp"
             shift
             ;;
         --help|-h)
@@ -328,10 +346,10 @@ if [[ "$ENV" == "prod" ]]; then
 fi
 
 # Build the application image when requested
-if [ -n "$BUILD_APP" ]; then
+if [ -n "$BUILD_SERVICES" ]; then
     echo ""
-    echo -e "${YELLOW}🔨 Building application image...${NC}"
-    $COMPOSE --env-file "env/${ENV}.env" $PROFILES build "$BUILD_APP"
+    echo -e "${YELLOW}🔨 Building application image(s)...${NC}"
+    $COMPOSE --env-file "env/${ENV}.env" $PROFILES build $BUILD_SERVICES
 fi
 
 # Start services
@@ -353,6 +371,16 @@ if [[ "$ENV" == "dev" ]]; then
     echo -e "  Adminer: http://localhost:8081"
 else
     echo -e "  PostgreSQL: localhost:5437"
+fi
+if [[ "$BUILD_SERVICES" == *dcc-app* ]]; then
+    echo -e "  dcc-app (REST): http://localhost:8080"
+fi
+if [[ "$BUILD_SERVICES" == *dcc-mcp* ]]; then
+    if [[ "$ENV" == "dev" ]]; then
+        echo -e "  dcc-mcp (MCP):  http://localhost:8082/mcp"
+    else
+        echo -e "  dcc-mcp (MCP):  http://localhost:8086/mcp"
+    fi
 fi
 echo ""
 

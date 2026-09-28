@@ -338,11 +338,11 @@ The runnable service (`dcc-starter`) is built from the repository-root
 `Dockerfile` and runs as the `dcc-app` compose service. It sits behind the `app`
 profile, so the default `up -d` still starts PostgreSQL only.
 
-`dcc-mcp` is a second runnable application
-(`dcc-mcp/target/dcc-mcp-0.0.1-SNAPSHOT.jar`, default port `8081`, MCP endpoint
-`/mcp`). It reuses the same database but never runs Flyway, so deploy it only
-after the schema has been migrated by `dcc-starter`. Its own container image and
-compose service are not wired up yet.
+`dcc-mcp` is a second runnable application served by the same `Dockerfile` (the
+`MODULE` / `SERVER_PORT` build args select it, so it ships on `8081` with MCP
+endpoint `/mcp`). It runs as the `dcc-mcp` compose service, reuses the same
+database and never runs Flyway - it depends on `dcc-app` being healthy so the
+schema is already migrated. Deploy it with `--mcp` (builds and starts both apps).
 
 ### Build and run
 
@@ -350,12 +350,16 @@ compose service are not wired up yet.
 # Start PostgreSQL + the application (builds the image first)
 ./scripts/dcc-deploy.sh dev --app
 
+# Also build and start the MCP layer (implies --app)
+./scripts/dcc-deploy.sh dev --mcp
+
 # Or drive Compose directly
 docker compose --env-file env/dev.env --profile app up -d --build
 ```
 
 The app listens on `http://localhost:8080` (`/actuator/health` backs the
-container health check). Inside the compose network it reaches PostgreSQL as
+container health check). The MCP layer listens on `http://localhost:8082/mcp`
+(container port `8081`). Inside the compose network they reach PostgreSQL as
 `postgres:5432` - not the host-mapped port.
 
 ### Configuration
@@ -380,7 +384,8 @@ docker compose --env-file env/dev.env --profile app up -d
 | Service | Image | Port (External) | Profiles | Required |
 |---------|-------|-----------------|----------|----------|
 | PostgreSQL | `postgres:18-alpine` | 5432 | `default` | **Yes** |
-| dcc-app | built from `Dockerfile` | 8080 | `app` | Optional |
+| dcc-app | built from `Dockerfile` (`MODULE=dcc-starter`) | 8080 | `app` | Optional |
+| dcc-mcp | built from `Dockerfile` (`MODULE=dcc-mcp`) | 8082 | `mcp` | Optional |
 | Redis | `redis:7-alpine` | 6379 | `redis` | Optional |
 | RabbitMQ | `rabbitmq:4-management-alpine` | 5672, 15672 | `rabbitmq` | Optional |
 | MinIO | `minio/minio:latest` | 9000, 9090 | `minio` | Optional |
@@ -513,6 +518,16 @@ Used by the `dcc-app` service.
 | `APP_HOST_PORT` | `8080` | Host port mapped to the app's `8080` |
 | `APP_MEMORY_LIMIT` | `512M` | Container memory limit (JVM heap scales with it) |
 | `APP_MEMORY_RESERVATION` | `256M` | Container memory reservation |
+
+#### MCP Variables
+
+Used by the `dcc-mcp` service.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_HOST_PORT` | `8082` | Host port mapped to the MCP app's `8081` (8080/8081 are dcc-app/Adminer) |
+| `MCP_MEMORY_LIMIT` | `512M` | Container memory limit (JVM heap scales with it) |
+| `MCP_MEMORY_RESERVATION` | `256M` | Container memory reservation |
 
 #### Health Check Variables
 
