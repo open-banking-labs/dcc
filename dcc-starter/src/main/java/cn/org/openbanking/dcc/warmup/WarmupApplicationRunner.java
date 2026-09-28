@@ -1,37 +1,42 @@
 package cn.org.openbanking.dcc.warmup;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.Ordered;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 /**
- * Runs the registered {@link WarmupTask}s once the application context is ready.
+ * Runs the configured warm-up steps once the application context is ready.
  *
- * <p>All behaviour is driven by {@link WarmupProperties}:
+ * <p>Everything is driven by {@link WarmupProperties}:
  * <ul>
  *   <li>{@code enabled} - whether the warm-up runs at all;</li>
- *   <li>{@code order} - this runner's position among the other
- *       {@link ApplicationRunner}s;</li>
+ *   <li>{@code steps} - the ordered list of {@link WarmupTask#name() names} to
+ *       run; this is what defines each step's order;</li>
  *   <li>{@code async} - run off the startup thread instead of blocking it;</li>
- *   <li>{@code fail-fast} - on failure, stop the application ({@code true}) or
- *       just log and carry on ({@code false}).</li>
+ *   <li>{@code fail-fast} - on failure, shut the application down and exit the
+ *       process ({@code true}) or just log and carry on ({@code false}).</li>
  * </ul>
  */
 @Component
-public class WarmupApplicationRunner implements ApplicationRunner, Ordered {
+public class WarmupApplicationRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(WarmupApplicationRunner.class);
 
+    /** Exit code used when the warm-up fails and {@code fail-fast} is on. */
+    private static final int WARMUP_FAILURE_EXIT_CODE = 1;
+
     private final WarmupProperties properties;
-    private final List<WarmupTask> tasks;
+    private final Map<String, WarmupTask> tasksByName;
     private final ConfigurableApplicationContext context;
     private final TaskExecutor executor;
 
@@ -39,17 +44,23 @@ public class WarmupApplicationRunner implements ApplicationRunner, Ordered {
                                    List<WarmupTask> tasks,
                                    ConfigurableApplicationContext context) {
         this.properties = properties;
-        this.tasks = tasks;
         this.context = context;
+        this.tasksByName = indexByName(tasks);
         SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("warmup-");
         executor.setVirtualThreads(false);
         this.executor = executor;
     }
 
-    /** Position of this runner, taken from {@code dcc.warmup.order}. */
-    @Override
-    public int getOrder() {
-        return properties.getOrder();
+    private static Map<String, WarmupTask> indexByName(List<WarmupTask> tasks) {
+        Map<String, WarmupTask> byName = new LinkedHashMap<>();
+        for (WarmupTask task : tasks) {
+            WarmupTask previous = byName.putIfAbsent(task.name(), task);
+            if (previous != null) {
+                throw new IllegalStateException("Duplicate WarmupTask name '" + task.name() + "': "
+                        + previous.getClass().getName() + " and " + task.getClass().getName());
+            }
+        }
+        return byName;
     }
 
     @Override
@@ -58,54 +69,72 @@ public class WarmupApplicationRunner implements ApplicationRunner, Ordered {
             log.info("Application warm-up is disabled (dcc.warmup.enabled=false)");
             return;
         }
-        if (tasks.isEmpty()) {
-            log.info("Application warm-up is enabled but no WarmupTask beans are registered");
+        List<String> steps = properties.getSteps();
+        if (steps.isEmpty()) {
+            log.info("Application warm-up is enabled but dcc.warmup.steps is empty");
             return;
         }
-        log.info("Application warm-up: {} task(s), mode={}, on failure={}",
-                tasks.size(),
+        warnAboutUnconfiguredTasks(steps);
+
+        log.info("Application warm-up: {} step(s) [{}], mode={}, on failure={}",
+                steps.size(), String.join(" -> ", steps),
                 properties.isAsync() ? "async" : "sync",
-                properties.isFailFast() ? "stop" : "ignore");
+                properties.isFailFast() ? "shutdown + exit" : "ignore");
 
         if (properties.isAsync()) {
-            executor.execute(() -> {
-                try {
-                    executeTasks();
-                    log.info("Application warm-up finished (async)");
-                } catch (Exception ex) {
-                    log.error("Asynchronous warm-up failed; stopping the application", ex);
-                    stopApplication();
-                }
-            });
+            executor.execute(this::executeSteps);
         } else {
-            executeTasks();
+            executeSteps();
         }
+    }
+
+    private void warnAboutUnconfiguredTasks(List<String> steps) {
+        tasksByName.keySet().stream()
+                .filter(name -> !steps.contains(name))
+                .forEach(name -> log.warn("WarmupTask '{}' is registered but not listed in "
+                        + "dcc.warmup.steps; it will not run", name));
+    }
+
+    /** Runs the configured steps in order. */
+    private void executeSteps() {
+        for (String stepName : properties.getSteps()) {
+            WarmupTask task = tasksByName.get(stepName);
+            if (task == null) {
+                if (handleFailure("step '" + stepName + "' is configured but no WarmupTask has that name", null)) {
+                    return;
+                }
+                continue;
+            }
+            try {
+                task.warmUp();
+                log.info("Warm-up step '{}' completed", stepName);
+            } catch (Exception ex) {
+                if (handleFailure("step '" + stepName + "' failed", ex)) {
+                    return;
+                }
+            }
+        }
+        log.info("Application warm-up finished");
     }
 
     /**
-     * Runs every task in order. When {@code fail-fast} is on, the first failure
-     * aborts the sequence by rethrowing; otherwise it is logged and skipped.
+     * Handles a failed step. Returns {@code true} when the sequence must stop
+     * (fail-fast), {@code false} when the failure is only ignored.
      */
-    private void executeTasks() {
-        for (WarmupTask task : tasks) {
-            try {
-                task.warmUp();
-                log.info("Warm-up task '{}' completed", task.name());
-            } catch (Exception ex) {
-                if (properties.isFailFast()) {
-                    throw new IllegalStateException("Warm-up task '" + task.name() + "' failed", ex);
-                }
-                log.warn("Warm-up task '{}' failed and was ignored (dcc.warmup.fail-fast=false)",
-                        task.name(), ex);
-            }
+    private boolean handleFailure(String message, Exception cause) {
+        if (properties.isFailFast()) {
+            log.error("Application warm-up failed ({}) - shutting down and exiting", message, cause);
+            shutdownAndExit();
+            return true;
         }
+        log.warn("Application warm-up failure ignored ({}); continuing (dcc.warmup.fail-fast=false)",
+                message, cause);
+        return false;
     }
 
-    private void stopApplication() {
-        try {
-            context.close();
-        } catch (Exception ex) {
-            log.error("Failed to stop the application after a warm-up failure", ex);
-        }
+    /** Gracefully context-close and exit the JVM; overridable so tests need not exit. */
+    protected void shutdownAndExit() {
+        int exitCode = SpringApplication.exit(context, () -> WARMUP_FAILURE_EXIT_CODE);
+        System.exit(exitCode);
     }
 }

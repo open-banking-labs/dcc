@@ -2,13 +2,13 @@ package cn.org.openbanking.dcc.warmup;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -17,20 +17,20 @@ class WarmupApplicationRunnerTest {
 
     private final ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
 
-    private static WarmupProperties properties(boolean enabled, boolean async, boolean failFast) {
+    private static WarmupProperties properties(boolean enabled, boolean async, boolean failFast, String... steps) {
         WarmupProperties properties = new WarmupProperties();
         properties.setEnabled(enabled);
         properties.setAsync(async);
         properties.setFailFast(failFast);
+        properties.setSteps(List.of(steps));
         return properties;
     }
 
-    private static WarmupTask task(String name, AtomicInteger counter, Runnable body) {
+    private static WarmupTask recording(String name, List<String> executed) {
         return new WarmupTask() {
             @Override
             public void warmUp() {
-                counter.incrementAndGet();
-                body.run();
+                executed.add(name);
             }
 
             @Override
@@ -40,78 +40,115 @@ class WarmupApplicationRunnerTest {
         };
     }
 
+    private static WarmupTask failing(String name, List<String> executed) {
+        return new WarmupTask() {
+            @Override
+            public void warmUp() {
+                executed.add(name);
+                throw new IllegalStateException("boom");
+            }
+
+            @Override
+            public String name() {
+                return name;
+            }
+        };
+    }
+
+    /** Captures the shutdown request instead of exiting the JVM. */
+    private static class RecordingRunner extends WarmupApplicationRunner {
+
+        final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+
+        RecordingRunner(WarmupProperties properties, List<WarmupTask> tasks, ConfigurableApplicationContext context) {
+            super(properties, tasks, context);
+        }
+
+        @Override
+        protected void shutdownAndExit() {
+            shutdownRequested.set(true);
+        }
+    }
+
     @Test
     void skipsWhenDisabled() {
-        AtomicInteger runs = new AtomicInteger();
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(
-                properties(false, false, true), List.of(task("t", runs, () -> { })), context);
+        List<String> executed = new CopyOnWriteArrayList<>();
+        RecordingRunner runner = new RecordingRunner(
+                properties(false, false, true, "a"), List.of(recording("a", executed)), context);
 
         runner.run(null);
 
-        assertThat(runs).hasValue(0);
+        assertThat(executed).isEmpty();
     }
 
     @Test
-    void runsEveryTaskWhenEnabled() {
-        AtomicInteger runs = new AtomicInteger();
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(
-                properties(true, false, true),
-                List.of(task("a", runs, () -> { }), task("b", runs, () -> { })),
+    void runsStepsInTheOrderGivenByConfiguration() {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        RecordingRunner runner = new RecordingRunner(
+                properties(true, false, true, "b", "a"),
+                List.of(recording("a", executed), recording("b", executed)),
                 context);
 
         runner.run(null);
 
-        assertThat(runs).hasValue(2);
+        assertThat(executed).containsExactly("b", "a");
     }
 
     @Test
-    void failFastStopsTheApplicationOnFailure() {
-        AtomicInteger runs = new AtomicInteger();
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(
-                properties(true, false, true),
-                List.of(
-                        task("boom", runs, () -> { throw new IllegalStateException("boom"); }),
-                        task("after", runs, () -> { })),
+    void failFastRequestsShutdownAndStops() {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        RecordingRunner runner = new RecordingRunner(
+                properties(true, false, true, "boom", "after"),
+                List.of(failing("boom", executed), recording("after", executed)),
                 context);
 
-        assertThatThrownBy(() -> runner.run(null)).isInstanceOf(IllegalStateException.class);
-        assertThat(runs).hasValue(1); // the failing task aborts the sequence
+        runner.run(null);
+
+        assertThat(runner.shutdownRequested).isTrue();
+        assertThat(executed).containsExactly("boom"); // "after" is never reached
     }
 
     @Test
-    void ignoredFailureLetsTheRestContinue() {
-        AtomicInteger runs = new AtomicInteger();
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(
-                properties(true, false, false),
-                List.of(
-                        task("boom", runs, () -> { throw new IllegalStateException("boom"); }),
-                        task("after", runs, () -> { })),
+    void ignoredFailureContinues() {
+        List<String> executed = new CopyOnWriteArrayList<>();
+        RecordingRunner runner = new RecordingRunner(
+                properties(true, false, false, "boom", "after"),
+                List.of(failing("boom", executed), recording("after", executed)),
                 context);
 
         assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
-        assertThat(runs).hasValue(2);
+        assertThat(runner.shutdownRequested).isFalse();
+        assertThat(executed).containsExactly("boom", "after");
+    }
+
+    @Test
+    void configuredStepWithoutMatchingTaskIsAFailure() {
+        RecordingRunner runner = new RecordingRunner(properties(true, false, true, "ghost"), List.of(), context);
+
+        runner.run(null);
+
+        assertThat(runner.shutdownRequested).isTrue();
     }
 
     @Test
     void asyncRunsOffTheStartupThread() throws Exception {
         CountDownLatch done = new CountDownLatch(1);
-        AtomicInteger runs = new AtomicInteger();
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(
-                properties(true, true, true), List.of(task("slow", runs, done::countDown)), context);
+        WarmupTask slow = new WarmupTask() {
+            @Override
+            public void warmUp() {
+                done.countDown();
+            }
 
-        runner.run(null); // must return immediately without throwing
+            @Override
+            public String name() {
+                return "slow";
+            }
+        };
+        RecordingRunner runner = new RecordingRunner(properties(true, true, true, "slow"), List.of(slow), context);
+
+        runner.run(null); // must return immediately, without blocking the startup thread
 
         assertThat(done.await(5, TimeUnit.SECONDS)).isTrue();
-        assertThat(runs).hasValue(1);
-    }
-
-    @Test
-    void orderComesFromConfiguration() {
-        WarmupProperties properties = properties(true, false, true);
-        properties.setOrder(42);
-
-        WarmupApplicationRunner runner = new WarmupApplicationRunner(properties, List.of(), context);
-
-        assertThat(runner.getOrder()).isEqualTo(42);
+        assertThat(runner.shutdownRequested).isFalse();
     }
 }
