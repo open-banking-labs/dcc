@@ -29,8 +29,8 @@ DevOps documentation for DCC project - Docker Compose setup, multi-environment d
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │  dcc-starter │  │   dcc-api    │  │  dcc-core    │    │
-│  │  (Spring Boot)│  │   (REST API) │  │   (Core)    │    │
+│  │  dcc-web /   │  │ application  │  │  dcc-core    │    │
+│  │  dcc-mcp     │  │ (use cases)  │  │  (domain)    │    │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
 │         │                  │                  │            │
 │         └──────────────────┼──────────────────┘            │
@@ -56,16 +56,21 @@ DevOps documentation for DCC project - Docker Compose setup, multi-environment d
 dcc-core          # Foundation: persistence and shared primitives
     ↑
     │
-dcc-api           # Main business logic (protocol-agnostic)
+dcc-application   # Main business logic (protocol-agnostic)
     ↑
-    ├── dcc-starter   # REST exposure layer + executable application (web UI)
+    ├── dcc-web       # REST exposure layer + executable application (web UI)
     └── dcc-mcp       # MCP exposure layer + executable application (Streamable HTTP)
+
+dcc-bootstrap     # Shared startup wiring (Flyway, warm-up) - used by both apps
+dcc-security      # Shared security (JWT, tenant, authz, rate limit) - used by both
+gateway (Traefik) # Edge entry: routes /api -> dcc-web, /mcp -> dcc-mcp, coarse limit
 ```
 
-The dependencies are wired: `dcc-starter → dcc-api → dcc-core` and
-`dcc-mcp → dcc-api → dcc-core`. Business logic lives in `dcc-api` and stays free
-of transport concerns, so each exposure layer (REST in `dcc-starter`, MCP in
-`dcc-mcp`) reuses it unchanged by depending on `dcc-api`.
+The dependencies are wired: `dcc-web → dcc-application → dcc-core` and
+`dcc-mcp → dcc-application → dcc-core`; both runnable apps also depend on
+`dcc-bootstrap` and `dcc-security`. Business logic lives in `dcc-application` and
+stays free of transport concerns, so each exposure layer (REST in `dcc-web`, MCP
+in `dcc-mcp`) reuses it unchanged.
 
 ---
 
@@ -145,15 +150,15 @@ This will:
 **Option 2: Using Maven**
 ```bash
 # Build the project
-./mvnw clean package -pl dcc-starter
+./mvnw clean package -pl dcc-web
 
 # Run the application
-./mvnw spring-boot:run -pl dcc-starter -Dspring-boot.run.profiles=dev
+./mvnw spring-boot:run -pl dcc-web -Dspring-boot.run.profiles=dev
 ```
 
 **Option 3: Using JAR file**
 ```bash
-java -jar dcc-starter/target/dcc-starter-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+java -jar dcc-web/target/dcc-web-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 ```
 
 **Option 4: Using Docker** (builds the image and runs it alongside PostgreSQL)
@@ -217,7 +222,7 @@ Passwords are randomly generated per machine — read the current values from
 
 ```bash
 # Enable remote debugging (port 5005)
-./mvnw spring-boot:run -pl dcc-starter -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+./mvnw spring-boot:run -pl dcc-web -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
 ```
 
 ---
@@ -297,35 +302,31 @@ dcc/
 │   ├── dcc-start.sh                    # Local development starter
 │   └── dcc-deploy.sh                   # Multi-environment deployment
 │
-├── dcc-starter/                        # Spring Boot starter module
-│   ├── pom.xml
-│   └── src/
-│       └── main/
-│           ├── java/
-│           │   └── cn/org/openbanking/dcc/
-│           │       ├── DccApplication.java
-│           │       └── flyway/
-│           │           ├── FlywayConfig.java
-│           │           └── FlywayCallbackHandler.java
-│           └── resources/
-│               ├── application.yml
-│               ├── application-dev.yml
-│               ├── application-prod.yml
-│               └── db/migration/
-│                   ├── ddl/
-│                   ├── dml/
-│                   ├── function/
-│                   └── index/
-│
-├── dcc-mcp/                            # MCP exposure module (Streamable HTTP)
+├── dcc-core/                           # Domain + persistence
 │   ├── pom.xml
 │   └── src/
 │
-├── dcc-core/                           # Core utilities module
+├── dcc-application/                    # Business logic (use cases)
 │   ├── pom.xml
 │   └── src/
 │
-└── dcc-api/                            # REST API module
+├── dcc-bootstrap/                      # Shared startup wiring (Flyway, warm-up)
+│   ├── pom.xml
+│   └── src/
+│       ├── java/cn/org/openbanking/dcc/
+│       │   ├── flyway/                 # FlywayConfig, FlywayCallbackHandler
+│       │   └── warmup/                 # runner, properties, spi/, task/
+│       └── resources/db/migration/     # ddl/ dml/ function/ index/
+│
+├── dcc-security/                       # Shared security (JWT, tenant, authz, rate limit)
+│   ├── pom.xml
+│   └── src/
+│
+├── dcc-web/                            # REST exposure app
+│   ├── pom.xml
+│   └── src/                            # DccWebApplication + application*.yml
+│
+└── dcc-mcp/                            # MCP exposure app (Streamable HTTP)
     ├── pom.xml
     └── src/
 ```
@@ -334,15 +335,20 @@ dcc/
 
 ## Application Docker Deployment
 
-The runnable service (`dcc-starter`) is built from the repository-root
-`Dockerfile` and runs as the `dcc-app` compose service. It sits behind the `app`
-profile, so the default `up -d` still starts PostgreSQL only.
+The REST service (`dcc-web`) is built from the repository-root `Dockerfile` and
+runs as the `dcc-app` compose service. It sits behind the `app` profile, so the
+default `up -d` still starts PostgreSQL only.
 
 `dcc-mcp` is a second runnable application served by the same `Dockerfile` (the
 `MODULE` / `SERVER_PORT` build args select it, so it ships on `8081` with MCP
 endpoint `/mcp`). It runs as the `dcc-mcp` compose service, reuses the same
 database and never runs Flyway - it depends on `dcc-app` being healthy so the
-schema is already migrated. Deploy it with `--mcp` (builds and starts both apps).
+schema is already migrated.
+
+Neither app publishes a host port. The **Traefik gateway** (the `gateway` compose
+service) is the only public entry: it routes `/api/**` to `dcc-web` and `/mcp/**`
+to `dcc-mcp` and applies a coarse rate limit. Deploy the whole set with `--mcp`
+(builds and starts the REST app and the MCP layer, plus the gateway).
 
 ### Build and run
 
@@ -357,9 +363,10 @@ schema is already migrated. Deploy it with `--mcp` (builds and starts both apps)
 docker compose --env-file env/dev.env --profile app up -d --build
 ```
 
-The app listens on `http://localhost:8080` (`/actuator/health` backs the
-container health check). The MCP layer listens on `http://localhost:8082/mcp`
-(container port `8081`). Inside the compose network they reach PostgreSQL as
+The gateway listens on `http://localhost:8080` (`/actuator/health` backs the app
+container health check). REST is served at `http://localhost:8080/api` and MCP at
+`http://localhost:8080/mcp`; the apps listen only inside the compose network
+(`dcc-web` on `8080`, `dcc-mcp` on `8081`) and reach PostgreSQL as
 `postgres:5432` - not the host-mapped port.
 
 ### Configuration
@@ -384,8 +391,9 @@ docker compose --env-file env/dev.env --profile app up -d
 | Service | Image | Port (External) | Profiles | Required |
 |---------|-------|-----------------|----------|----------|
 | PostgreSQL | `postgres:18-alpine` | 5432 | `default` | **Yes** |
-| dcc-app | built from `Dockerfile` (`MODULE=dcc-starter`) | 8080 | `app` | Optional |
-| dcc-mcp | built from `Dockerfile` (`MODULE=dcc-mcp`) | 8082 | `mcp` | Optional |
+| gateway | `traefik:v3.1` | 8080 | `gateway`, `app`, `mcp` | Optional |
+| dcc-app (dcc-web) | built from `Dockerfile` (`MODULE=dcc-web`), no host port | – | `app` | Optional |
+| dcc-mcp | built from `Dockerfile` (`MODULE=dcc-mcp`), no host port | – | `mcp` | Optional |
 | Redis | `redis:7-alpine` | 6379 | `redis` | Optional |
 | RabbitMQ | `rabbitmq:4-management-alpine` | 5672, 15672 | `rabbitmq` | Optional |
 | MinIO | `minio/minio:latest` | 9000, 9090 | `minio` | Optional |
@@ -506,26 +514,35 @@ docker-compose down -v
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ADMINER_VERSION` | `latest` | Adminer image version |
-| `ADMINER_HOST_PORT` | `8081` | External port (the app owns 8080) |
+| `ADMINER_HOST_PORT` | `8081` | External port (the gateway owns 8080) |
 | `ADMINER_THEME` | `dracula` | Adminer UI theme |
 
-#### Application Variables
+#### Gateway Variables
 
-Used by the `dcc-app` service.
+Used by the `gateway` (Traefik) service - the only service that publishes a port.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_HOST_PORT` | `8080` | Host port mapped to the app's `8080` |
+| `GATEWAY_HOST_PORT` | `8080` | Host port mapped to the gateway's `80` |
+| `TRAEFIK_VERSION` | `v3.1` | Traefik image tag |
+| `GATEWAY_RATE_AVERAGE` | `20` | Coarse edge rate limit (requests/second, average) |
+| `GATEWAY_RATE_BURST` | `40` | Coarse edge rate limit (burst) |
+
+#### Application Variables
+
+Used by the `dcc-app` (`dcc-web`) service. It publishes no host port.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `APP_MEMORY_LIMIT` | `512M` | Container memory limit (JVM heap scales with it) |
 | `APP_MEMORY_RESERVATION` | `256M` | Container memory reservation |
 
 #### MCP Variables
 
-Used by the `dcc-mcp` service.
+Used by the `dcc-mcp` service. It publishes no host port.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_HOST_PORT` | `8082` | Host port mapped to the MCP app's `8081` (8080/8081 are dcc-app/Adminer) |
 | `MCP_MEMORY_LIMIT` | `512M` | Container memory limit (JVM heap scales with it) |
 | `MCP_MEMORY_RESERVATION` | `256M` | Container memory reservation |
 
@@ -623,13 +640,13 @@ POSTGRES_PASSWORD=xxx REDIS_PASSWORD=xxx RABBITMQ_PASSWORD=xxx MINIO_ROOT_PASSWO
 ./mvnw clean package
 
 # Build specific module
-./mvnw clean package -pl dcc-starter
+./mvnw clean package -pl dcc-web
 
 # Run tests
 ./mvnw test
 
 # Run specific module
-./mvnw spring-boot:run -pl dcc-starter
+./mvnw spring-boot:run -pl dcc-web
 
 # Skip tests
 ./mvnw clean package -DskipTests
@@ -804,7 +821,7 @@ export COMPOSE_DEBUG=1
 docker-compose up
 
 # Spring Boot
-./mvnw spring-boot:run -pl dcc-starter -Ddebug
+./mvnw spring-boot:run -pl dcc-web -Ddebug
 
 # PostgreSQL
 docker-compose exec postgres psql -U dcc_user -d dcc_dev -c "SET log_statement = 'all';"
@@ -829,7 +846,7 @@ docker-compose logs -f            # View logs
 
 # Maven Commands
 ./mvnw clean package              # Build project
-./mvnw spring-boot:run -pl dcc-starter  # Run application
+./mvnw spring-boot:run -pl dcc-web  # Run application
 
 # Database
 docker-compose exec postgres psql -U dcc_user -d dcc_dev  # Connect to DB
@@ -842,7 +859,9 @@ docker-compose exec postgres psql -U dcc_user -d dcc_dev  # Connect to DB
 | Module | Responsibility | Depends On |
 |--------|---------------|------------|
 | **dcc-core** | Persistence and shared primitives | None |
-| **dcc-api** | Main business logic (protocol-agnostic) | dcc-core |
-| **dcc-starter** | REST exposure layer + application entry point (web UI) | dcc-api |
-| **dcc-mcp** | MCP exposure layer + application entry point (Streamable HTTP) | dcc-api |
+| **dcc-application** | Main business logic (protocol-agnostic) | dcc-core |
+| **dcc-bootstrap** | Shared startup wiring (Flyway, warm-up) | – |
+| **dcc-security** | Shared security (JWT, tenant, authz, rate limit) | – |
+| **dcc-web** | REST exposure layer + application entry point (web UI) | dcc-application, dcc-security, dcc-bootstrap |
+| **dcc-mcp** | MCP exposure layer + application entry point (Streamable HTTP) | dcc-application, dcc-security, dcc-bootstrap |
 

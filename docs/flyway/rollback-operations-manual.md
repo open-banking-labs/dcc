@@ -58,7 +58,7 @@ after the restore point is discarded. Get sign-off before starting.
 
 ```bash
 # dev only — application-dev.yml sets clean-disabled: false
-./mvnw spring-boot:run -pl dcc-starter -Dspring-boot.run.profiles=dev \
+./mvnw spring-boot:run -pl dcc-web -Dspring-boot.run.profiles=dev \
   -Dspring-boot.run.arguments=--spring.flyway.clean-on-validation-error=true
 ```
 
@@ -99,7 +99,7 @@ A migration that fails part-way leaves a `failed` row in
 
 4. **Repair the history table**, which removes the failed row:
    ```bash
-   ./mvnw flyway:repair -pl dcc-starter -Dflyway.url=... -Dflyway.user=... -Dflyway.password=...
+   ./mvnw flyway:repair -pl dcc-web -Dflyway.url=... -Dflyway.user=... -Dflyway.password=...
    ```
 
 5. **Fix the script and redeploy.** If the script had already been applied

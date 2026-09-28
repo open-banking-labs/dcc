@@ -1,9 +1,9 @@
 # Flyway Script Naming Convention
 
-This document describes how migration scripts in `dcc-starter` must be named.
-Every rule below is derived from the active configuration in
-`dcc-starter/src/main/resources/application.yml` — if you change that file,
-update this document with it.
+This document describes how migration scripts (living in `dcc-bootstrap`, run by
+the schema owner `dcc-web`) must be named. Every rule below is derived from the
+active configuration in `dcc-web/src/main/resources/application.yml` - if you
+change that file, update this document with it.
 
 ---
 

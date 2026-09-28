@@ -9,4 +9,4 @@
 - [DevOps guide](DEVOPS.md) — Docker Compose and deployment operations.
 - [Flyway naming](flyway/script-naming-convention.md) — migration locations and names.
 - [Flyway rollback](flyway/rollback-operations-manual.md) — recovery strategies.
-- Module notes: [dcc-core](modules/dcc-core.md), [dcc-api](modules/dcc-api.md), [dcc-starter](modules/dcc-starter.md), [dcc-mcp](modules/dcc-mcp.md).
+- Module notes: [dcc-core](modules/dcc-core.md), [dcc-application](modules/dcc-application.md), [dcc-bootstrap](modules/dcc-bootstrap.md), [dcc-security](modules/dcc-security.md), [dcc-web](modules/dcc-web.md), [dcc-mcp](modules/dcc-mcp.md).
