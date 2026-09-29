@@ -33,6 +33,28 @@ class ContractTool {
 Keep tools thin: they translate an MCP call into a `dcc-application` service call.
 No business logic here; the caller's tenant is available via `TenantContext`.
 
+## Prompts (external templates)
+
+Prompt text is externalized as Thymeleaf templates — the same engine as the
+code/SQL generation in `dcc-generator` (TEXT mode, **no HTML escaping**) — under
+`mcp/prompts/*.md.tpl`. A prompt is resolved by locale:
+`review-change.<lang>.md.tpl` → `review-change.<default-locale>.md.tpl` →
+`review-change.md.tpl`, and rendered with `[(${...})]` variables. Change or add a
+prompt (or a translation) without recompiling.
+
+```java
+@Component
+class PromptTool {
+
+    @McpPrompt(name = "review-change", description = "Draft a review checklist.")
+    String reviewChange(@McpArg(name = "modelName", required = true) String modelName) {
+        return prompts.render("review-change", null, Map.of("modelName", modelName));
+    }
+}
+```
+
+Override the location with `dcc.mcp.prompts.dir` (e.g. `file:/etc/dcc/prompts/`).
+
 ## Configuration
 
 Server settings live under `spring.ai.mcp.server.*` in `application.yml`:
@@ -43,6 +65,13 @@ Server settings live under `spring.ai.mcp.server.*` in `application.yml`:
 | `spring.ai.mcp.server.protocol` | `streamable` | Streamable HTTP transport |
 | `spring.ai.mcp.server.streamable-http.mcp-endpoint` | `/mcp` | Endpoint clients connect to |
 | `spring.ai.mcp.server.annotation-scanner.enabled` | `true` | Auto-register `@McpTool`/`@McpResource`/`@McpPrompt` beans |
+
+Prompt templating (bound from `dcc.mcp.prompts.*`):
+
+| Property | Default | Meaning |
+| --- | --- | --- |
+| `dcc.mcp.prompts.dir` | `classpath:/mcp/prompts/` | Root of the prompt templates; custom dir overrides built-ins |
+| `dcc.mcp.prompts.default-locale` | `en` | Locale used when a request carries none |
 
 Datasource and Redis coordinates come from the profile files
 (`application-dev.yml`, `application-prod.yml`), mirroring `dcc-web`.

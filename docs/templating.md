@@ -88,3 +88,11 @@ emitted unchanged. See `TemplatingRegressionTest.generatedCodeAndSqlAreNotHtmlEs
 - `TemplatingRegressionTest` freezes the pre-templating output (`src/test/resources/golden/`)
   and asserts byte-for-byte equality, plus override and non-escaping behaviour.
 - `GeneratorWiringTest` proves the renderer, type strategy and generators auto-wire.
+
+## Reuse by MCP prompts
+
+The same engine is reused for **MCP prompt templates** (`dcc-mcp`): `PromptConfiguration`
+calls `GeneratorTemplates.create("mcp/prompts/", ".md.tpl", dir)` to build a second
+`TemplateRenderer` over `mcp/prompts/`. `PromptCatalog` resolves a locale-specific
+template (`<name>.<lang>` → `<name>.<default-locale>` → `<name>`) and renders it. See
+[MCP module notes](modules/dcc-mcp.md#prompts-external-templates).

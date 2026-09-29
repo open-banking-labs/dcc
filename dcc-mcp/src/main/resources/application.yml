@@ -43,5 +43,9 @@ dcc:
   #   dialects:
   #     postgresql:
   #       DATETIME: TIMESTAMP
+  mcp:
+    prompts:
+      dir: classpath:/mcp/prompts/         # override with file:/etc/dcc/prompts/
+      default-locale: en
   security:
     jwt-secret: ${DCC_JWT_SECRET:dev-only-change-me-please-use-32-bytes}

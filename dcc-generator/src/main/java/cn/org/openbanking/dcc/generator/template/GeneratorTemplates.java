@@ -11,7 +11,9 @@ import org.thymeleaf.templateresolver.FileTemplateResolver;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 
 /**
- * Builds the renderer shared by every generator.
+ * Builds the standalone {@link TemplateRenderer} used by the generators — and, via
+ * {@link #create(String, String, String)}, by other templated text such as the MCP
+ * prompts, so both share one engine configuration.
  *
  * <p>Templates run in {@link TemplateMode#TEXT}: there is no markup to parse, so
  * values are emitted verbatim and characters like {@code <}, {@code >}, {@code &}
@@ -31,46 +33,65 @@ public final class GeneratorTemplates {
     /** File extension of the template files. */
     public static final String TEMPLATE_SUFFIX = ".tpl";
 
-    private static final String DEFAULT_TEMPLATE_DIR = "classpath:/templates/";
+    private static final String CLASSPATH_SCHEME = "classpath:";
+    private static final String FILE_SCHEME = "file:";
 
     private GeneratorTemplates() {
     }
 
-    /** Creates a renderer from the given configuration. */
+    /** Creates a renderer for the generator templates from the given configuration. */
     public static TemplateRenderer create(GeneratorProperties properties) {
-        TemplateEngine builtin = engineWith(classpathResolver(BUILTIN_PREFIX));
         String dir = properties == null ? null : properties.getTemplateDir();
-        if (dir == null || dir.isBlank() || DEFAULT_TEMPLATE_DIR.equals(dir)) {
-            return new TemplateRenderer(builtin, null, name -> false);
-        }
-        String value = dir.trim();
-        if (value.startsWith("file:")) {
-            return fileOverride(builtin, normalizeFile(value.substring("file:".length())));
-        }
-        if (value.startsWith("classpath:")) {
-            return classpathOverride(builtin, normalizeClasspath(value.substring("classpath:".length())));
-        }
-        // No scheme: treat as a filesystem directory so a plain path also overrides.
-        return fileOverride(builtin, normalizeFile(value));
+        return create(BUILTIN_PREFIX, TEMPLATE_SUFFIX, dir);
     }
 
-    /** Creates a renderer over the built-in defaults. */
+    /** Creates a renderer over the built-in generator templates. */
     public static TemplateRenderer create() {
         return create(new GeneratorProperties());
     }
 
-    private static TemplateRenderer fileOverride(TemplateEngine builtin, String prefix) {
-        TemplateEngine override = engineWith(fileResolver(prefix));
-        Path dir = Path.of(prefix);
-        return new TemplateRenderer(builtin, override,
-                name -> Files.exists(dir.resolve(name + TEMPLATE_SUFFIX)));
+    /**
+     * Creates a renderer over a given classpath prefix/suffix, with an optional
+     * override location. The override is a Spring-style resource location
+     * ({@code classpath:/...}, {@code file:/...}) or a plain filesystem directory.
+     *
+     * @param builtinPrefix classpath prefix of the built-in templates, e.g. {@code templates/}
+     * @param suffix        file suffix, e.g. {@code .tpl}
+     * @param overrideLocation user directory; blank or the built-in location disables it
+     */
+    public static TemplateRenderer create(String builtinPrefix, String suffix, String overrideLocation) {
+        TemplateEngine builtin = engineWith(classpathResolver(builtinPrefix, suffix));
+        String defaultLocation = CLASSPATH_SCHEME + "/" + builtinPrefix;
+        if (overrideLocation == null || overrideLocation.isBlank()
+                || overrideLocation.trim().equals(defaultLocation)) {
+            return new TemplateRenderer(builtin, builtinPrefix, suffix, null, name -> false);
+        }
+        String value = overrideLocation.trim();
+        if (value.startsWith(FILE_SCHEME)) {
+            return fileOverride(builtin, builtinPrefix, normalizeFile(value.substring(FILE_SCHEME.length())), suffix);
+        }
+        if (value.startsWith(CLASSPATH_SCHEME)) {
+            return classpathOverride(builtin, builtinPrefix,
+                    normalizeClasspath(value.substring(CLASSPATH_SCHEME.length())), suffix);
+        }
+        // No scheme: treat as a filesystem directory so a plain path also overrides.
+        return fileOverride(builtin, builtinPrefix, normalizeFile(value), suffix);
     }
 
-    private static TemplateRenderer classpathOverride(TemplateEngine builtin, String prefix) {
-        TemplateEngine override = engineWith(classpathResolver(prefix));
+    private static TemplateRenderer fileOverride(TemplateEngine builtin, String builtinPrefix, String prefix,
+            String suffix) {
+        TemplateEngine override = engineWith(fileResolver(prefix, suffix));
+        Path dir = Path.of(prefix);
+        return new TemplateRenderer(builtin, builtinPrefix, suffix, override,
+                name -> Files.exists(dir.resolve(name + suffix)));
+    }
+
+    private static TemplateRenderer classpathOverride(TemplateEngine builtin, String builtinPrefix, String prefix,
+            String suffix) {
+        TemplateEngine override = engineWith(classpathResolver(prefix, suffix));
         ClassLoader classLoader = GeneratorTemplates.class.getClassLoader();
-        return new TemplateRenderer(builtin, override,
-                name -> classLoader.getResource(prefix + name + TEMPLATE_SUFFIX) != null);
+        return new TemplateRenderer(builtin, builtinPrefix, suffix, override,
+                name -> classLoader.getResource(prefix + name + suffix) != null);
     }
 
     private static TemplateEngine engineWith(ITemplateResolver resolver) {
@@ -79,10 +100,10 @@ public final class GeneratorTemplates {
         return engine;
     }
 
-    private static ClassLoaderTemplateResolver classpathResolver(String prefix) {
+    private static ClassLoaderTemplateResolver classpathResolver(String prefix, String suffix) {
         ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
         resolver.setPrefix(prefix);
-        resolver.setSuffix(TEMPLATE_SUFFIX);
+        resolver.setSuffix(suffix);
         resolver.setForceSuffix(true);
         resolver.setTemplateMode(TemplateMode.TEXT);
         resolver.setCharacterEncoding("UTF-8");
@@ -90,10 +111,10 @@ public final class GeneratorTemplates {
         return resolver;
     }
 
-    private static FileTemplateResolver fileResolver(String prefix) {
+    private static FileTemplateResolver fileResolver(String prefix, String suffix) {
         FileTemplateResolver resolver = new FileTemplateResolver();
         resolver.setPrefix(prefix);
-        resolver.setSuffix(TEMPLATE_SUFFIX);
+        resolver.setSuffix(suffix);
         resolver.setForceSuffix(true);
         resolver.setTemplateMode(TemplateMode.TEXT);
         resolver.setCharacterEncoding("UTF-8");

@@ -122,6 +122,21 @@ dcc:
 | --- | --- | --- |
 | `dcc.migration.target-environments` | `[PROD]` | Environments that are migration-target-only. |
 
+## MCP prompts (`dcc-mcp`)
+
+### `dcc.mcp.prompts.*`
+
+Externalized prompt templates (Thymeleaf, TEXT mode — see [templating.md](templating.md)).
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.mcp.prompts.dir` | `classpath:/mcp/prompts/` | Root of the prompt templates (`*.md.tpl`); a custom dir overrides built-ins. |
+| `dcc.mcp.prompts.default-locale` | `en` | Locale used when a prompt request carries none. |
+
+Prompt tool definitions (`name`, `description`, arguments) remain `@McpPrompt`/`@McpArg`
+annotations — the MCP annotation scanner registers them — while the **text** is fully
+externalized and localized.
+
 ## Database schema (Flyway)
 
 Schema management is owned by `dcc-web` / the deployment and configured under
