@@ -25,6 +25,7 @@ import cn.org.openbanking.dcc.generator.ddl.TableDdlGenerator;
 import cn.org.openbanking.dcc.generator.dto.DtoGenerator;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 import cn.org.openbanking.dcc.generator.source.JavaTypes;
+import cn.org.openbanking.dcc.generator.template.GeneratorProperties;
 import cn.org.openbanking.dcc.generator.validation.ValidationCodeGenerator;
 
 import org.springframework.stereotype.Service;
@@ -39,8 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CliService {
 
-    private static final String VALIDATION_PACKAGE = "cn.org.openbanking.dcc.generated.validation";
-    private static final String DTO_PACKAGE = "cn.org.openbanking.dcc.generated.dto";
     private static final DateTimeFormatter FLYWAY_VERSION =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.systemDefault());
 
@@ -52,6 +51,7 @@ public class CliService {
     private final ValidationCodeGenerator validationGenerator;
     private final DtoGenerator dtoGenerator;
     private final TableDdlGenerator tableDdlGenerator;
+    private final GeneratorProperties generatorProperties;
     private final TenantScope tenantScope;
 
     public CliService(VersioningService versioning,
@@ -62,6 +62,7 @@ public class CliService {
             ValidationCodeGenerator validationGenerator,
             DtoGenerator dtoGenerator,
             TableDdlGenerator tableDdlGenerator,
+            GeneratorProperties generatorProperties,
             TenantScope tenantScope) {
         this.versioning = versioning;
         this.standardService = standardService;
@@ -71,6 +72,7 @@ public class CliService {
         this.validationGenerator = validationGenerator;
         this.dtoGenerator = dtoGenerator;
         this.tableDdlGenerator = tableDdlGenerator;
+        this.generatorProperties = generatorProperties;
         this.tenantScope = tenantScope;
     }
 
@@ -133,14 +135,14 @@ public class CliService {
             case DATA_STANDARD -> {
                 var standard = standardService.get(tenantId, id);
                 StandardContent content = standardContentAt(tenantId, id, version);
-                GeneratedSource source = validationGenerator.generate(VALIDATION_PACKAGE,
+                GeneratedSource source = validationGenerator.generate(generatorProperties.getValidationPackage(),
                         JavaTypes.capitalize(standard.code()) + "Validation", standard.code(), content);
                 yield List.of(new ExportFile(source.fileName(), source.content()));
             }
             case INTERFACE -> {
                 var definition = interfaceService.get(tenantId, id);
                 InterfaceContent content = interfaceContentAt(tenantId, id, version);
-                yield dtoGenerator.generate(DTO_PACKAGE, definition.interfaceNo(), content).stream()
+                yield dtoGenerator.generate(generatorProperties.getDtoPackage(), definition.interfaceNo(), content).stream()
                         .map(source -> new ExportFile(source.fileName(), source.content())).toList();
             }
             default -> List.<ExportFile>of();

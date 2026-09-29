@@ -34,8 +34,6 @@ import cn.org.openbanking.dcc.generator.type.TypeMappingStrategy;
 @Component
 public class TableDdlGenerator {
 
-    private static final String DIALECT = "postgresql";
-
     private final TemplateRenderer engine;
     private final TypeMappingStrategy typeMapping;
 
@@ -50,7 +48,7 @@ public class TableDdlGenerator {
         String ddl = createDdl(schema, tableName, content);
         String fileName = "V" + flywayVersion + "__create_" + tableName.toLowerCase() + ".sql";
         String script = header(tableName, sourceHash) + ddl;
-        return new TableDdl(DIALECT, ddl, fileName, script);
+        return new TableDdl(typeMapping.dialect(), ddl, fileName, script);
     }
 
     /** Incremental ALTER DDL that migrates a table from {@code before} to {@code after}. */
@@ -75,7 +73,7 @@ public class TableDdlGenerator {
         String ddl = engine.process("ddl-alter.sql", new Context(Locale.ROOT, model));
         String fileName = "V" + flywayVersion + "__alter_" + tableName.toLowerCase() + ".sql";
         String script = header(tableName, sourceHash) + ddl;
-        return new TableDdl(DIALECT, ddl, fileName, script);
+        return new TableDdl(typeMapping.dialect(), ddl, fileName, script);
     }
 
     private String header(String tableName, String sourceHash) {

@@ -20,6 +20,10 @@ Controls the template-driven code/SQL generation (see [templating.md](templating
 | `dcc.generator.entity-suffix` | `""` | Suffix for generated entity classes. |
 | `dcc.generator.repository-suffix` | `Repository` | Suffix for generated repository interfaces. |
 | `dcc.generator.dto-suffix` | `Dto` | Suffix for generated (nested) DTO records. |
+| `dcc.generator.validation-package` | `cn.org.openbanking.dcc.generated.validation` | Package generated validation classes are emitted into. |
+| `dcc.generator.dto-package` | `cn.org.openbanking.dcc.generated.dto` | Package generated DTO records are emitted into. |
+| `dcc.generator.bundle-group` | `cn.org.openbanking.dcc.generated` | Maven group id for the generated artifact bundle. |
+| `dcc.generator.default-version` | `1.0.0` | Version used when a bundle/OpenAPI version is not supplied. |
 
 ```yaml
 dcc:

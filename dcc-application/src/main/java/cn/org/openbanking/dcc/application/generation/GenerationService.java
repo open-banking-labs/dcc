@@ -13,6 +13,7 @@ import cn.org.openbanking.dcc.generator.openapi.InterfaceSpec;
 import cn.org.openbanking.dcc.generator.openapi.OpenApiGenerator;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 import cn.org.openbanking.dcc.generator.source.JavaTypes;
+import cn.org.openbanking.dcc.generator.template.GeneratorProperties;
 import cn.org.openbanking.dcc.generator.validation.ValidationCodeGenerator;
 
 import org.springframework.stereotype.Service;
@@ -24,16 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
  * per-tenant-per-environment JAR bundle with Maven coordinates and a version.
  *
  * <p>The generators live in {@code dcc-generator} and are language-extensible; this
- * service wires them to the tenant-scoped models.
+ * service wires them to the tenant-scoped models. The output packages, bundle group
+ * and default version are supplied by {@link GeneratorProperties}
+ * ({@code dcc.generator.*}).
  */
 @Service
 @Transactional(readOnly = true)
 public class GenerationService {
-
-    private static final String VALIDATION_PACKAGE = "cn.org.openbanking.dcc.generated.validation";
-    private static final String DTO_PACKAGE = "cn.org.openbanking.dcc.generated.dto";
-    private static final String BUNDLE_GROUP = "cn.org.openbanking.dcc.generated";
-    private static final String DEFAULT_VERSION = "1.0.0";
 
     private final DataStandardService standardService;
     private final InterfaceService interfaceService;
@@ -41,6 +39,7 @@ public class GenerationService {
     private final DtoGenerator dtoGenerator;
     private final OpenApiGenerator openApiGenerator;
     private final JarBundleGenerator jarBundleGenerator;
+    private final GeneratorProperties generatorProperties;
     private final TenantScope tenantScope;
 
     public GenerationService(DataStandardService standardService,
@@ -49,6 +48,7 @@ public class GenerationService {
             DtoGenerator dtoGenerator,
             OpenApiGenerator openApiGenerator,
             JarBundleGenerator jarBundleGenerator,
+            GeneratorProperties generatorProperties,
             TenantScope tenantScope) {
         this.standardService = standardService;
         this.interfaceService = interfaceService;
@@ -56,13 +56,14 @@ public class GenerationService {
         this.dtoGenerator = dtoGenerator;
         this.openApiGenerator = openApiGenerator;
         this.jarBundleGenerator = jarBundleGenerator;
+        this.generatorProperties = generatorProperties;
         this.tenantScope = tenantScope;
     }
 
     public GeneratedSource generateValidation(String tenantId, Long standardId) {
         return tenantScope.call(tenantId, () -> {
             var standard = standardService.get(tenantId, standardId);
-            return validationGenerator.generate(VALIDATION_PACKAGE,
+            return validationGenerator.generate(generatorProperties.getValidationPackage(),
                     JavaTypes.capitalize(standard.code()) + "Validation", standard.code(), standard.content());
         });
     }
@@ -70,33 +71,37 @@ public class GenerationService {
     public List<GeneratedSource> generateDto(String tenantId, Long interfaceId) {
         return tenantScope.call(tenantId, () -> {
             var definition = interfaceService.get(tenantId, interfaceId);
-            return dtoGenerator.generate(DTO_PACKAGE, definition.interfaceNo(), definition.content());
+            return dtoGenerator.generate(generatorProperties.getDtoPackage(), definition.interfaceNo(),
+                    definition.content());
         });
     }
 
     public String generateOpenApi(String tenantId, Long environmentId, Long applicationId) {
         return tenantScope.call(tenantId,
-                () -> openApiGenerator.generate("DCC contracts", DEFAULT_VERSION,
+                () -> openApiGenerator.generate("DCC contracts", generatorProperties.getDefaultVersion(),
                         interfaceSpecs(tenantId, environmentId, applicationId)));
     }
 
     /** One JAR per tenant + environment, carrying a pom with Maven coordinates. */
     public GeneratedBundle exportJar(String tenantId, Long environmentId, Long applicationId, String version) {
-        String effectiveVersion = (version == null || version.isBlank()) ? DEFAULT_VERSION : version;
+        String effectiveVersion = (version == null || version.isBlank()) ? generatorProperties.getDefaultVersion()
+                : version;
         return tenantScope.call(tenantId, () -> {
             List<GeneratedSource> sources = new ArrayList<>();
             standardService.search(tenantId, environmentId, applicationId, null, null).forEach(standard ->
-                    sources.add(validationGenerator.generate(VALIDATION_PACKAGE,
+                    sources.add(validationGenerator.generate(generatorProperties.getValidationPackage(),
                             JavaTypes.capitalize(standard.code()) + "Validation", standard.code(),
                             standard.content())));
             interfaceService.search(tenantId, environmentId, applicationId, null).forEach(definition ->
-                    sources.addAll(dtoGenerator.generate(DTO_PACKAGE, definition.interfaceNo(), definition.content())));
+                    sources.addAll(dtoGenerator.generate(generatorProperties.getDtoPackage(), definition.interfaceNo(),
+                            definition.content())));
             sources.add(new GeneratedSource("openapi.json",
                     openApiGenerator.generate("DCC contracts", effectiveVersion,
                             interfaceSpecs(tenantId, environmentId, applicationId))));
 
             String artifactId = "dcc-" + sanitize(tenantId) + "-env" + environmentId;
-            return jarBundleGenerator.generate(BUNDLE_GROUP, artifactId, effectiveVersion, sources);
+            return jarBundleGenerator.generate(generatorProperties.getBundleGroup(), artifactId, effectiveVersion,
+                    sources);
         });
     }
 

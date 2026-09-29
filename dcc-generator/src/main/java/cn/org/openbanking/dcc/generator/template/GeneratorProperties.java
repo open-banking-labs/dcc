@@ -15,6 +15,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     entity-suffix: ""
  *     repository-suffix: Repository
  *     dto-suffix: Dto
+ *     validation-package: cn.org.openbanking.dcc.generated.validation
+ *     dto-package: cn.org.openbanking.dcc.generated.dto
+ *     bundle-group: cn.org.openbanking.dcc.generated
+ *     default-version: 1.0.0
  * </pre>
  */
 @ConfigurationProperties(prefix = "dcc.generator")
@@ -39,6 +43,18 @@ public class GeneratorProperties {
 
     /** Suffix for generated (nested) DTO records. */
     private String dtoSuffix = "Dto";
+
+    /** Package generated validation classes are emitted into. */
+    private String validationPackage = "cn.org.openbanking.dcc.generated.validation";
+
+    /** Package generated DTO records are emitted into. */
+    private String dtoPackage = "cn.org.openbanking.dcc.generated.dto";
+
+    /** Maven group id for the generated artifact bundle. */
+    private String bundleGroup = "cn.org.openbanking.dcc.generated";
+
+    /** Version used when a bundle/OpenAPI version is not supplied. */
+    private String defaultVersion = "1.0.0";
 
     public String getTemplateDir() {
         return templateDir;
@@ -78,5 +94,37 @@ public class GeneratorProperties {
 
     public void setDtoSuffix(String dtoSuffix) {
         this.dtoSuffix = dtoSuffix;
+    }
+
+    public String getValidationPackage() {
+        return validationPackage;
+    }
+
+    public void setValidationPackage(String validationPackage) {
+        this.validationPackage = validationPackage;
+    }
+
+    public String getDtoPackage() {
+        return dtoPackage;
+    }
+
+    public void setDtoPackage(String dtoPackage) {
+        this.dtoPackage = dtoPackage;
+    }
+
+    public String getBundleGroup() {
+        return bundleGroup;
+    }
+
+    public void setBundleGroup(String bundleGroup) {
+        this.bundleGroup = bundleGroup;
+    }
+
+    public String getDefaultVersion() {
+        return defaultVersion;
+    }
+
+    public void setDefaultVersion(String defaultVersion) {
+        this.defaultVersion = defaultVersion;
     }
 }
