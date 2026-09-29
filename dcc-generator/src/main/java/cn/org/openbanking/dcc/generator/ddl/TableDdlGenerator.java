@@ -2,22 +2,31 @@ package cn.org.openbanking.dcc.generator.ddl;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import cn.org.openbanking.dcc.core.table.content.TableColumn;
 import cn.org.openbanking.dcc.core.table.content.TableContent;
 import cn.org.openbanking.dcc.core.table.content.TableIndex;
-import cn.org.openbanking.dcc.core.table.diff.ChangeKind;
 import cn.org.openbanking.dcc.core.table.diff.ColumnChange;
 import cn.org.openbanking.dcc.core.table.diff.TableContentDiffer;
 
 import org.springframework.stereotype.Component;
+import org.thymeleaf.context.Context;
+
+import cn.org.openbanking.dcc.generator.template.TemplateRenderer;
+import cn.org.openbanking.dcc.generator.type.TypeMappingStrategy;
 
 /**
  * Generates PostgreSQL DDL for a table structure: CREATE TABLE (columns, primary
- * key), COMMENTs and indexes, plus a Flyway migration wrapping it. Also produces an
- * incremental ALTER script between two versions.
+ * key), COMMENTs and indexes, plus a Flyway migration wrapping it, and an
+ * incremental ALTER script between two versions. The SQL shape comes from the
+ * {@code ddl-create.sql} / {@code ddl-alter.sql} templates; the column/index
+ * fragments are resolved here (type resolution is dialect-configurable, see
+ * {@code dcc.type-mapping.*}).
  *
  * <p>Phase one targets PostgreSQL; {@code dialect} is carried in the result so
  * additional dialects can be plugged in later without changing callers.
@@ -27,10 +36,18 @@ public class TableDdlGenerator {
 
     private static final String DIALECT = "postgresql";
 
+    private final TemplateRenderer engine;
+    private final TypeMappingStrategy typeMapping;
+
+    public TableDdlGenerator(TemplateRenderer engine, TypeMappingStrategy typeMapping) {
+        this.engine = engine;
+        this.typeMapping = typeMapping;
+    }
+
     /** Full CREATE DDL + Flyway script for a table at a given (timestamp) version. */
     public TableDdl generateCreate(String flywayVersion, String schema, String tableName, TableContent content,
             String sourceHash) {
-        String ddl = createTableDdl(schema, tableName, content);
+        String ddl = createDdl(schema, tableName, content);
         String fileName = "V" + flywayVersion + "__create_" + tableName.toLowerCase() + ".sql";
         String script = header(tableName, sourceHash) + ddl;
         return new TableDdl(DIALECT, ddl, fileName, script);
@@ -53,7 +70,9 @@ public class TableDdlGenerator {
             }
         }
 
-        String ddl = statements.isEmpty() ? "-- no structural column change" : String.join("\n", statements) + "\n";
+        Map<String, Object> model = new HashMap<>();
+        model.put("statements", statements);
+        String ddl = engine.process("ddl-alter.sql", new Context(Locale.ROOT, model));
         String fileName = "V" + flywayVersion + "__alter_" + tableName.toLowerCase() + ".sql";
         String script = header(tableName, sourceHash) + ddl;
         return new TableDdl(DIALECT, ddl, fileName, script);
@@ -66,42 +85,49 @@ public class TableDdlGenerator {
                 + " (" + tableName + ")\n";
     }
 
-    private String createTableDdl(String schema, String tableName, TableContent content) {
+    private String createDdl(String schema, String tableName, TableContent content) {
         List<TableColumn> columns = sortedColumns(content);
-        List<String> definitions = new ArrayList<>();
+        String qualified = qualify(schema, tableName);
+
+        List<Map<String, Object>> definitions = new ArrayList<>();
         for (TableColumn column : columns) {
-            definitions.add(columnDefinition(column));
+            definitions.add(Map.of("definition", columnDefinition(column)));
         }
         List<String> primaryKey = columns.stream()
                 .filter(TableColumn::primaryKey)
                 .map(TableColumn::columnName)
                 .toList();
         if (!primaryKey.isEmpty()) {
-            definitions.add("CONSTRAINT " + quote("pk_" + tableName) + " PRIMARY KEY ("
-                    + primaryKey.stream().map(this::quote).collect(Collectors.joining(", ")) + ")");
+            definitions.add(Map.of("definition", "CONSTRAINT " + quote("pk_" + tableName) + " PRIMARY KEY ("
+                    + primaryKey.stream().map(this::quote).collect(Collectors.joining(", ")) + ")"));
         }
 
-        StringBuilder sb = new StringBuilder();
-        String qualified = qualify(schema, tableName);
-        sb.append("CREATE TABLE ").append(qualified).append(" (\n  ")
-                .append(String.join(",\n  ", definitions))
-                .append("\n);\n");
-
-        String tableComment = content.description() != null && !content.description().isBlank()
-                ? content.description() : content.name();
-        if (tableComment != null && !tableComment.isBlank()) {
-            sb.append("COMMENT ON TABLE ").append(qualified).append(" IS ").append(literal(tableComment)).append(";\n");
-        }
+        List<Map<String, Object>> columnComments = new ArrayList<>();
         for (TableColumn column : columns) {
             if (column.comment() != null && !column.comment().isBlank()) {
-                sb.append("COMMENT ON COLUMN ").append(qualified).append('.').append(quote(column.columnName()))
-                        .append(" IS ").append(literal(column.comment())).append(";\n");
+                columnComments.add(Map.of(
+                        "column", qualified + "." + quote(column.columnName()),
+                        "comment", literal(column.comment())));
             }
         }
-        for (TableIndex index : content.indexes()) {
-            sb.append(createIndex(schema, tableName, index)).append('\n');
-        }
-        return sb.toString();
+
+        List<String> indexes = content.indexes().stream()
+                .map(index -> createIndex(schema, tableName, index))
+                .toList();
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("qualified", qualified);
+        model.put("definitions", definitions);
+        model.put("tableComment", tableComment(content));
+        model.put("columnComments", columnComments);
+        model.put("indexes", indexes);
+        return engine.process("ddl-create.sql", new Context(Locale.ROOT, model));
+    }
+
+    private String tableComment(TableContent content) {
+        String text = content.description() != null && !content.description().isBlank()
+                ? content.description() : content.name();
+        return text != null && !text.isBlank() ? literal(text) : null;
     }
 
     private List<String> alterColumn(String qualified, TableColumn before, TableColumn after) {
@@ -136,13 +162,7 @@ public class TableDdlGenerator {
     }
 
     private String typeOf(TableColumn column) {
-        String type = column.dataType() == null ? "VARCHAR" : column.dataType().toUpperCase();
-        if (type.contains("(") || column.length() == null) {
-            return type;
-        }
-        return column.scale() == null
-                ? type + "(" + column.length() + ")"
-                : type + "(" + column.length() + ", " + column.scale() + ")";
+        return typeMapping.sqlType(column.dataType(), column.length(), column.scale());
     }
 
     private String typeSignature(TableColumn column) {

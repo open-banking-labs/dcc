@@ -6,13 +6,14 @@ import java.util.List;
 
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceContent;
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceField;
+import cn.org.openbanking.dcc.generator.TestTemplates;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 
 import org.junit.jupiter.api.Test;
 
 class DtoGeneratorTest {
 
-    private final DtoGenerator generator = new DtoGenerator();
+    private final DtoGenerator generator = new DtoGenerator(TestTemplates.renderer(), TestTemplates.properties(), TestTemplates.strategy());
 
     @Test
     void generatesRequestAndResponseRecords() {

@@ -1,0 +1,29 @@
+=== com/acme/PayloadDto.java ===
+package com.acme;
+
+import java.util.List;
+
+/** Generated DTO for PayloadDto. */
+public record PayloadDto(
+        java.math.BigDecimal amount
+) {
+}
+=== com/acme/IF2Request.java ===
+package com.acme;
+
+import java.util.List;
+
+/** Generated DTO for IF2Request. */
+public record IF2Request(
+        PayloadDto payload
+) {
+}
+=== com/acme/IF2Response.java ===
+package com.acme;
+
+import java.util.List;
+
+/** Generated DTO for IF2Response. */
+public record IF2Response(
+) {
+}

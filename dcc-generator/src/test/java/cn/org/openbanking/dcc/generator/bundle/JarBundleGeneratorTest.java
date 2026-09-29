@@ -9,13 +9,14 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
+import cn.org.openbanking.dcc.generator.TestTemplates;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 
 import org.junit.jupiter.api.Test;
 
 class JarBundleGeneratorTest {
 
-    private final JarBundleGenerator generator = new JarBundleGenerator();
+    private final JarBundleGenerator generator = new JarBundleGenerator(TestTemplates.renderer());
 
     @Test
     void buildsJarWithPomAndSources() throws Exception {

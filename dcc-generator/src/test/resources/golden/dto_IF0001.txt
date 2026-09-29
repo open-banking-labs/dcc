@@ -1,0 +1,20 @@
+=== com/acme/IF0001Request.java ===
+package com.acme;
+
+import java.util.List;
+
+/** Generated DTO for IF0001Request. */
+public record IF0001Request(
+        String acctno
+) {
+}
+=== com/acme/IF0001Response.java ===
+package com.acme;
+
+import java.util.List;
+
+/** Generated DTO for IF0001Response. */
+public record IF0001Response(
+        String status
+) {
+}

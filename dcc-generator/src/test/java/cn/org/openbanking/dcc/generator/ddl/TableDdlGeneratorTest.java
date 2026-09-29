@@ -7,12 +7,13 @@ import java.util.List;
 import cn.org.openbanking.dcc.core.table.content.TableColumn;
 import cn.org.openbanking.dcc.core.table.content.TableContent;
 import cn.org.openbanking.dcc.core.table.content.TableIndex;
+import cn.org.openbanking.dcc.generator.TestTemplates;
 
 import org.junit.jupiter.api.Test;
 
 class TableDdlGeneratorTest {
 
-    private final TableDdlGenerator generator = new TableDdlGenerator();
+    private final TableDdlGenerator generator = new TableDdlGenerator(TestTemplates.renderer(), TestTemplates.strategy());
 
     private static TableContent account() {
         TableColumn acctNo =

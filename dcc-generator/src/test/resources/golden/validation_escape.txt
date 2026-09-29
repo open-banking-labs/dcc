@@ -1,0 +1,30 @@
+package com.acme;
+
+import java.util.regex.Pattern;
+
+/** Generated validation for data standard "esc". */
+public final class EscapeValidation {
+
+    public static final String STANDARD = "esc";
+    public static final boolean REQUIRED = false;
+    public static final Integer LENGTH = 8;
+    public static final String REGEX = "[0-9]<>&";
+    private static final Pattern PATTERN = Pattern.compile(REGEX == null ? ".*" : REGEX);
+
+    private EscapeValidation() {
+    }
+
+    /** @return null when valid, otherwise an error message. */
+    public static String validate(String value) {
+        if (value == null || value.isEmpty()) {
+            return REQUIRED ? "esc is required" : null;
+        }
+        if (REGEX != null && !PATTERN.matcher(value).matches()) {
+            return "esc does not match " + REGEX;
+        }
+        if (LENGTH != null && value.length() > LENGTH) {
+            return "esc exceeds length " + LENGTH;
+        }
+        return null;
+    }
+}

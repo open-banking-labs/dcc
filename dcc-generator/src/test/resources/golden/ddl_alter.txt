@@ -1,0 +1,2 @@
+-- generated from model@sha256:def456 (account)
+ALTER TABLE "public"."account" ADD COLUMN "balance" NUMERIC(18, 2) DEFAULT 0;

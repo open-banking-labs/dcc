@@ -31,6 +31,15 @@ spring:
 
 # Application warm-up (see docs/modules/dcc-web.md)
 dcc:
+  # Code/SQL generation (dcc-generator). See docs/templating.md and docs/configuration.md.
+  database:
+    dialect: postgresql                    # selects the TypeMappingStrategy
+  generator:
+    template-dir: classpath:/templates/    # override with file:/path/to/custom/
+  # type-mapping:                          # optional type overrides (upper-cased logical types)
+  #   dialects:
+  #     postgresql:
+  #       DATETIME: TIMESTAMP
   warmup:
     enabled: true     # run the warm-up at all
     async: false      # run off the startup thread

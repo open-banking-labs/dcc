@@ -1,49 +1,64 @@
 package cn.org.openbanking.dcc.generator.openapi;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceField;
 
+import cn.org.openbanking.dcc.generator.template.TemplateRenderer;
+import cn.org.openbanking.dcc.generator.type.TypeMappingStrategy;
+
 import org.springframework.stereotype.Component;
+import org.thymeleaf.context.Context;
 
 /**
  * Generates an OpenAPI 3.0 document (JSON) for a set of business interfaces: one
  * {@code POST} path each, request/response schemas in {@code components}, and an
  * {@code x-mock} block with example payloads so the document supports mocking.
+ *
+ * <p>The document skeleton comes from the {@code openapi.json} template; the
+ * recursively nested paths/schemas/examples fragments are assembled here and
+ * injected, because their shape depends on the interface fields.
  */
 @Component
 public class OpenApiGenerator {
 
+    private final TemplateRenderer engine;
+    private final TypeMappingStrategy typeMapping;
+
+    public OpenApiGenerator(TemplateRenderer engine, TypeMappingStrategy typeMapping) {
+        this.engine = engine;
+        this.typeMapping = typeMapping;
+    }
+
     public String generate(String title, String version, List<InterfaceSpec> specs) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"openapi\": \"3.0.3\",\n");
-        sb.append("  \"info\": { \"title\": ").append(q(title)).append(", \"version\": ").append(q(version))
-                .append(" },\n");
-        sb.append("  \"paths\": {\n");
+        StringBuilder paths = new StringBuilder();
         for (int i = 0; i < specs.size(); i++) {
-            sb.append(path(specs.get(i), i < specs.size() - 1));
+            paths.append(path(specs.get(i), i < specs.size() - 1));
         }
-        sb.append("  },\n");
 
         List<String> schemaDefs = new ArrayList<>();
         for (InterfaceSpec spec : specs) {
             schemaDefs.add(schema(spec.interfaceNo() + "Request", spec.content().input()));
             schemaDefs.add(schema(spec.interfaceNo() + "Response", spec.content().output()));
         }
-        sb.append("  \"components\": { \"schemas\": {\n    ")
-                .append(String.join(",\n    ", schemaDefs))
-                .append("\n  } },\n");
 
         List<String> mocks = new ArrayList<>();
         for (InterfaceSpec spec : specs) {
             mocks.add("    " + q(spec.interfaceNo()) + ": { \"request\": " + exampleObject(spec.content().input())
                     + ", \"response\": " + exampleObject(spec.content().output()) + " }");
         }
-        sb.append("  \"x-mock\": {\n").append(String.join(",\n", mocks)).append("\n  }\n");
-        sb.append("}\n");
-        return sb.toString();
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("title", q(title));
+        model.put("version", q(version));
+        model.put("paths", paths.toString());
+        model.put("schemas", String.join(",\n    ", schemaDefs));
+        model.put("mocks", String.join(",\n", mocks));
+        return engine.process("openapi.json", new Context(Locale.ROOT, model));
     }
 
     private String path(InterfaceSpec spec, boolean more) {
@@ -84,7 +99,7 @@ public class OpenApiGenerator {
             }
             base = "{ \"type\": \"object\", \"properties\": { " + String.join(", ", props) + " } }";
         } else {
-            base = "{ \"type\": " + q(jsonType(field)) + ", \"example\": " + q(example(field)) + " }";
+            base = "{ \"type\": " + q(typeMapping.openApiType(field.dataType())) + ", \"example\": " + q(example(field)) + " }";
         }
         return field.list() ? "{ \"type\": \"array\", \"items\": " + base + " }" : base;
     }
@@ -101,24 +116,12 @@ public class OpenApiGenerator {
         if (!field.children().isEmpty()) {
             return exampleObject(field.children());
         }
-        String type = jsonType(field);
+        String type = typeMapping.openApiType(field.dataType());
         return switch (type) {
             case "integer" -> "0";
             case "number" -> "0.00";
             case "boolean" -> "true";
             default -> q(field.name());
-        };
-    }
-
-    private String jsonType(InterfaceField field) {
-        if (field.dataType() == null) {
-            return "string";
-        }
-        return switch (field.dataType().trim().toUpperCase()) {
-            case "INT", "INTEGER", "SMALLINT", "BIGINT", "LONG" -> "integer";
-            case "DECIMAL", "NUMERIC", "NUMBER" -> "number";
-            case "BOOLEAN", "BOOL" -> "boolean";
-            default -> "string";
         };
     }
 

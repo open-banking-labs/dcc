@@ -1,0 +1,9 @@
+CREATE TABLE "public"."account" (
+  "acct_no" VARCHAR(32) NOT NULL,
+  "balance" NUMERIC(18, 2) DEFAULT 0,
+  CONSTRAINT "pk_account" PRIMARY KEY ("acct_no")
+);
+COMMENT ON TABLE "public"."account" IS '账户表 <t>&"x"';
+COMMENT ON COLUMN "public"."account"."acct_no" IS '账号 <A>&"B"';
+COMMENT ON COLUMN "public"."account"."balance" IS '余额';
+CREATE UNIQUE INDEX "ix_account_acct_no" ON "public"."account" ("acct_no");

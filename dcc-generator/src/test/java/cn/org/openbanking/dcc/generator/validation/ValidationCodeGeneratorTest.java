@@ -3,13 +3,14 @@ package cn.org.openbanking.dcc.generator.validation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import cn.org.openbanking.dcc.core.standard.StandardContent;
+import cn.org.openbanking.dcc.generator.TestTemplates;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 
 import org.junit.jupiter.api.Test;
 
 class ValidationCodeGeneratorTest {
 
-    private final ValidationCodeGenerator generator = new ValidationCodeGenerator();
+    private final ValidationCodeGenerator generator = new ValidationCodeGenerator(TestTemplates.renderer());
 
     @Test
     void generatesValidationClassWithConstraints() {

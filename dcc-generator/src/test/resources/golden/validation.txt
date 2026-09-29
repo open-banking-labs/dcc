@@ -1,0 +1,30 @@
+package com.acme;
+
+import java.util.regex.Pattern;
+
+/** Generated validation for data standard "acctno". */
+public final class AcctnoValidation {
+
+    public static final String STANDARD = "acctno";
+    public static final boolean REQUIRED = true;
+    public static final Integer LENGTH = 32;
+    public static final String REGEX = "[0-9]+";
+    private static final Pattern PATTERN = Pattern.compile(REGEX == null ? ".*" : REGEX);
+
+    private AcctnoValidation() {
+    }
+
+    /** @return null when valid, otherwise an error message. */
+    public static String validate(String value) {
+        if (value == null || value.isEmpty()) {
+            return REQUIRED ? "acctno is required" : null;
+        }
+        if (REGEX != null && !PATTERN.matcher(value).matches()) {
+            return "acctno does not match " + REGEX;
+        }
+        if (LENGTH != null && value.length() > LENGTH) {
+            return "acctno exceeds length " + LENGTH;
+        }
+        return null;
+    }
+}

@@ -1,0 +1,21 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "DCC", "version": "1.0.0" },
+  "paths": {
+    "/transfer": {
+      "post": {
+        "operationId": "IF0001",
+        "summary": "转账",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IF0001Request" } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IF0001Response" } } } } }
+      }
+    }
+  },
+  "components": { "schemas": {
+    "IF0001Request": { "type": "object", "properties": { "acctno": { "type": "string", "example": "\"acctno\"" } }, "required": [ "acctno" ] },
+    "IF0001Response": { "type": "object", "properties": { "status": { "type": "string", "example": "\"status\"" } }, "required": [ "status" ] }
+  } },
+  "x-mock": {
+    "IF0001": { "request": { "acctno": "acctno" }, "response": { "status": "status" } }
+  }
+}

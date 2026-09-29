@@ -6,12 +6,13 @@ import java.util.List;
 
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceContent;
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceField;
+import cn.org.openbanking.dcc.generator.TestTemplates;
 
 import org.junit.jupiter.api.Test;
 
 class OpenApiGeneratorTest {
 
-    private final OpenApiGenerator generator = new OpenApiGenerator();
+    private final OpenApiGenerator generator = new OpenApiGenerator(TestTemplates.renderer(), TestTemplates.strategy());
 
     @Test
     void generatesPathsSchemasAndMock() {

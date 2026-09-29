@@ -3,21 +3,33 @@ package cn.org.openbanking.dcc.generator.bundle;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
+import cn.org.openbanking.dcc.generator.template.TemplateRenderer;
 
 import org.springframework.stereotype.Component;
+import org.thymeleaf.context.Context;
 
 /**
  * Packages the generated sources into a JAR together with a {@code pom.xml} carrying
  * the artifact's Maven coordinates and version. Granularity is one JAR per tenant +
- * environment (the caller supplies the coordinates).
+ * environment (the caller supplies the coordinates). The {@code pom.xml} and the
+ * {@code dcc-artifact.json} descriptor come from templates.
  */
 @Component
 public class JarBundleGenerator {
+
+    private final TemplateRenderer engine;
+
+    public JarBundleGenerator(TemplateRenderer engine) {
+        this.engine = engine;
+    }
 
     public GeneratedBundle generate(String groupId, String artifactId, String version, List<GeneratedSource> sources) {
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -43,27 +55,19 @@ public class JarBundleGenerator {
     }
 
     private String pom(String groupId, String artifactId, String version) {
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                + "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n"
-                + "  <modelVersion>4.0.0</modelVersion>\n"
-                + "  <groupId>" + groupId + "</groupId>\n"
-                + "  <artifactId>" + artifactId + "</artifactId>\n"
-                + "  <version>" + version + "</version>\n"
-                + "  <packaging>jar</packaging>\n"
-                + "  <properties>\n    <maven.compiler.release>17</maven.compiler.release>\n  </properties>\n"
-                + "  <dependencies>\n"
-                + "    <dependency>\n      <groupId>jakarta.validation</groupId>\n"
-                + "      <artifactId>jakarta.validation-api</artifactId>\n      <version>3.0.2</version>\n    </dependency>\n"
-                + "  </dependencies>\n"
-                + "</project>\n";
+        Map<String, Object> model = new HashMap<>();
+        model.put("groupId", groupId);
+        model.put("artifactId", artifactId);
+        model.put("version", version);
+        return engine.process("pom.xml", new Context(Locale.ROOT, model));
     }
 
     private String artifactDescriptor(String groupId, String artifactId, String version, int sourceCount) {
-        return "{\n"
-                + "  \"groupId\": \"" + groupId + "\",\n"
-                + "  \"artifactId\": \"" + artifactId + "\",\n"
-                + "  \"version\": \"" + version + "\",\n"
-                + "  \"sources\": " + sourceCount + "\n"
-                + "}\n";
+        Map<String, Object> model = new HashMap<>();
+        model.put("groupId", groupId);
+        model.put("artifactId", artifactId);
+        model.put("version", version);
+        model.put("sourceCount", sourceCount);
+        return engine.process("artifact-descriptor.json", new Context(Locale.ROOT, model));
     }
 }
