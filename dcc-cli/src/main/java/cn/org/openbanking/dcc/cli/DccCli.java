@@ -1,13 +1,14 @@
 package cn.org.openbanking.dcc.cli;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import tools.jackson.databind.JsonNode;
 
 /**
- * DCC command-line interface. A thin execution client over the /cli/v1 API; all
- * business logic lives in dcc-core (reached through dcc-application).
+ * DCC command-line interface. A thin execution client over the /cli/&lt;version&gt; API;
+ * all business logic lives in dcc-core (reached through dcc-application).
  *
  * <pre>
  * dcc hash     --type T --model-id N --version V
@@ -19,30 +20,47 @@ import tools.jackson.databind.JsonNode;
  *
  * Common: --server URL (or DCC_SERVER_URL), --output json (or DCC_TOKEN for auth).
  * </pre>
+ *
+ * <p>Backend coordinates are environment-configurable: {@code DCC_SERVER_URL},
+ * {@code DCC_TOKEN}, {@code DCC_API_VERSION}, {@code DCC_CONNECT_TIMEOUT_SECONDS},
+ * {@code DCC_REQUEST_TIMEOUT_SECONDS}.
  */
 public final class DccCli {
+
+    private static final String DEFAULT_SERVER_URL = "http://localhost:8080";
+    private static final String DEFAULT_API_VERSION = "v1";
+    private static final long DEFAULT_CONNECT_TIMEOUT_SECONDS = 10;
+    private static final long DEFAULT_REQUEST_TIMEOUT_SECONDS = 60;
+
+    private static final int EXIT_OK = 0;
+    private static final int EXIT_FAILURE = 1;
+    private static final int EXIT_USAGE = 2;
 
     public static void main(String[] args) {
         try {
             System.exit(new DccCli().run(args));
         } catch (CliException ex) {
             System.err.println("dcc: " + ex.getMessage());
-            System.exit(1);
+            System.exit(EXIT_FAILURE);
         }
     }
 
     int run(String[] args) {
         if (args.length == 0) {
             usage();
-            return 2;
+            return EXIT_USAGE;
         }
         String command = args[0];
         Map<String, String> options = parseOptions(args);
-        String server = options.getOrDefault("server",
-                System.getenv().getOrDefault("DCC_SERVER_URL", "http://localhost:8080"));
-        String token = System.getenv().getOrDefault("DCC_TOKEN", "");
+        String server = options.getOrDefault("server", env("DCC_SERVER_URL", DEFAULT_SERVER_URL));
+        String token = env("DCC_TOKEN", "");
+        String apiVersion = env("DCC_API_VERSION", DEFAULT_API_VERSION);
+        Duration connectTimeout = Duration.ofSeconds(
+                longEnv("DCC_CONNECT_TIMEOUT_SECONDS", DEFAULT_CONNECT_TIMEOUT_SECONDS));
+        Duration requestTimeout = Duration.ofSeconds(
+                longEnv("DCC_REQUEST_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS));
         boolean json = "json".equalsIgnoreCase(options.get("output"));
-        CliClient client = new CliClient(server, token);
+        CliClient client = new CliClient(server, token, apiVersion, connectTimeout, requestTimeout);
 
         return switch (command) {
             case "hash" -> hash(client, options, json);
@@ -53,45 +71,45 @@ public final class DccCli {
             case "ci" -> ci(client, options, json);
             case "-h", "--help", "help" -> {
                 usage();
-                yield 0;
+                yield EXIT_OK;
             }
             default -> {
                 System.err.println("dcc: unknown command '" + command + "'");
                 usage();
-                yield 2;
+                yield EXIT_USAGE;
             }
         };
     }
 
     private int hash(CliClient client, Map<String, String> options, boolean json) {
-        JsonNode response = client.post("/cli/v1/hash", modelBody(options));
+        JsonNode response = client.post(client.endpoint("hash"), modelBody(options));
         print(json, response, response.path("hash").asString());
-        return 0;
+        return EXIT_OK;
     }
 
     private int diff(CliClient client, Map<String, String> options, boolean json) {
-        JsonNode response = client.post("/cli/v1/diff", rangeBody(options));
+        JsonNode response = client.post(client.endpoint("diff"), rangeBody(options));
         int count = response.path("changes").size();
         print(json, response, count + " change(s)");
-        return 0;
+        return EXIT_OK;
     }
 
     private int bump(CliClient client, Map<String, String> options, boolean json) {
-        JsonNode response = client.post("/cli/v1/bump", rangeBody(options));
+        JsonNode response = client.post(client.endpoint("bump"), rangeBody(options));
         print(json, response, "suggested bump: " + response.path("level").asString());
-        return 0;
+        return EXIT_OK;
     }
 
     private int validate(CliClient client, Map<String, String> options, boolean json) {
-        JsonNode response = client.post("/cli/v1/validate", modelBody(options));
+        JsonNode response = client.post(client.endpoint("validate"), modelBody(options));
         boolean valid = response.path("valid").asBoolean();
         print(json, response, valid ? "valid" : "invalid");
-        return valid ? 0 : 1;
+        return valid ? EXIT_OK : EXIT_FAILURE;
     }
 
     private int export(CliClient client, Map<String, String> options, boolean json) {
         String format = require(options, "format");
-        String path = "sql".equalsIgnoreCase(format) ? "/cli/v1/export/sql" : "/cli/v1/export/java";
+        String path = client.endpoint("sql".equalsIgnoreCase(format) ? "export/sql" : "export/java");
         JsonNode response = client.post(path, modelBody(options));
         if (json) {
             System.out.println(response.toPrettyString());
@@ -102,17 +120,17 @@ public final class DccCli {
             }
             System.out.println(response.path("files").size() + " file(s)");
         }
-        return 0;
+        return EXIT_OK;
     }
 
     private int ci(CliClient client, Map<String, String> options, boolean json) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("environmentId", Long.parseLong(require(options, "env-id")));
         body.put("applicationId", Long.parseLong(require(options, "app-id")));
-        JsonNode response = client.post("/cli/v1/drift", body);
+        JsonNode response = client.post(client.endpoint("drift"), body);
         int drifted = response.path("drifted").size();
         print(json, response, drifted == 0 ? "no drift detected" : drifted + " drifted artifact(s)");
-        return drifted == 0 ? 0 : 1;
+        return drifted == 0 ? EXIT_OK : EXIT_FAILURE;
     }
 
     // ------------------------------------------------------------------ helpers
@@ -162,6 +180,23 @@ public final class DccCli {
         return value;
     }
 
+    private static String env(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static long longEnv(String name, long fallback) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new CliException("invalid value for " + name + ": " + value);
+        }
+    }
+
     private static void print(boolean json, JsonNode response, String human) {
         System.out.println(json ? response.toPrettyString() : human);
     }
@@ -182,7 +217,10 @@ public final class DccCli {
                   --server URL     backend base URL (env DCC_SERVER_URL, default http://localhost:8080)
                   --output json    machine-readable output
                 Environment:
-                  DCC_TOKEN        bearer token (Authorization: Bearer <token>)
+                  DCC_TOKEN                     bearer token (Authorization: Bearer <token>)
+                  DCC_API_VERSION               server API path version (default v1)
+                  DCC_CONNECT_TIMEOUT_SECONDS   connect timeout (default 10)
+                  DCC_REQUEST_TIMEOUT_SECONDS   request timeout (default 60)
 
                 Type T is one of: DATA_STANDARD TABLE_STRUCTURE INTERFACE INTERFACE_TEMPLATE""");
     }

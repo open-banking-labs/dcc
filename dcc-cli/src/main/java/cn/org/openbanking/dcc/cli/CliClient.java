@@ -12,29 +12,46 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The CLI's transport: POSTs JSON to the {@code /cli/v1/*} API and parses the JSON
- * back. Uses the JDK {@link HttpClient} for a minimal dependency footprint.
+ * The CLI's transport: POSTs JSON to the {@code /cli/<version>/*} API and parses the
+ * JSON back. Uses the JDK {@link HttpClient} for a minimal dependency footprint.
+ *
+ * <p>The API path version, connect timeout and request timeout are supplied by the
+ * caller (see {@link DccCli}), so they are configurable without recompiling.
  */
 final class CliClient {
 
+    private static final String CONTENT_TYPE = "application/json";
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String BEARER = "Bearer ";
+
     private final String serverUrl;
     private final String token;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final String apiVersion;
+    private final Duration requestTimeout;
+    private final HttpClient http;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    CliClient(String serverUrl, String token) {
+    CliClient(String serverUrl, String token, String apiVersion, Duration connectTimeout, Duration requestTimeout) {
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.token = token;
+        this.apiVersion = apiVersion;
+        this.requestTimeout = requestTimeout;
+        this.http = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+    }
+
+    /** Builds the versioned API path for a command, e.g. {@code /cli/v1/hash}. */
+    String endpoint(String command) {
+        return "/cli/" + apiVersion + "/" + command;
     }
 
     JsonNode post(String path, Map<String, Object> body) {
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(serverUrl + path))
-                    .timeout(Duration.ofSeconds(60))
-                    .header("Content-Type", "application/json")
+                    .timeout(requestTimeout)
+                    .header("Content-Type", CONTENT_TYPE)
                     .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)));
             if (token != null && !token.isBlank()) {
-                builder.header("Authorization", "Bearer " + token);
+                builder.header(AUTHORIZATION, BEARER + token);
             }
             HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {

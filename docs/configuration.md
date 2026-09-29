@@ -78,6 +78,12 @@ dcc:
 Adding a dialect = one `TypeMappingStrategy` class (+ optional config), never a
 `switch` over dialects. See `PostgreSqlTypeMappingStrategy` / `MySqlTypeMappingStrategy`.
 
+## API path version (`dcc-web`)
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.api.version` | `v1` | Path version of the `/cli/<version>` command API. `dcc-cli` must use the same value (via `DCC_API_VERSION`). |
+
 ## Security (`dcc-security`)
 
 ### `dcc.security.*`

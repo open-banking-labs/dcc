@@ -10,9 +10,13 @@ implementation lives in `dcc-core` (reached through `dcc-application`).
 | --- | --- | --- |
 | Backend base URL | `DCC_SERVER_URL` | `http://localhost:8080` |
 | Bearer token | `DCC_TOKEN` | (none) |
+| API path version | `DCC_API_VERSION` | `v1` |
+| Connect timeout (s) | `DCC_CONNECT_TIMEOUT_SECONDS` | `10` |
+| Request timeout (s) | `DCC_REQUEST_TIMEOUT_SECONDS` | `60` |
 
 `--server <url>` overrides the URL for one invocation. The CLI sends
-`Authorization: Bearer <token>` when `DCC_TOKEN` is set.
+`Authorization: Bearer <token>` when `DCC_TOKEN` is set. `DCC_API_VERSION` must match
+the server's `dcc.api.version`.
 
 ## Commands
 
@@ -42,9 +46,10 @@ for a PR/pipeline gate.
 java -jar dcc-cli/target/dcc-cli-0.0.1-SNAPSHOT.jar hash --type DATA_STANDARD --model-id 1 --version 1.0.0
 ```
 
-## The `/cli/v1/*` API
+## The `/cli/<version>/*` API
 
-Command-shaped, POST + JSON:
+Command-shaped, POST + JSON. The version segment comes from the server's
+`dcc.api.version` (default `v1`).
 
 | Endpoint | Body | Response |
 | --- | --- | --- |

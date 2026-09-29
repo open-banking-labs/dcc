@@ -20,12 +20,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The {@code /cli/v1/*} API group: slim, command-shaped endpoints consumed by
+ * The {@code /cli/<version>/*} API group: slim, command-shaped endpoints consumed by
  * {@code dcc-cli} and {@code dcc-mcp}. Distinct from the richer {@code /api/*} group
  * used by the web UI; both share the same {@code dcc-application} / {@code dcc-core}.
+ * The version segment is the {@code dcc.api.version} property (default {@code v1}).
  */
 @RestController
-@RequestMapping("/cli/v1")
+@RequestMapping("/cli/${dcc.api.version:v1}")
 public class CliController extends AbstractTenantController {
 
     private final CliService service;

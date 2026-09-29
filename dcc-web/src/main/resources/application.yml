@@ -31,6 +31,9 @@ spring:
 
 # Application warm-up (see docs/modules/dcc-web.md)
 dcc:
+  # Path version for the /cli/<version> command API (dcc-cli must match via DCC_API_VERSION).
+  api:
+    version: v1
   # Code/SQL generation (dcc-generator). See docs/templating.md and docs/configuration.md.
   database:
     dialect: postgresql                    # selects the TypeMappingStrategy
