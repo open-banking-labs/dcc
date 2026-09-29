@@ -4,6 +4,10 @@
 - [Architecture](../ARCHITECTURE.md) — module boundaries and runtime flow.
 - [Contributing](../CONTRIBUTING.md) — development and submission workflow.
 - [Setup](setup.md) — local prerequisites and startup.
+- [Quick start](quick-start.md) — run DCC locally in about 30 minutes.
+- [Concepts](concepts.md) — data standards, artifacts and versioning.
+- [API reference](api.md) — REST, command API and MCP.
+- [Architecture (ADR)](architecture.md) — module boundaries and decisions.
 - [Conventions](conventions.md) — code, directory and naming rules.
 - [IDE artifacts](ide-artifacts.md) — editor/IDE/tool files kept out of version control.
 - [DevOps guide](DEVOPS.md) — Docker Compose and deployment operations.

@@ -31,10 +31,13 @@ We are building this to solve real problems in open banking infrastructure. If t
 
 - Field standard library
 - Table structure management with versioning
-- Java entity + Repository code generation
-- Flyway SQL generation
-- Maven JAR publishing (via Nexus)
+- Code generation from the central model: Java validation classes and request/response DTOs
+- Flyway SQL generation (PostgreSQL DDL, incremental ALTER)
+- OpenAPI document generation and a downloadable JAR bundle
 - MCP server for AI assistants
+
+See [docs/quick-start.md](docs/quick-start.md) to run it locally, and
+[docs/index.md](docs/index.md) for the full documentation set.
 
 ---
 

@@ -1,0 +1,45 @@
+# Local development dependencies only (PostgreSQL + Redis).
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   ./mvnw -pl dcc-web spring-boot:run -Dspring-boot.run.profiles=dev,local
+#
+# The application runs on the host and connects to these containers on
+# localhost:5432 / localhost:6379. Credentials here are DEV-ONLY.
+services:
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-18-alpine}
+    container_name: dcc-dev-postgres
+    environment:
+      POSTGRES_DB: dcc_dev
+      POSTGRES_USER: dcc_user
+      POSTGRES_PASSWORD: dcc_dev_password
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - dcc-dev-postgres:/var/lib/postgresql
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcc_user -d dcc_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: dcc-dev-redis
+    command: ["redis-server", "--requirepass", "dcc_dev_password", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - dcc-dev-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "dcc_dev_password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  dcc-dev-postgres:
+  dcc-dev-redis:
