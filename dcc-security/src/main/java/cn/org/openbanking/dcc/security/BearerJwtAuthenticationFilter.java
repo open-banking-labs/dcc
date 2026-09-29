@@ -34,10 +34,13 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtDecoder jwtDecoder;
     private final DccSecurityProperties properties;
+    private final RolePermissionResolver rolePermissionResolver;
 
-    public BearerJwtAuthenticationFilter(JwtDecoder jwtDecoder, DccSecurityProperties properties) {
+    public BearerJwtAuthenticationFilter(JwtDecoder jwtDecoder, DccSecurityProperties properties,
+            RolePermissionResolver rolePermissionResolver) {
         this.jwtDecoder = jwtDecoder;
         this.properties = properties;
+        this.rolePermissionResolver = rolePermissionResolver;
     }
 
     @Override
@@ -51,7 +54,8 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
                 Set<String> roleSet = roles == null ? Set.of() : new HashSet<>(roles);
                 InternalIdentity identity = new InternalIdentity(
                         jwt.getSubject(), jwt.getClaimAsString(properties.getTenantClaim()), roleSet);
-                var authorities = roleSet.stream().map(SimpleGrantedAuthority::new).toList();
+                var authorities = rolePermissionResolver.authoritiesFor(roleSet).stream()
+                        .map(SimpleGrantedAuthority::new).toList();
                 var authentication = new UsernamePasswordAuthenticationToken(identity, header, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 TenantContext.set(identity.tenant());

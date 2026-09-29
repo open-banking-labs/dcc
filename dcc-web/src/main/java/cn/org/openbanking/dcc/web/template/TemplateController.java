@@ -89,7 +89,7 @@ public class TemplateController extends AbstractTenantController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAuthority('DCC_ADMIN')")
+    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }

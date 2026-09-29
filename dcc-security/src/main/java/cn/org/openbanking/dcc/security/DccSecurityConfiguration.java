@@ -17,6 +17,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.util.StringUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Security for the thin exposure layers.
@@ -25,7 +28,10 @@ import org.springframework.util.StringUtils;
  * here, in one place shared by dcc-web and dcc-mcp), not a session. Paths in
  * {@code dcc.security.permit-paths} stay open (health, API docs); everything else
  * requires a valid token. Method-level authorization ({@code @PreAuthorize}) is
- * enabled so finer, domain-aware rules live next to the code they guard.
+ * enabled so finer, domain-aware rules live next to the code they guard; the
+ * required authorities are named in config and referenced as
+ * {@code @dccAuthorities.*} so no authority literal is hard-coded. CORS is applied
+ * only when {@code dcc.security.cors.allowed-origins} is set.
  *
  * <p>Discovered by the applications' component scan (package
  * {@code cn.org.openbanking.dcc.security}).
@@ -50,8 +56,8 @@ public class DccSecurityConfiguration {
 
     @Bean
     public BearerJwtAuthenticationFilter bearerJwtAuthenticationFilter(
-            JwtDecoder decoder, DccSecurityProperties properties) {
-        return new BearerJwtAuthenticationFilter(decoder, properties);
+            JwtDecoder decoder, DccSecurityProperties properties, RolePermissionResolver rolePermissionResolver) {
+        return new BearerJwtAuthenticationFilter(decoder, properties, rolePermissionResolver);
     }
 
     @Bean
@@ -63,11 +69,26 @@ public class DccSecurityConfiguration {
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        if (!properties.getCors().getAllowedOrigins().isEmpty()) {
+            http.cors(cors -> cors.configurationSource(corsConfigurationSource(properties.getCors())));
+        }
+        http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(properties.getPermitPaths().toArray(String[]::new)).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(bearerJwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private static CorsConfigurationSource corsConfigurationSource(DccSecurityProperties.Cors cors) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(cors.getAllowedOrigins());
+        configuration.setAllowedMethods(cors.getAllowedMethods());
+        configuration.setAllowedHeaders(cors.getAllowedHeaders());
+        configuration.setAllowCredentials(cors.isAllowCredentials());
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

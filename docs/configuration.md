@@ -85,6 +85,23 @@ Adding a dialect = one `TypeMappingStrategy` class (+ optional config), never a
 | `dcc.security.tenant-claim` | `tenant` | JWT claim carrying the tenant id. |
 | `dcc.security.roles-claim` | `roles` | JWT claim carrying the caller's roles. |
 | `dcc.security.permit-paths` | health/docs paths | Request paths served without authentication. |
+| `dcc.security.authorities.admin` | `DCC_ADMIN` | Authority required by admin-guarded operations; referenced as `@dccAuthorities.admin`. |
+| `dcc.security.authorities.approver` | `DCC_APPROVER` | Authority for approval operations; referenced as `@dccAuthorities.approver`. |
+| `dcc.security.authorities.user` | `DCC_USER` | Baseline authenticated-user authority. |
+| `dcc.security.role-authorities.<role>` | _(none)_ | Expands a JWT role into authorities; unlisted roles pass through unchanged. |
+| `dcc.security.cors.allowed-origins` | `[]` | Allowed origins; empty disables CORS. |
+| `dcc.security.cors.allowed-methods` / `.allowed-headers` / `.allow-credentials` | GET/POST/…, `*`, `false` | CORS method/header/credentials settings. |
+
+```yaml
+dcc:
+  security:
+    authorities:
+      admin: DCC_ADMIN
+    role-authorities:
+      editor: [DCC_USER]
+    cors:
+      allowed-origins: ["https://dcc.example.com"]
+```
 
 ## Warm-up (`dcc-bootstrap`)
 

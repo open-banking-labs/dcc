@@ -68,7 +68,7 @@ public class InterfaceController extends AbstractTenantController {
     }
 
     @PostMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('DCC_APPROVER')")
+    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
     public InterfaceView transition(@PathVariable Long id, @RequestParam StandardStatus target) {
         return service.transition(currentTenantId(), id, target);
     }
@@ -90,7 +90,7 @@ public class InterfaceController extends AbstractTenantController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAuthority('DCC_ADMIN')")
+    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }

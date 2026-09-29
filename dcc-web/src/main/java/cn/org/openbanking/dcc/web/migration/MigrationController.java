@@ -58,13 +58,13 @@ public class MigrationController extends AbstractTenantController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('DCC_APPROVER')")
+    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
     public MigrationOrderView approve(@PathVariable Long id) {
         return service.approve(currentTenantId(), id);
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority('DCC_APPROVER')")
+    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
     public MigrationOrderView reject(@PathVariable Long id) {
         return service.reject(currentTenantId(), id);
     }

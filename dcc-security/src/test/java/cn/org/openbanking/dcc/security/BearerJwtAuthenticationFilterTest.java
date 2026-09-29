@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -36,7 +37,8 @@ class BearerJwtAuthenticationFilterTest {
         properties.setJwtSecret(secret);
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         this.decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
-        this.filter = new BearerJwtAuthenticationFilter(decoder, properties);
+        this.filter = new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties));
     }
 
     @AfterEach
@@ -74,6 +76,19 @@ class BearerJwtAuthenticationFilterTest {
 
         assertThat(chained).isTrue();
         assertThat(TenantContext.get()).isNull();
+    }
+
+    @Test
+    void roleMappingExpandsAuthorities() throws Exception {
+        properties.getRoleAuthorities().put("ROLE_EDITOR", List.of("DCC_APPROVER"));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("bob", "tenant-b", List.of("ROLE_EDITOR")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, (req, res) -> assertThat(
+                SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority).toList())
+                .containsExactly("DCC_APPROVER"));
     }
 
     @Test
