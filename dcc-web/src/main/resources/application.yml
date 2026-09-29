@@ -34,6 +34,11 @@ dcc:
   # Path version for the /cli/<version> command API (dcc-cli must match via DCC_API_VERSION).
   api:
     version: v1
+  # Tenant model defaults (see docs/configuration.md).
+  tenant:
+    default-tenant: default_tenant
+    system-operator: system
+    isolation: ROW
   # Code/SQL generation (dcc-generator). See docs/templating.md and docs/configuration.md.
   database:
     dialect: postgresql                    # selects the TypeMappingStrategy

@@ -78,6 +78,24 @@ dcc:
 Adding a dialect = one `TypeMappingStrategy` class (+ optional config), never a
 `switch` over dialects. See `PostgreSqlTypeMappingStrategy` / `MySqlTypeMappingStrategy`.
 
+## Tenant model (`dcc-application`)
+
+### `dcc.tenant.*`
+
+The caller's tenant is decided by `dcc-security` from the token
+(`dcc.security.tenant-claim`) and carried through the use-case layer; these record the
+platform defaults and the targeted isolation level.
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.tenant.default-tenant` | `default_tenant` | Tenant id used where no caller tenant applies (seed data, system jobs). |
+| `dcc.tenant.system-operator` | `system` | Author recorded for changes not made by an authenticated subject. |
+| `dcc.tenant.isolation` | `ROW` | Targeted isolation: `ROW` \| `TABLE` \| `SCHEMA`. Only `ROW` (a Hibernate filter on `tenant_id`) is implemented today. |
+
+The **version strategy** (semantic versioning) is code, not config: `VersionBumpPolicy`
+classifies a field-level diff as MAJOR/MINOR/PATCH and `SemVer.bump` produces the next
+version — see [versioning.md](versioning.md).
+
 ## API path version (`dcc-web`)
 
 | Property | Default | Description |
