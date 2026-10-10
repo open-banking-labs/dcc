@@ -23,6 +23,8 @@ COPY dcc-bootstrap/pom.xml dcc-bootstrap/pom.xml
 COPY dcc-security/pom.xml dcc-security/pom.xml
 COPY dcc-web/pom.xml dcc-web/pom.xml
 COPY dcc-mcp/pom.xml dcc-mcp/pom.xml
+COPY dcc-generator/pom.xml dcc-generator/pom.xml
+COPY dcc-cli/pom.xml dcc-cli/pom.xml
 RUN mvn -B -q dependency:go-offline
 
 # Copy the rest of the context (respects .dockerignore) and build the selected
