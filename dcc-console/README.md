@@ -11,12 +11,12 @@ React + TypeScript + Vite · Tailwind CSS + shadcn/ui · react-router · axios �
 
 ```
 src/
-├── api/        各资源接口封装（standards / tables / interfaces / templates / migrations / tenancy / versioning / generation）
+├── api/        各资源接口封装（standards / tables / interfaces / templates / migrations / tenancy / versioning / generation / audit）
 ├── auth/       会话抽象（session.tsx）、守卫、登录/回调页
 ├── components/ layout（外壳/侧边栏/面包屑/环境应用切换）· ui（shadcn 原子）· data（DataTable/DiffView）· form（字段/编辑器）· feedback（Toast/状态）
 ├── hooks/      useAsync · useResourceContext
-├── lib/        apiClient（axios 封装）· oidc · jwt · labels · format · permissions
-├── pages/      各模块页面
+├── lib/        apiClient（axios 封装）· oidc · jwt · devToken（本地开发签发）· labels · format · permissions
+├── pages/      各模块页面（含 audit 审计日志）
 ├── router.tsx  路由（页面按需加载）
 └── main.tsx    入口
 ```
@@ -50,14 +50,17 @@ npm run dev          # http://localhost:5173
 
 ### 3. 登录
 
-- **未配置 OIDC（默认）**：进入 `/login` 的「本地开发登录」，粘贴开发 Token：
-  ```bash
-  node scripts/dev-token.mjs        # 打印一个 HS256 JWT（含 tenant / roles）
-  ```
-  Token 存入 `localStorage`（键 `dcc.devToken`）。退出登录即清除。
+- **未配置 OIDC（默认）**：进入 `/login`。
+  - **身份登录（推荐）**：直接在页面上选操作者 / 租户 / 角色 / 有效期，前端用 WebCrypto
+    按开发密钥（`DCC_JWT_SECRET` 默认值，可用 `VITE_DEV_JWT_SECRET` 覆盖）签发 HS256 JWT，
+    等价于 `scripts/dev-token.mjs`，并记住上次登录身份。
+  - **使用已生成的 Token**：粘贴 `node scripts/dev-token.mjs` 的输出（会校验格式与过期）。
+  二者都存入 `localStorage`（键 `dcc.devToken`），退出登录即清除。
 - **配置了 OIDC**：在 `.env` 填 `VITE_OIDC_ISSUER`、`VITE_OIDC_CLIENT_ID` 等，即走统一身份登录。
 
-> 后端默认密钥为 `DCC_JWT_SECRET`（未设置时用 dev 默认值），`dev-token.mjs` 与之对应。生产请通过 `dcc.security.jwk-set-uri` 对接 IdP。
+> 后端默认密钥为 `DCC_JWT_SECRET`（未设置时用 dev 默认值），本页签发与 `dev-token.mjs` 皆与之对应。生产请通过 `dcc.security.jwk-set-uri` 对接 IdP（届时本地签发入口自动隐藏）。
+
+> 审计与恢复能力对齐后端 retention 特性：「平台管理 → 审计日志」（管理员）提供检索（对象类型/id/执行者/操作/时间窗，服务端分页）、单行链路（完整历史 + 哈希链校验）与已删除对象的恢复；删除均为逻辑删除（保留行、版本与引用），恢复若与新对象编码冲突由数据库部分唯一索引仲裁。见 `docs/decisions/0002-retention-and-audit-trail.md`。
 
 ## 构建
 

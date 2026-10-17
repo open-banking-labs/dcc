@@ -36,6 +36,7 @@ const GenerationPage = lazyPage(() => import('./pages/generation/GenerationPage'
 const TenantsPage = lazyPage(() => import('./pages/tenants/TenantsPage'), 'TenantsPage')
 const EnvironmentsPage = lazyPage(() => import('./pages/environments/EnvironmentsPage'), 'EnvironmentsPage')
 const ApplicationsPage = lazyPage(() => import('./pages/applications/ApplicationsPage'), 'ApplicationsPage')
+const AuditPage = lazyPage(() => import('./pages/audit/AuditPage'), 'AuditPage')
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
           { path: 'tenants', element: <TenantsPage /> },
           { path: 'environments', element: <EnvironmentsPage /> },
           { path: 'applications', element: <ApplicationsPage /> },
+          { path: 'audit', element: <AuditPage /> },
         ],
       },
     ],

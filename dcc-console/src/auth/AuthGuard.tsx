@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { FullPageMessage } from '@/components/common/FullPageMessage'
 
@@ -10,15 +10,16 @@ import { useSession } from './session'
 export function AuthGuard() {
   const session = useSession()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (session.isLoading || session.isAuthenticated || session.error) return
     if (session.mode === 'dev') {
-      navigate('/login', { replace: true })
+      navigate('/login', { replace: true, state: { returnTo: location.pathname + location.search } })
     } else {
       session.signin()
     }
-  }, [session, navigate])
+  }, [session, navigate, location])
 
   if (session.isLoading) {
     return <FullPageMessage text="正在校验登录状态…" />

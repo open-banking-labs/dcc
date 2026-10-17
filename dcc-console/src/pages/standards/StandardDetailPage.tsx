@@ -291,7 +291,7 @@ export function StandardDetailPage() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="删除数标"
-        description={`确认删除「${standard.code}」？该操作不可恢复。`}
+        description={`确认删除「${standard.code}」？删除为逻辑删除（合规保留），可稍后在「审计日志」页恢复。`}
         loading={busy}
         onConfirm={() =>
           void run(async () => {

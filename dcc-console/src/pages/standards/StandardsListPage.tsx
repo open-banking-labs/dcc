@@ -218,7 +218,7 @@ export function StandardsListPage() {
           if (!open) setDeleteTarget(null)
         }}
         title="删除数标"
-        description={deleteTarget ? `确认删除「${deleteTarget.code}」？该操作不可恢复。` : undefined}
+        description={deleteTarget ? `确认删除「${deleteTarget.code}」？删除为逻辑删除（合规保留），可稍后在「审计日志」页恢复。` : undefined}
         loading={deleting}
         onConfirm={() => void handleDelete()}
       />

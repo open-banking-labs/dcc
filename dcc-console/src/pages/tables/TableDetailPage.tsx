@@ -364,7 +364,7 @@ export function TableDetailPage() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="删除表结构"
-        description={`确认删除「${table.code}」？该操作不可恢复。`}
+        description={`确认删除「${table.code}」？删除为逻辑删除（合规保留），可稍后在「审计日志」页恢复。`}
         loading={busy}
         onConfirm={() =>
           void run(async () => {

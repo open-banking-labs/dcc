@@ -1,4 +1,5 @@
 import type { ArtifactType, MigrationStatus, StandardStatus, TemplateSectionCode, VersionChangeType } from '@/types'
+import type { AuditAction } from '@/types/audit'
 
 export const STANDARD_STATUS_LABEL: Record<StandardStatus, string> = {
   DRAFT: '草稿',
@@ -28,6 +29,30 @@ export const ARTIFACT_TYPE_LABEL: Record<ArtifactType, string> = {
   INTERFACE: '接口',
   INTERFACE_TEMPLATE: '接口模板',
 }
+
+/** audit_log.entity_type（Hibernate 实体 SimpleName）→ 中文标签。 */
+export const AUDIT_ENTITY_LABEL: Record<string, string> = {
+  DataStandard: '数标',
+  DataStandardVersion: '数标版本',
+  TableStructure: '表结构',
+  TableStructureVersion: '表结构版本',
+  InterfaceDefinition: '接口',
+  InterfaceVersion: '接口版本',
+  InterfaceTemplate: '接口模板',
+  Tenant: '租户',
+  TenantEnvironment: '环境',
+  TenantApplication: '应用',
+  StandardReference: '标准引用',
+}
+
+/** audit_log.action → 中文标签。 */
+export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
+  CREATE: '创建',
+  UPDATE: '更新',
+  LOGICAL_DELETE: '删除（保留）',
+  RESTORE: '恢复',
+}
+
 
 export const TEMPLATE_SECTION_LABEL: Record<TemplateSectionCode, string> = {
   HEAD_PROTOCOL: '协议头',

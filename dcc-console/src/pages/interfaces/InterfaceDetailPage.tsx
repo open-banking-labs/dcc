@@ -242,7 +242,7 @@ export function InterfaceDetailPage() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="删除接口"
-        description={`确认删除「${iface.interfaceNo}」？该操作不可恢复。`}
+        description={`确认删除「${iface.interfaceNo}」？删除为逻辑删除（合规保留），可稍后在「审计日志」页恢复。`}
         loading={busy}
         onConfirm={() =>
           void run(async () => {
