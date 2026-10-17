@@ -12,7 +12,10 @@ carries the tenant (`dcc.security.tenant-claim`) and roles (`dcc.security.roles-
 claims. Tenant status is revalidated at every tenant-scoped use case: a token issued
 before its tenant was disabled or logically deleted is rejected with `403
 tenant_inactive` (`dcc.tenant.enforce-tenant-status`, see
-[configuration.md](configuration.md)). Interactive docs: `/swagger-ui.html`.
+[configuration.md](configuration.md)). With `dcc.security.directory-mode=true` the
+token is identity-only: requests also need a live directory membership in the claimed
+tenant (`403 not_a_directory_member` otherwise) and directory-assigned roles are
+unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.html`.
 
 ## REST groups (`/api/*`)
 
@@ -26,6 +29,7 @@ tenant_inactive` (`dcc.tenant.enforce-tenant-status`, see
 | Migration | `/api/migrations` | create, search, `submit`, `approve`, `reject`, `execute`, `rollback` |
 | Versioning | `/api/versioning` | `GET /{type}/{id}/hash`, `POST /{type}/hash`, `GET /{type}/{id}/diff`, `/{id}/bump`, `GET /drift` |
 | Audit | `/api/audit` | admin-only: `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
+| Directory | `/api/directory` | admin-only: `GET|POST /memberships`, `DELETE /memberships/{id}`, `POST /memberships/{id}/restore`; per-tenant role grants via `GET|POST /role-assignments`, `DELETE|restore` — gates `dcc.security.directory-mode` |
 | Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenant/environment/application administration |
 
 Privileged operations are guarded by method security: lifecycle transitions require the

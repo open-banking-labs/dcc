@@ -3,6 +3,7 @@ package cn.org.openbanking.dcc.security;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.crypto.SecretKey;
@@ -114,5 +115,90 @@ class BearerJwtAuthenticationFilterTest {
 
         assertThat(chained).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    // ------------------------------------------------------------------ directory mode
+
+    /** Fake policy: only charlie is a member of tenant-a, granted DCC_ADMIN there. */
+    private DirectoryAccessPolicy policy() {
+        return new DirectoryAccessPolicy() {
+            @Override
+            public boolean isMember(String subject, String tenantId) {
+                return "charlie".equals(subject) && "tenant-a".equals(tenantId);
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId) {
+                return "charlie".equals(subject) && "tenant-a".equals(tenantId)
+                        ? Set.of("DCC_ADMIN")
+                        : Set.of();
+            }
+        };
+    }
+
+    /** Signs a token with no tenant claim at all (directory-mode identity check). */
+    private String signWithoutTenant(String subject, List<String> roles) throws Exception {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject(subject)
+                .claim("roles", roles)
+                .expirationTime(new Date(System.currentTimeMillis() + 60_000))
+                .build();
+        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
+        jwt.sign(new MACSigner(secret.getBytes(StandardCharsets.UTF_8)));
+        return jwt.serialize();
+    }
+
+    private BearerJwtAuthenticationFilter directoryModeFilter() {
+        properties.setDirectoryMode(true);
+        return new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties), policy());
+    }
+
+    @Test
+    void directoryModeUnionsAssignedRolesWithClaimRoles() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("charlie", "tenant-a", List.of("ROLE_EDITOR")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        directoryModeFilter().doFilter(request, response, (req, res) -> {
+            chained.set(true);
+            assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority).toList())
+                    .containsExactlyInAnyOrder("DCC_ADMIN", "ROLE_EDITOR");
+            assertThat(TenantContext.get()).isEqualTo("tenant-a");
+        });
+
+        assertThat(chained).isTrue();
+    }
+
+    @Test
+    void directoryModeRejectsSubjectsWithNoMembership() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("eve", "tenant-a", List.of("DCC_ADMIN", "ROLE_EDITOR")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        directoryModeFilter().doFilter(request, response, (req, res) -> chained.set(true));
+
+        // even a claim-level DCC_ADMIN role cannot buy directory membership
+        assertThat(chained).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("not_a_directory_member");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void directoryModeRequiresTheTenantClaim() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + signWithoutTenant("charlie", List.of("DCC_ADMIN")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        directoryModeFilter().doFilter(request, response, (req, res) -> chained.set(true));
+
+        assertThat(chained).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("directory_identity_required");
     }
 }

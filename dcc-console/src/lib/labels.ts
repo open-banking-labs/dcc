@@ -43,6 +43,8 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   TenantEnvironment: '环境',
   TenantApplication: '应用',
   StandardReference: '标准引用',
+  TenantMembership: '租户成员',
+  RoleAssignment: '角色指派',
 }
 
 /** audit_log.action → 中文标签。 */

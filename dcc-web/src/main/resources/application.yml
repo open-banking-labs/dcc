@@ -66,6 +66,11 @@ dcc:
     # Override (via DCC_JWT_SECRET) outside dev, or set dcc.security.jwk-set-uri
     # to verify asymmetric tokens from your identity provider.
     jwt-secret: ${DCC_JWT_SECRET:dev-only-change-me-please-use-32-bytes}
+    # Directory-backed identity governance (dcc.security.directory-mode): the token is
+    # only an identity; tenant access requires a membership row and directory-assigned
+    # roles are unioned with claim roles. Bootstrap the first admin through
+    # /api/directory/* before switching it on (see docs/configuration.md).
+    directory-mode: false
 
 # Redis is an optional integration; keep it out of the overall /actuator/health
 # until it becomes a required dependency (then flip this to true).

@@ -7,6 +7,7 @@
 - **Tenant context** (`TenantContext`): the request's tenant, available to persistence and business code without threading it through every call.
 - **Method authorization**: `@EnableMethodSecurity` is enabled, so domain-aware rules live next to the code they guard via `@PreAuthorize`.
 - **Authorization model** (`DccAuthorities` + `RolePermissionResolver`): authority names are configured under `dcc.security.authorities.*` and referenced from `@PreAuthorize` as `@dccAuthorities.admin` / `.approver` / `.user`, so no authority literal is hard-coded. A token's roles are turned into authorities by the `RolePermissionResolver` seam; the built-in `ConfigRolePermissionResolver` reads `dcc.security.role-authorities` (with `dcc.security.roles-passthrough: true`, the default, a role with no entry is used verbatim as its own authority; set it `false` for IdP-managed roles so only mapped entries confer power). Provide a database-backed (role / permission / role_permission) resolver to make the model fully data-driven.
+- **Authorization directory** (`DirectoryAccessPolicy` + `dcc.security.directory-mode`, ADR 0003): when enabled, the verified token is identity-only — `BearerJwtAuthenticationFilter` consults the application-backed policy for a live membership in the claimed tenant (`403 not_a_directory_member`) and unions tenant-assigned roles with the claim roles before `RolePermissionResolver`. The policy is a seam; this module stays free of JPA.
 - **CORS**: applied only when `dcc.security.cors.allowed-origins` is set (empty by default, so no CORS is added).
 - **Operation rate limiting** (`@OperationRateLimit` + `OperationRateLimitAspect`): a Redis fixed-window counter for expensive or abuse-prone operations - the fine-grained complement to the gateway's coarse, subject-level limit.
 
@@ -24,6 +25,7 @@
 | `authorities.user` | `DCC_USER` | Baseline authenticated-user authority |
 | `role-authorities.<role>` | *(none)* | Expands a JWT role into authorities. |
 | `roles-passthrough` | `true` | Unmapped role becomes its own authority; set `false` for IdP-managed roles (only mapped entries confer power). |
+| `directory-mode` | `false` | Token is identity-only: membership gate + directory role union (ADR 0003). Requires a `DirectoryAccessPolicy` bean; startup fails without one when enabled. |
 | `cors.allowed-origins` | `[]` | Allowed origins; empty disables CORS |
 
 ### Scope note

@@ -92,6 +92,17 @@ public class DccSecurityProperties {
      */
     private boolean rolesPassthrough = true;
 
+    /**
+     * Directory-backed identity governance. When on, a verified token is additionally
+     * validated against the authorization directory (application layer):
+     * the subject must hold a live membership in the claimed tenant, and roles assigned
+     * in the directory are unioned with the token's claim roles. Needs a
+     * {@link DirectoryAccessPolicy} bean, so it can only be enabled where the
+     * application module is on the classpath (dcc-web / dcc-mcp). Default off keeps
+     * the claim-only behaviour (useful when the IdP fully manages memberships).
+     */
+    private boolean directoryMode = false;
+
     /** Cross-origin configuration for the exposure layers. */
     private Cors cors = new Cors();
 
@@ -157,6 +168,14 @@ public class DccSecurityProperties {
 
     public void setRolesPassthrough(boolean rolesPassthrough) {
         this.rolesPassthrough = rolesPassthrough;
+    }
+
+    public boolean isDirectoryMode() {
+        return directoryMode;
+    }
+
+    public void setDirectoryMode(boolean directoryMode) {
+        this.directoryMode = directoryMode;
     }
 
     public Cors getCors() {

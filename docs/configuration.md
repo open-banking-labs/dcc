@@ -131,6 +131,7 @@ version — see [versioning.md](versioning.md).
 | `dcc.security.authorities.user` | `DCC_USER` | Baseline authenticated-user authority. |
 | `dcc.security.role-authorities.<role>` | _(none)_ | Expands a JWT role into authorities. |
 | `dcc.security.roles-passthrough` | `true` | Whether an unmapped role becomes its own authority (historical behaviour). Set `false` for IdP-managed roles (JWKS/OIDC): then only `role-authorities` entries confer power, so an IdP role name can no longer collide with a `DCC_*` authority by chance. |
+| `dcc.security.directory-mode` | `false` | Directory-backed identity governance. The token becomes identity-only: a verified subject may act only in tenants where `tenant_membership` grants it (otherwise `403 not_a_directory_member`), and roles from `role_assignment` are unioned with the claim roles before authority mapping. Requires the authorization directory (see `POST /api/directory/*`, ADR 0003); a directory-mode deployment without its `DirectoryAccessPolicy` bean fails at startup. |
 | `dcc.security.cors.allowed-origins` | `[]` | Allowed origins; empty disables CORS. |
 | `dcc.security.cors.allowed-methods` / `.allowed-headers` / `.allow-credentials` | GET/POST/…, `*`, `false` | CORS method/header/credentials settings. |
 
@@ -141,11 +142,29 @@ dcc:
       admin: DCC_ADMIN
     # IdP-managed roles: only mapped roles confer power
     roles-passthrough: false
+    # directory governance: the token is an identity, the directory grants access
+    directory-mode: true
     role-authorities:
       editor: [DCC_USER]
     cors:
       allowed-origins: ["https://dcc.example.com"]
 ```
+
+Directory bootstrap: create the first directory admin before enabling the mode (classic
+claim-based tokens still work while it is off):
+
+```bash
+curl -X POST http://localhost:8080/api/directory/memberships \
+  -H "Authorization: Bearer $DCC_TOKEN" -H "Content-Type: application/json" \
+  -d '{"subject":"ops.admin","tenant":"default_tenant"}'
+curl -X POST http://localhost:8080/api/directory/role-assignments \
+  -H "Authorization: Bearer $DCC_TOKEN" -H "Content-Type: application/json" \
+  -d '{"subject":"ops.admin","tenant":"default_tenant","role":"DCC_ADMIN"}'
+```
+
+> The directory never removes what the identity provider grants; for strict
+> directory-only governance combine it with `roles-passthrough: false`. Directory rows
+> are audited and logically deleted (retention) like every other row.
 
 ## Warm-up (`dcc-bootstrap`)
 
