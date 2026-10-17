@@ -15,6 +15,11 @@ public interface InterfaceDefinitionRepository extends JpaRepository<InterfaceDe
 
     Optional<InterfaceDefinition> findByTenantIdAndId(String tenantId, Long id);
 
+    /** Loads a row including logically-deleted ones so it can be restored (native query). */
+    @Query(value = "select * from interface_definition where tenant_id = :tenantId and id = :id", nativeQuery = true)
+    Optional<InterfaceDefinition> findByTenantIdAndIdIncludingDeleted(@Param("tenantId") String tenantId,
+            @Param("id") Long id);
+
     /** Interface numbers are unique within a tenant + environment. */
     Optional<InterfaceDefinition> findByTenantIdAndEnvironmentIdAndInterfaceNo(String tenantId, Long environmentId,
             String interfaceNo);

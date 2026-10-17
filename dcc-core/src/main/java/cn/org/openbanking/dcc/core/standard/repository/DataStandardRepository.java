@@ -20,6 +20,15 @@ public interface DataStandardRepository extends JpaRepository<DataStandard, Long
 
     Optional<DataStandard> findByTenantIdAndId(String tenantId, Long id);
 
+    /**
+     * Loads a row <em>including</em> logically-deleted ones so it can be restored. Native
+     * SQL is used because the entity-level {@code @SQLRestriction} is only applied to
+     * Hibernate (HQL/derived) queries, not to native ones.
+     */
+    @Query(value = "select * from data_standard where tenant_id = :tenantId and id = :id", nativeQuery = true)
+    Optional<DataStandard> findByTenantIdAndIdIncludingDeleted(@Param("tenantId") String tenantId,
+            @Param("id") Long id);
+
     Optional<DataStandard> findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
             String tenantId, Long environmentId, Long applicationId, String code);
 

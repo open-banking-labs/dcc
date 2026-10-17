@@ -31,6 +31,7 @@ import cn.org.openbanking.dcc.core.standard.version.VersionBump;
 import cn.org.openbanking.dcc.core.standard.version.VersionBumpPolicy;
 import cn.org.openbanking.dcc.core.standard.version.VersionChangeType;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -252,7 +253,13 @@ public class DataStandardService {
                 .toList());
     }
 
-    /** Deletes a standard only when nothing references it (reference check). */
+    /**
+     * Logically deletes a standard when nothing references it (reference check).
+     *
+     * <p>Retention, not removal: the row and its immutable version history are kept and
+     * only marked deleted, so the record stays retrievable for its retention period. The
+     * change is captured in the audit trail; nothing is physically deleted.
+     */
     public void delete(String tenantId, Long id) {
         tenantScope.run(tenantId, () -> {
             DataStandard standard = requireStandard(tenantId, id);
@@ -264,8 +271,29 @@ public class DataStandardService {
                 throw new ConflictException("data standard '" + standard.getCode()
                         + "' is still referenced by: " + String.join("; ", references));
             }
-            versions.deleteAll(versions.findByTenantIdAndStandardIdOrderByIdAsc(tenantId, id));
-            standards.delete(standard);
+            standard.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+        });
+    }
+
+    /**
+     * Restores a logically-deleted standard. Fails with a conflict when a live record
+     * already uses its business code — the partial unique index allows reuse after a
+     * logical delete, so a restore can collide with a newer record.
+     */
+    public StandardView restore(String tenantId, Long id) {
+        return tenantScope.call(tenantId, () -> {
+            DataStandard standard = standards.findByTenantIdAndIdIncludingDeleted(tenantId, id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("DataStandard", id));
+            if (standard.isDeleted()) {
+                standard.restore();
+                try {
+                    standards.flush();
+                } catch (DataIntegrityViolationException ex) {
+                    throw new ConflictException("cannot restore data standard '" + standard.getCode()
+                            + "': a live record already uses that code");
+                }
+            }
+            return toView(standard);
         });
     }
 

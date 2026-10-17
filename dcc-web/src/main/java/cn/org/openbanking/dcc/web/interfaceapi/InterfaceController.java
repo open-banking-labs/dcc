@@ -94,4 +94,11 @@ public class InterfaceController extends AbstractTenantController {
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }
+
+    /** Brings a logically-deleted interface definition back into the default view. */
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    public InterfaceView restore(@PathVariable Long id) {
+        return service.restore(currentTenantId(), id);
+    }
 }

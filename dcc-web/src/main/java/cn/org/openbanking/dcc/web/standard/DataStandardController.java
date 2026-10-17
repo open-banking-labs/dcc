@@ -107,6 +107,13 @@ public class DataStandardController extends AbstractTenantController {
         service.delete(currentTenantId(), id);
     }
 
+    /** Brings a logically-deleted standard back into the default view. */
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    public StandardView restore(@PathVariable Long id) {
+        return service.restore(currentTenantId(), id);
+    }
+
     @GetMapping("/export")
     public List<StandardExportItem> export(@RequestParam Long environmentId, @RequestParam Long applicationId) {
         return service.export(currentTenantId(), environmentId, applicationId);

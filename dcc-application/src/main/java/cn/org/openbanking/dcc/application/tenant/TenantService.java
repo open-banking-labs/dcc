@@ -6,11 +6,13 @@ import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.tenant.Tenant;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class TenantService {
 
     private final TenantRepository tenants;
+    private final ChangeContext changeContext;
 
-    public TenantService(TenantRepository tenants) {
+    public TenantService(TenantRepository tenants, ChangeContext changeContext) {
         this.tenants = tenants;
+        this.changeContext = changeContext;
     }
 
     public record CreateCommand(
@@ -76,8 +80,32 @@ public class TenantService {
         return toView(tenant);
     }
 
+    /**
+     * Logically deletes a tenant. Retention, not removal: the row is kept and only marked
+     * deleted (platform-level, so the audit entry carries no tenant id).
+     */
     public void delete(String code) {
-        tenants.delete(require(code));
+        Tenant tenant = require(code);
+        tenant.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+    }
+
+    /**
+     * Restores a logically-deleted tenant. Fails with a conflict when a live tenant already
+     * uses its code.
+     */
+    public TenantView restore(String code) {
+        Tenant tenant = tenants.findByCodeIncludingDeleted(code)
+                .orElseThrow(() -> ResourceNotFoundException.of("Tenant", "code", code));
+        if (tenant.isDeleted()) {
+            tenant.restore();
+            try {
+                tenants.flush();
+            } catch (DataIntegrityViolationException ex) {
+                throw new ConflictException("cannot restore tenant '" + code
+                        + "': a live record already uses that code");
+            }
+        }
+        return toView(tenant);
     }
 
     private Tenant require(String code) {

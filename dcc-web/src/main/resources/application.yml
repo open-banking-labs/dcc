@@ -48,6 +48,11 @@ dcc:
   #   dialects:
   #     postgresql:
   #       DATETIME: TIMESTAMP
+  # Audit trail (see docs/decisions/0002-retention-and-audit-trail.md).
+  audit:
+    retention-years: 7    # cutoff frozen on every entry (audit_log.retention_until)
+    sweep-enabled: false  # scheduled report of entries past cutoff (report-only, no purge)
+    sweep-cron: "0 0 3 * * *"
   warmup:
     enabled: true     # run the warm-up at all
     async: false      # run off the startup thread

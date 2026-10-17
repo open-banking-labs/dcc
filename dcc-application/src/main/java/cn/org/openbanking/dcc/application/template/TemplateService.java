@@ -39,6 +39,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -242,12 +243,36 @@ public class TemplateService {
         });
     }
 
+    /**
+     * Logically deletes an interface template. Retention, not removal: the row, its version
+     * history and its recorded references are kept and only marked deleted, so the record
+     * stays retrievable for its retention period. The change is captured in the audit trail.
+     */
     public void delete(String tenantId, Long id) {
         tenantScope.run(tenantId, () -> {
             InterfaceTemplate template = require(tenantId, id);
-            referenceRecorder.removeAll(tenantId, ReferenceType.INTERFACE_TEMPLATE, id);
-            versions.deleteAll(versions.findByTenantIdAndInterfaceTemplateIdOrderByIdAsc(tenantId, id));
-            templates.delete(template);
+            template.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+        });
+    }
+
+    /**
+     * Restores a logically-deleted interface template. Fails with a conflict when a live
+     * record already uses its business code.
+     */
+    public TemplateView restore(String tenantId, Long id) {
+        return tenantScope.call(tenantId, () -> {
+            InterfaceTemplate template = templates.findByTenantIdAndIdIncludingDeleted(tenantId, id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("InterfaceTemplate", id));
+            if (template.isDeleted()) {
+                template.restore();
+                try {
+                    templates.flush();
+                } catch (DataIntegrityViolationException ex) {
+                    throw new ConflictException("cannot restore interface template '" + template.getCode()
+                            + "': a live record already uses that code");
+                }
+            }
+            return toView(template, currentContent(tenantId, template));
         });
     }
 

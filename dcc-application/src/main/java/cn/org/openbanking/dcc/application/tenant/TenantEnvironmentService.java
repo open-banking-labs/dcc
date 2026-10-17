@@ -6,12 +6,14 @@ import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.tenant.TenantEnvironment;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantEnvironmentRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +24,13 @@ public class TenantEnvironmentService {
 
     private final TenantEnvironmentRepository environments;
     private final TenantScope tenantScope;
+    private final ChangeContext changeContext;
 
-    public TenantEnvironmentService(TenantEnvironmentRepository environments, TenantScope tenantScope) {
+    public TenantEnvironmentService(TenantEnvironmentRepository environments, TenantScope tenantScope,
+            ChangeContext changeContext) {
         this.environments = environments;
         this.tenantScope = tenantScope;
+        this.changeContext = changeContext;
     }
 
     public record CreateCommand(
@@ -85,8 +90,33 @@ public class TenantEnvironmentService {
         });
     }
 
+    /** Logically deletes an environment (retention): the row is kept and only marked deleted. */
     public void delete(String tenantId, Long id) {
-        tenantScope.run(tenantId, () -> environments.delete(require(tenantId, id)));
+        tenantScope.run(tenantId, () -> {
+            TenantEnvironment environment = require(tenantId, id);
+            environment.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+        });
+    }
+
+    /**
+     * Restores a logically-deleted environment. Fails with a conflict when a live record
+     * already uses its code.
+     */
+    public EnvironmentView restore(String tenantId, Long id) {
+        return tenantScope.call(tenantId, () -> {
+            TenantEnvironment environment = environments.findByTenantIdAndIdIncludingDeleted(tenantId, id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("TenantEnvironment", id));
+            if (environment.isDeleted()) {
+                environment.restore();
+                try {
+                    environments.flush();
+                } catch (DataIntegrityViolationException ex) {
+                    throw new ConflictException("cannot restore environment '" + environment.getCode()
+                            + "': a live record already uses that code");
+                }
+            }
+            return toView(environment);
+        });
     }
 
     private TenantEnvironment require(String tenantId, Long id) {

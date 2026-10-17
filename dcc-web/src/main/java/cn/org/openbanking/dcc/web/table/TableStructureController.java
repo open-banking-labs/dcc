@@ -98,6 +98,13 @@ public class TableStructureController extends AbstractTenantController {
         service.delete(currentTenantId(), id);
     }
 
+    /** Brings a logically-deleted table structure back into the default view. */
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    public TableView restore(@PathVariable Long id) {
+        return service.restore(currentTenantId(), id);
+    }
+
     @GetMapping("/{id}/ddl")
     public TableDdl ddl(@PathVariable Long id, @RequestParam(required = false) String schema) {
         return service.createDdl(currentTenantId(), id, schema);

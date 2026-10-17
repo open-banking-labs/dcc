@@ -83,3 +83,19 @@ checksum validation — the same "immutable once applied" rule as
   promise, not a fingerprint).
 - Git history is external lineage; the in-DCC DAG is the authoritative per-version
   provenance.
+
+## Content history vs operation audit
+
+The history/lineage axis above is **content** history: immutable version snapshots that
+answer "what did this artifact contain at version *v*". It is complemented by a separate,
+append-only **operation audit** trail (`audit_log`) that records every create, update and
+logical delete of *any* row — who did it, when, why, and the before/after image — with a
+hash chain for tamper detection. See
+[decisions/0002-retention-and-audit-trail.md](decisions/0002-retention-and-audit-trail.md).
+The two are independent: a content update writes a version row *and* an audit entry, while
+a classification-only change or a logical delete writes an audit entry but no version.
+
+Deletion is a **retention** operation, not a removal: rows are marked deleted
+(`BaseEntity.markDeleted`) and stay retrievable for their retention period; the partial
+unique indexes let their codes be reused while the row remains.
+

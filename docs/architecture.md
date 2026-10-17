@@ -29,6 +29,7 @@ a `dcc-application` use case, which binds the tenant and works through `dcc-core
 ## Decisions (ADRs)
 
 - [0001 — Use PostgreSQL](decisions/0001-use-postgres.md)
+- [0002 — Retention (logical deletion) and an append-only audit trail](decisions/0002-retention-and-audit-trail.md)
 
 Add a new decision as `docs/decisions/NNNN-<slug>.md` (context, decision, consequences).
 

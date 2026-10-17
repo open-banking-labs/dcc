@@ -98,9 +98,21 @@ version — see [versioning.md](versioning.md).
 
 ## API path version (`dcc-web`)
 
+### `dcc.api.*`
+
 | Property | Default | Description |
 | --- | --- | --- |
 | `dcc.api.version` | `v1` | Path version of the `/cli/<version>` command API. `dcc-cli` must use the same value (via `DCC_API_VERSION`). |
+
+## Audit trail (`dcc-core`)
+
+### `dcc.audit.*`
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.audit.retention-years` | `7` | Compliance retention period. Recorded per entry as `audit_log.retention_until` when it is written (UTC calendar years from `occurred_at`), so later changes here never rewrite the cutoff of existing entries. The application never purges; see [decisions/0002](decisions/0002-retention-and-audit-trail.md). |
+| `dcc.audit.sweep-enabled` | `false` | Enables the scheduled audit retention sweep. Report-only: it counts and logs entries past their cutoff (and `AuditRetentionSweeper.pastRetention()` is usable programmatically); nothing is removed. |
+| `dcc.audit.sweep-cron` | `0 0 3 * * *` | Cron expression for the retention sweep. |
 
 ## Security (`dcc-security`)
 

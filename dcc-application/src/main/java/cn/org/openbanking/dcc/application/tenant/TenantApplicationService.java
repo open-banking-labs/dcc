@@ -6,12 +6,14 @@ import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.tenant.TenantApplication;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantApplicationRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +24,13 @@ public class TenantApplicationService {
 
     private final TenantApplicationRepository applications;
     private final TenantScope tenantScope;
+    private final ChangeContext changeContext;
 
-    public TenantApplicationService(TenantApplicationRepository applications, TenantScope tenantScope) {
+    public TenantApplicationService(TenantApplicationRepository applications, TenantScope tenantScope,
+            ChangeContext changeContext) {
         this.applications = applications;
         this.tenantScope = tenantScope;
+        this.changeContext = changeContext;
     }
 
     public record CreateCommand(
@@ -79,8 +84,33 @@ public class TenantApplicationService {
         });
     }
 
+    /** Logically deletes an application (retention): the row is kept and only marked deleted. */
     public void delete(String tenantId, Long id) {
-        tenantScope.run(tenantId, () -> applications.delete(require(tenantId, id)));
+        tenantScope.run(tenantId, () -> {
+            TenantApplication application = require(tenantId, id);
+            application.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+        });
+    }
+
+    /**
+     * Restores a logically-deleted application. Fails with a conflict when a live record
+     * already uses its code.
+     */
+    public ApplicationView restore(String tenantId, Long id) {
+        return tenantScope.call(tenantId, () -> {
+            TenantApplication application = applications.findByTenantIdAndIdIncludingDeleted(tenantId, id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("TenantApplication", id));
+            if (application.isDeleted()) {
+                application.restore();
+                try {
+                    applications.flush();
+                } catch (DataIntegrityViolationException ex) {
+                    throw new ConflictException("cannot restore application '" + application.getCode()
+                            + "': a live record already uses that code");
+                }
+            }
+            return toView(application);
+        });
     }
 
     private TenantApplication require(String tenantId, Long id) {

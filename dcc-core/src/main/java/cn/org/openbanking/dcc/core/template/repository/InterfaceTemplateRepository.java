@@ -15,6 +15,11 @@ public interface InterfaceTemplateRepository extends JpaRepository<InterfaceTemp
 
     Optional<InterfaceTemplate> findByTenantIdAndId(String tenantId, Long id);
 
+    /** Loads a row including logically-deleted ones so it can be restored (native query). */
+    @Query(value = "select * from interface_template where tenant_id = :tenantId and id = :id", nativeQuery = true)
+    Optional<InterfaceTemplate> findByTenantIdAndIdIncludingDeleted(@Param("tenantId") String tenantId,
+            @Param("id") Long id);
+
     Optional<InterfaceTemplate> findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
             String tenantId, Long environmentId, Long applicationId, String code);
 

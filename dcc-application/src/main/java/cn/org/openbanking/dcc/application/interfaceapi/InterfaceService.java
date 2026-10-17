@@ -37,6 +37,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -241,12 +242,37 @@ public class InterfaceService {
         });
     }
 
+    /**
+     * Logically deletes an interface definition. Retention, not removal: the row, its
+     * version history and its recorded references are kept and only marked deleted, so the
+     * record stays retrievable for its retention period. The change is captured in the audit
+     * trail.
+     */
     public void delete(String tenantId, Long id) {
         tenantScope.run(tenantId, () -> {
             InterfaceDefinition definition = require(tenantId, id);
-            referenceRecorder.removeAll(tenantId, ReferenceType.INTERFACE, id);
-            versions.deleteAll(versions.findByTenantIdAndInterfaceDefinitionIdOrderByIdAsc(tenantId, id));
-            interfaces.delete(definition);
+            definition.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete"));
+        });
+    }
+
+    /**
+     * Restores a logically-deleted interface definition. Fails with a conflict when a live
+     * record already uses its interface number.
+     */
+    public InterfaceView restore(String tenantId, Long id) {
+        return tenantScope.call(tenantId, () -> {
+            InterfaceDefinition definition = interfaces.findByTenantIdAndIdIncludingDeleted(tenantId, id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("InterfaceDefinition", id));
+            if (definition.isDeleted()) {
+                definition.restore();
+                try {
+                    interfaces.flush();
+                } catch (DataIntegrityViolationException ex) {
+                    throw new ConflictException("cannot restore interface '" + definition.getInterfaceNo()
+                            + "': a live record already uses that interface number");
+                }
+            }
+            return toView(definition, currentContent(tenantId, definition));
         });
     }
 

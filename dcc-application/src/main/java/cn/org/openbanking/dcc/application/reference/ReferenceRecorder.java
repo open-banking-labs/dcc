@@ -37,7 +37,13 @@ public class ReferenceRecorder {
         }
     }
 
-    /** Removes all references held by an artifact (used when the artifact is deleted). */
+    /**
+     * Removes all references held by an artifact.
+     *
+     * <p>No longer called on delete: retention keeps recorded references along with the
+     * logically-deleted artifact, so its history stays reconstructable. Kept for an
+     * approved physical purge once an artifact is past its retention period.
+     */
     public void removeAll(String tenantId, ReferenceType type, Long objectId) {
         references.deleteByScope(tenantId, type, objectId);
     }

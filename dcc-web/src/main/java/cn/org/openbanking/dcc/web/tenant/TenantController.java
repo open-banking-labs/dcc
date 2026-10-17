@@ -61,4 +61,10 @@ public class TenantController {
     public void delete(@PathVariable String code) {
         service.delete(code);
     }
+
+    /** Brings a logically-deleted tenant back into the default view. */
+    @PostMapping("/{code}/restore")
+    public TenantView restore(@PathVariable String code) {
+        return service.restore(code);
+    }
 }

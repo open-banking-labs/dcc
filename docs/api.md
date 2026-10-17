@@ -22,11 +22,19 @@ claims. Interactive docs: `/swagger-ui.html`.
 | Generation | `/api/generation` | `GET /standards/{id}/validation`, `/interfaces/{id}/dto`, `/openapi`, `/jar` |
 | Migration | `/api/migrations` | create, search, `submit`, `approve`, `reject`, `execute`, `rollback` |
 | Versioning | `/api/versioning` | `GET /{type}/{id}/hash`, `POST /{type}/hash`, `GET /{type}/{id}/diff`, `/{id}/bump`, `GET /drift` |
+| Audit | `/api/audit` | admin-only: `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
 | Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenant/environment/application administration |
 
 Privileged operations are guarded by method security: lifecycle transitions require the
 *approver* authority, deletes require the *admin* authority — names configured under
 `dcc.security.authorities.*` (see [configuration.md](configuration.md)).
+
+Deletes are **logical** (retention): `DELETE /api/{resource}/{id}` marks the row deleted,
+keeps it (and its version history) for the retention period, and records the change in the
+append-only audit trail. Each deletable resource also exposes
+`POST /api/{resource}/{id}/restore` (tenants: `POST /api/tenants/{code}/restore`) to bring
+it back; a restore fails with `409` if a live record already reused its code. See
+[decisions/0002-retention-and-audit-trail.md](decisions/0002-retention-and-audit-trail.md).
 
 Example:
 
@@ -55,7 +63,10 @@ The MCP server registers tools via annotations. Representative tools:
 `list-standards`, `get-standard`, `diff-standard`, `export-standards`,
 `get-table`, `list-tables`, `diff-table`, `generate-table-ddl`,
 `generate-validation`, `generate-dto`, `generate-openapi`, `dcc-hash`, `dcc-diff`,
-`dcc-bump`, plus migration/template/interface tools. A template-driven prompt,
+`dcc-bump`, the read-only `dcc-audit-history` / `dcc-audit-search` / `dcc-audit-verify`
+trail tools, plus migration/template/interface tools. Restores are deliberately not an
+MCP tool: privileged writes flow through REST / the command API, which enforce the admin
+authority. A template-driven prompt,
 `review-change`, drafts a review checklist (see [templating.md](templating.md) and
 [modules/dcc-mcp.md](modules/dcc-mcp.md)).
 

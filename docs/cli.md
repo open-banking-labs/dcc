@@ -60,6 +60,14 @@ Command-shaped, POST + JSON. The version segment comes from the server's
 | `POST /cli/v1/export/java` | `{type, modelId, version}` | `{files[{path, content}]}` |
 | `POST /cli/v1/export/sql` | `{type, modelId, version}` | `{files[{path, content}]}` |
 | `POST /cli/v1/drift` | `{environmentId, applicationId}` | `{drifted[]}` |
+| `POST /cli/v1/audit/history` | `{entityType, entityId}` | `[{audit entry}]` (history of one row, oldest first) |
+| `POST /cli/v1/audit/search` | `{entityType?, entityId?, actor?, action?, from?, to?, page?, size?}` | paged `{content[], totalElements, …}` (newest first; size ≤ 200) |
+| `POST /cli/v1/audit/verify` | `{entityType, entityId}` | `{intact, problems[]}` (recomputed hash chain) |
+| `POST /cli/v1/restore` | `{type, id}` | `204` — requires the admin authority; audited as `RESTORE` |
+
+The audit endpoints mirror the admin-only `/api/audit*` group; `POST /cli/v1/restore` is
+guarded by the same admin authority (`dcc.security.authorities.admin`) as the REST
+`POST /api/{resource}/{id}/restore` endpoints.
 
 This group (`/cli/v1`) is separate from the richer web group (`/api/*`); both share the
 same `dcc-application` / `dcc-core`. The edge gateway routes both `/api` and `/cli` to

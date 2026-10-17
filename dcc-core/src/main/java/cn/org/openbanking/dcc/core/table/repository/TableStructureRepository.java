@@ -15,6 +15,11 @@ public interface TableStructureRepository extends JpaRepository<TableStructure, 
 
     Optional<TableStructure> findByTenantIdAndId(String tenantId, Long id);
 
+    /** Loads a row including logically-deleted ones so it can be restored (native query). */
+    @Query(value = "select * from table_structure where tenant_id = :tenantId and id = :id", nativeQuery = true)
+    Optional<TableStructure> findByTenantIdAndIdIncludingDeleted(@Param("tenantId") String tenantId,
+            @Param("id") Long id);
+
     Optional<TableStructure> findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
             String tenantId, Long environmentId, Long applicationId, String code);
 

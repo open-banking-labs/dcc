@@ -58,4 +58,10 @@ public class TenantEnvironmentController extends AbstractTenantController {
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }
+
+    /** Brings a logically-deleted environment back into the default view. */
+    @PostMapping("/{id}/restore")
+    public EnvironmentView restore(@PathVariable Long id) {
+        return service.restore(currentTenantId(), id);
+    }
 }

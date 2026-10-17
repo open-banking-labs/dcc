@@ -17,6 +17,9 @@ import tools.jackson.databind.JsonNode;
  * dcc validate --type T --model-id N --version V
  * dcc export   --type T --model-id N --version V --format java|sql
  * dcc ci       --env-id E --app-id A
+ * dcc audit-history --entity-type T --entity-id N
+ * dcc audit-verify  --entity-type T --entity-id N
+ * dcc restore       --type T --model-id N      (admin token required)
  *
  * Common: --server URL (or DCC_SERVER_URL), --output json (or DCC_TOKEN for auth).
  * </pre>
@@ -69,6 +72,9 @@ public final class DccCli {
             case "validate" -> validate(client, options, json);
             case "export" -> export(client, options, json);
             case "ci" -> ci(client, options, json);
+            case "audit-history" -> auditHistory(client, options, json);
+            case "audit-verify" -> auditVerify(client, options, json);
+            case "restore" -> restore(client, options, json);
             case "-h", "--help", "help" -> {
                 usage();
                 yield EXIT_OK;
@@ -134,6 +140,38 @@ public final class DccCli {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    private static Map<String, Object> entityBody(Map<String, String> options) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("entityType", require(options, "entity-type"));
+        body.put("entityId", Long.parseLong(require(options, "entity-id")));
+        return body;
+    }
+
+    private int auditHistory(CliClient client, Map<String, String> options, boolean json) {
+        JsonNode response = client.post(client.endpoint("audit/history"), entityBody(options));
+        print(json, response, response.size() + " audit entr" + (response.size() == 1 ? "y" : "ies"));
+        return EXIT_OK;
+    }
+
+    private int auditVerify(CliClient client, Map<String, String> options, boolean json) {
+        JsonNode response = client.post(client.endpoint("audit/verify"), entityBody(options));
+        boolean intact = response.path("intact").asBoolean();
+        print(json, response, intact ? "hash chain intact" : "hash chain broken");
+        return intact ? EXIT_OK : EXIT_FAILURE;
+    }
+
+    private int restore(CliClient client, Map<String, String> options, boolean json) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("type", require(options, "type"));
+        body.put("id", Long.parseLong(require(options, "model-id")));
+        client.post(client.endpoint("restore"), body);
+        // the server answers 204 without a body
+        System.out.println(json
+                ? "{\"restored\":true,\"type\":\"" + body.get("type") + "\",\"id\":" + body.get("id") + "}"
+                : "restored " + body.get("type") + " #" + body.get("id"));
+        return EXIT_OK;
+    }
 
     private static Map<String, Object> modelBody(Map<String, String> options) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -212,6 +250,9 @@ public final class DccCli {
                   validate --type T --model-id N --version V
                   export   --type T --model-id N --version V --format java|sql
                   ci       --env-id E --app-id A
+                  audit-history --entity-type T --entity-id N
+                  audit-verify  --entity-type T --entity-id N
+                  restore       --type T --model-id N   (admin token required)
 
                 Options:
                   --server URL     backend base URL (env DCC_SERVER_URL, default http://localhost:8080)
