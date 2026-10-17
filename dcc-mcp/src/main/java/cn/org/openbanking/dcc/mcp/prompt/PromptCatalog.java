@@ -8,6 +8,7 @@ import java.util.Map;
 
 import cn.org.openbanking.dcc.generator.template.TemplateRenderer;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.Context;
 
@@ -26,7 +27,8 @@ public class PromptCatalog {
     private final TemplateRenderer renderer;
     private final PromptProperties properties;
 
-    public PromptCatalog(TemplateRenderer renderer, PromptProperties properties) {
+    public PromptCatalog(@Qualifier("mcpPromptTemplateRenderer") TemplateRenderer renderer,
+            PromptProperties properties) {
         this.renderer = renderer;
         this.properties = properties;
     }
