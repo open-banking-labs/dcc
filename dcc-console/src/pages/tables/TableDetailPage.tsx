@@ -73,6 +73,16 @@ export function TableDetailPage() {
     }
   }
 
+  const doVerify = async (version: string) => {
+    try {
+      const ok = await tablesApi.verify(numericId, version)
+      if (ok) toast.success('校验通过', version)
+      else toast.error('校验失败：内容哈希不匹配', version)
+    } catch (err) {
+      toast.error('校验失败', err instanceof Error ? err.message : undefined)
+    }
+  }
+
   const genCreateDdl = async () => {
     setDdlLoading(true)
     try {
@@ -256,7 +266,10 @@ export function TableDetailPage() {
                         {formatDateTime(version.createdAt)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => void doVerify(version.version)}>
+                            校验
+                          </Button>
                           {version.version !== table.currentVersion && (
                             <Button
                               size="sm"

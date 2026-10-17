@@ -44,7 +44,7 @@ See [docs/quick-start.md](docs/quick-start.md) to run it locally, and
 ## Tech stack
 
 - Java 17 / Spring Boot 4
-- Vue 3 / Element Plus
+- React 18 / TypeScript / Vite (`dcc-console`)
 - PostgreSQL (metadata storage)
 - Redis (session/cache)
 - Flyway (schema migration)

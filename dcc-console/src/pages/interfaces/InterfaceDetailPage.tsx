@@ -70,6 +70,16 @@ export function InterfaceDetailPage() {
     }
   }
 
+  const doVerify = async (version: string) => {
+    try {
+      const ok = await interfacesApi.verify(numericId, version)
+      if (ok) toast.success('校验通过', version)
+      else toast.error('校验失败：内容哈希不匹配', version)
+    } catch (err) {
+      toast.error('校验失败', err instanceof Error ? err.message : undefined)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -194,7 +204,10 @@ export function InterfaceDetailPage() {
                         {formatDateTime(version.createdAt)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => void doVerify(version.version)}>
+                            校验
+                          </Button>
                           {version.version !== iface.currentVersion && (
                             <Button
                               size="sm"

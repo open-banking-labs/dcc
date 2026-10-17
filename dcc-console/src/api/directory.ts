@@ -44,9 +44,17 @@ export const directoryApi = {
     restore: (id: number) => httpPost<MembershipView>(`/directory/memberships/${id}/restore`),
   },
   assignments: {
-    search: (subject: string | null, tenant: string | null, role: string | null, page: number, size: number) =>
+    search: (
+      subject: string | null,
+      tenant: string | null,
+      role: string | null,
+      scopeType: AssignmentView['scopeType'] | null,
+      scopeCode: string | null,
+      page: number,
+      size: number,
+    ) =>
       httpGet<DirectoryPage>('/directory/role-assignments', {
-        params: toParams({ subject, tenant, role, page, size }),
+        params: toParams({ subject, tenant, role, scopeType, scopeCode, page, size }),
       }),
     create: (body: { subject: string; tenantCode: string; role: string; scopeType: AssignmentView['scopeType']; scopeCode?: string | null }) =>
       httpPost<AssignmentView>('/directory/role-assignments', body),

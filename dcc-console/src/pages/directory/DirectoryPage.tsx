@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { directoryApi, type AssignmentView, type MembershipView } from '@/api/directory'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -20,15 +20,19 @@ interface DirectoryFilters {
   subject: string
   tenant: string
   role: string
+  scopeType: string
+  scopeCode: string
 }
 
-const EMPTY_FILTERS: DirectoryFilters = { subject: '', tenant: '', role: '' }
+const EMPTY_FILTERS: DirectoryFilters = { subject: '', tenant: '', role: '', scopeType: '', scopeCode: '' }
 
 function MembershipPane({ filters }: { filters: DirectoryFilters }) {
   const toast = useToast()
   const [page, setPage] = useState(0)
   const subject = filters.subject || null
   const tenant = filters.tenant || null
+
+  useEffect(() => setPage(0), [subject, tenant])
 
   const { data, loading, error, reload } = useAsync(
     () => directoryApi.memberships.search(subject, tenant, page, PAGE_SIZE),
@@ -141,10 +145,14 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
   const subject = filters.subject || null
   const tenant = filters.tenant || null
   const role = filters.role || null
+  const scopeType = (filters.scopeType || null) as AssignmentView['scopeType'] | null
+  const scopeCode = filters.scopeCode || null
+
+  useEffect(() => setPage(0), [subject, tenant, role, scopeType, scopeCode])
 
   const { data, loading, error, reload } = useAsync(
-    () => directoryApi.assignments.search(subject, tenant, role, page, PAGE_SIZE),
-    [subject, tenant, role, page],
+    () => directoryApi.assignments.search(subject, tenant, role, scopeType, scopeCode, page, PAGE_SIZE),
+    [subject, tenant, role, scopeType, scopeCode, page],
   )
 
   const [creating, setCreating] = useState(false)
@@ -327,6 +335,25 @@ export function DirectoryPage() {
         </Field>
         <Field label="角色（仅指派）" className="w-32">
           <TextField value={draft.role} onChange={(value) => setDraft({ ...draft, role: value })} placeholder="精确匹配" />
+        </Field>
+        <Field label="范围类型（仅指派）" className="w-36">
+          <SelectField
+            value={draft.scopeType}
+            onChange={(value) => setDraft({ ...draft, scopeType: value, scopeCode: value === 'TENANT' ? '' : draft.scopeCode })}
+            options={[
+              { value: 'TENANT', label: '租户全域' },
+              { value: 'ENVIRONMENT', label: '环境' },
+              { value: 'APPLICATION', label: '应用' },
+            ]}
+            placeholder="全部"
+          />
+        </Field>
+        <Field label="范围 code（仅指派）" className="w-40">
+          <TextField
+            value={draft.scopeCode}
+            onChange={(value) => setDraft({ ...draft, scopeCode: value })}
+            placeholder="精确匹配"
+          />
         </Field>
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" onClick={apply}>查询</Button>
