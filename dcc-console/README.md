@@ -16,7 +16,7 @@ src/
 ├── components/ layout（外壳/侧边栏/面包屑/环境应用切换）· ui（shadcn 原子）· data（DataTable/DiffView）· form（字段/编辑器）· feedback（Toast/状态）
 ├── hooks/      useAsync · useResourceContext
 ├── lib/        apiClient（axios 封装）· oidc · jwt · devToken（本地开发签发）· labels · format · permissions
-├── pages/      各模块页面（含 audit 审计日志）
+├── pages/      各模块页面（含 audit 审计日志、directory 授权目录）
 ├── router.tsx  路由（页面按需加载）
 └── main.tsx    入口
 ```
@@ -61,6 +61,8 @@ npm run dev          # http://localhost:5173
 > 后端默认密钥为 `DCC_JWT_SECRET`（未设置时用 dev 默认值），本页签发与 `dev-token.mjs` 皆与之对应。生产请通过 `dcc.security.jwk-set-uri` 对接 IdP（届时本地签发入口自动隐藏）。
 
 > 审计与恢复能力对齐后端 retention 特性：「平台管理 → 审计日志」（管理员）提供检索（对象类型/id/执行者/操作/时间窗，服务端分页）、单行链路（完整历史 + 哈希链校验）与已删除对象的恢复；删除均为逻辑删除（保留行、版本与引用），恢复若与新对象编码冲突由数据库部分唯一索引仲裁。见 `docs/decisions/0002-retention-and-audit-trail.md`。
+>
+> 「平台管理 → 授权目录」（管理员）维护 `tenant_membership`（谁可进哪个租户）与 `role_assignment`（租户内角色指派），即 `dcc.security.directory-mode` 的数据面；增删恢复全部落审计（见 ADR 0003），已删除行可在审计日志页按 `TenantMembership` / `RoleAssignment` 类型恢复。
 
 ## 构建
 

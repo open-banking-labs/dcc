@@ -54,6 +54,8 @@ const RESTORE_PATH: Record<string, (entityId: number, entityCode: string | null)
   Tenant: (_id, code) => `/tenants/${code}/restore`,
   TenantEnvironment: (id) => `/environments/${id}/restore`,
   TenantApplication: (id) => `/applications/${id}/restore`,
+  TenantMembership: (id) => `/directory/memberships/${id}/restore`,
+  RoleAssignment: (id) => `/directory/role-assignments/${id}/restore`,
 }
 
 export function restoreAuditEntity(entityType: string, id: number, code: string | null): Promise<void> {

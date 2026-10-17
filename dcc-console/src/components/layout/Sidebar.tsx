@@ -10,6 +10,7 @@ import {
   Plug,
   Radar,
   Table2,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
@@ -60,6 +61,7 @@ const NAV: NavSection[] = [
       { to: '/environments', label: '环境', icon: Layers },
       { to: '/applications', label: '应用', icon: AppWindow },
       { to: '/audit', label: '审计日志', icon: History, authority: AUTHORITY.admin },
+      { to: '/directory', label: '授权目录', icon: UserCog, authority: AUTHORITY.admin },
     ],
   },
 ]
