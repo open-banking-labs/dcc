@@ -1,6 +1,7 @@
 package cn.org.openbanking.dcc.application.tenant;
 
 import java.time.Instant;
+import java.util.List;
 
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
@@ -65,6 +66,14 @@ public class TenantMembershipService {
     @Transactional(readOnly = true)
     public Page<MembershipView> search(String subject, String tenantCode, Pageable pageable) {
         return memberships.search(subject, tenantCode, pageable).map(TenantMembershipService::toView);
+    }
+
+    /** @return the caller's live memberships, ordered by grant time (oldest first). */
+    @Transactional(readOnly = true)
+    public List<MembershipView> membershipsOf(String subject) {
+        return memberships.findAllBySubject(subject).stream()
+                .map(TenantMembershipService::toView)
+                .toList();
     }
 
     /** Logically deletes a membership (retention, not removal). */

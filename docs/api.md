@@ -29,7 +29,7 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 | Migration | `/api/migrations` | create, search, `submit`, `approve`, `reject`, `execute`, `rollback` |
 | Versioning | `/api/versioning` | `GET /{type}/{id}/hash`, `POST /{type}/hash`, `GET /{type}/{id}/diff`, `/{id}/bump`, `GET /drift` |
 | Audit | `/api/audit` | admin-only: `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
-| Directory | `/api/directory` | admin-only: `GET|POST /memberships`, `DELETE /memberships/{id}`, `POST /memberships/{id}/restore`; per-tenant role grants via `GET|POST /role-assignments`, `DELETE|restore` — gates `dcc.security.directory-mode` |
+| Directory | `/api/directory` | admin-only: `GET|POST /memberships`, `DELETE /memberships/{id}`, `POST /memberships/{id}/restore`; per-tenant role grants via `GET|POST /role-assignments`, `DELETE|restore`; plus `GET /my-memberships` (any authenticated caller lists their own grants, backing the console tenant switcher) — gates `dcc.security.directory-mode` |
 | Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenant/environment/application administration |
 
 Privileged operations are guarded by method security: lifecycle transitions require the

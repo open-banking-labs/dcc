@@ -29,6 +29,8 @@ function toParams(params: Record<string, string | number | null | undefined>) {
 
 /** 授权目录（管理员）：成员关系 + 租户内角色指派，gate 着 directory-mode。 */
 export const directoryApi = {
+  /** 当前操作者自己的成员关系（任意登录用户）。 */
+  myMemberships: () => httpGet<MembershipView[]>('/directory/my-memberships'),
   memberships: {
     search: (subject: string | null, tenant: string | null, page: number, size: number) =>
       httpGet<DirectoryPage>('/directory/memberships', {

@@ -1,5 +1,7 @@
-import { LogOut, UserRound } from 'lucide-react'
+import { ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
+import { directoryApi, type MembershipView } from '@/api/directory'
 import { useSession } from '@/auth/session'
 import {
   DropdownMenu,
@@ -9,10 +11,46 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { decodeJwtPayload } from '@/lib/jwt'
+import { canIssueLocally, issueDevToken } from '@/lib/devToken'
 
-/** 顶栏用户菜单：显示身份与角色，提供退出。 */
+/**
+ * 顶栏用户菜单：显示身份与角色，提供退出。目录模式下再展示「我的成员关系」，
+ * 让操作者知道自己被授权进哪些租户；dev 模式支持一键切换（本页重签 dev Token，
+ * OIDC 模式只提示，不代签）。
+ */
 export function UserMenu() {
   const session = useSession()
+  const [memberships, setMemberships] = useState<MembershipView[] | null>(null)
+
+  useEffect(() => {
+    if (!session.isAuthenticated) return
+    let cancelled = false
+    directoryApi.myMemberships()
+      .then((list) => {
+        if (!cancelled) setMemberships(list)
+      })
+      .catch(() => {
+        // 目录端点不可用（未开 directory-mode / 无权限）时静默隐藏该区块
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session.isAuthenticated, session.accessToken])
+
+  const switchTo = async (target: string) => {
+    if (session.mode !== 'dev' || !session.setDevToken || !session.accessToken) return
+    const payload = decodeJwtPayload(session.accessToken)
+    const roles = (payload?.roles as string[]) ?? session.roles
+    const token = await issueDevToken({
+      sub: session.displayName,
+      tenant: target,
+      roles: roles as string[],
+      hours: 8,
+    })
+    session.setDevToken(token)
+    window.location.reload()
+  }
 
   return (
     <DropdownMenu>
@@ -23,9 +61,10 @@ export function UserMenu() {
         >
           <UserRound className="h-4 w-4" />
           <span className="max-w-[8rem] truncate">{session.displayName}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="truncate text-sm">{session.displayName}</div>
           {session.roles.length > 0 && (
@@ -34,6 +73,26 @@ export function UserMenu() {
             </div>
           )}
         </DropdownMenuLabel>
+
+        {memberships && memberships.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1 text-xs text-muted-foreground">我的成员关系</div>
+            {memberships.map((membership) => (
+              <DropdownMenuItem
+                key={membership.id}
+                disabled={session.mode !== 'dev' || !canIssueLocally()}
+                onSelect={() => void switchTo(membership.tenantCode)}
+              >
+                <span className="flex w-full items-center justify-between">
+                  <span className="truncate font-mono text-xs">{membership.tenantCode}</span>
+                  {session.mode === 'dev' && <span className="text-xs text-muted-foreground">切换</span>}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
+
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => session.signout()}>
           <LogOut className="mr-2 h-4 w-4" />

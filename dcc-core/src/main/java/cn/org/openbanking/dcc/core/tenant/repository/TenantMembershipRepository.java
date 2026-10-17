@@ -1,5 +1,6 @@
 package cn.org.openbanking.dcc.core.tenant.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import cn.org.openbanking.dcc.core.tenant.TenantMembership;
@@ -18,6 +19,9 @@ public interface TenantMembershipRepository
 
     /** @return whether a live membership links the subject and the tenant. */
     boolean existsBySubjectAndTenantCode(String subject, String tenantCode);
+
+    /** @return all live memberships of one subject (their tenant directory). */
+    List<TenantMembership> findAllBySubject(String subject);
 
     /**
      * Filtered, paged search, newest first; any parameter may be {@code null}.

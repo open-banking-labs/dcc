@@ -124,6 +124,16 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void myMembershipsAreVisibleToAnyAuthenticatedMemberNotOnlyAdmins() throws Exception {
+        // the seeded member holds only DCC_USER: the endpoint is not admin-guarded
+        mockMvc.perform(get("/api/directory/my-memberships")
+                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tenantCode").value(tenantMember))
+                .andExpect(jsonPath("$[0].subject").value(assigned));
+    }
+
+    @Test
     void adminCanManageDirectoryRowsAndRevocationCutsAccess() throws Exception {
         // The console admin manages rows through the REST directory group. First, need a
         // membership for the managing subject (created service-side, like a real onboarding
