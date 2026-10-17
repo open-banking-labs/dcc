@@ -10,9 +10,12 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import cn.org.openbanking.dcc.AbstractIntegrationTest;
+import cn.org.openbanking.dcc.application.tenant.TenantService;
+import cn.org.openbanking.dcc.core.common.error.ConflictException;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -37,6 +40,19 @@ class RowLevelPermissionTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private TenantService tenantService;
+
+    @BeforeEach
+    void seedTenant() {
+        // tenant status is enforced at the use-case boundary; the token's tenant must be real
+        try {
+            tenantService.create(new TenantService.CreateCommand("t-test", "RowLevelPermissionTest", null));
+        }
+        catch (ConflictException reCreatedByAnEarlierTest) {
+            // tenant already exists from a previous test method
+        }
+    }
 
     private String token(String... roles) {
         SecretKey key = new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");

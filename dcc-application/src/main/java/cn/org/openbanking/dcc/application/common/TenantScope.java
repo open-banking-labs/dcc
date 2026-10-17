@@ -18,7 +18,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class TenantScope {
 
+    private final TenantStatusGuard statusGuard;
+
+    public TenantScope(TenantStatusGuard statusGuard) {
+        this.statusGuard = statusGuard;
+    }
+
     public <T> T call(String tenantId, Supplier<T> action) {
+        statusGuard.requireActive(tenantId);
         String previous = CurrentTenant.get();
         CurrentTenant.set(tenantId);
         try {

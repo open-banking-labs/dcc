@@ -39,6 +39,7 @@ dcc:
     default-tenant: default_tenant
     system-operator: system
     isolation: ROW
+    enforce-tenant-status: true           # use cases reject tenants that are disabled/deleted
   # Code/SQL generation (dcc-generator). See docs/templating.md and docs/configuration.md.
   database:
     dialect: postgresql                    # selects the TypeMappingStrategy

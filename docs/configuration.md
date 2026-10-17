@@ -91,6 +91,7 @@ platform defaults and the targeted isolation level.
 | `dcc.tenant.default-tenant` | `default_tenant` | Tenant id used where no caller tenant applies (seed data, system jobs). |
 | `dcc.tenant.system-operator` | `system` | Author recorded for changes not made by an authenticated subject. |
 | `dcc.tenant.isolation` | `ROW` | Targeted isolation: `ROW` \| `TABLE` \| `SCHEMA`. Only `ROW` (a Hibernate filter on `tenant_id`) is implemented today. |
+| `dcc.tenant.enforce-tenant-status` | `true` | Every tenant-scoped use case revalidates the registry: requests whose tenant is disabled or logically deleted fail with `tenant_inactive` (HTTP 403). Turn off only when the token issuer is the sole gatekeeper. |
 
 The **version strategy** (semantic versioning) is code, not config: `VersionBumpPolicy`
 classifies a field-level diff as MAJOR/MINOR/PATCH and `SemVer.bump` produces the next
@@ -128,7 +129,8 @@ version — see [versioning.md](versioning.md).
 | `dcc.security.authorities.admin` | `DCC_ADMIN` | Authority required by admin-guarded operations; referenced as `@dccAuthorities.admin`. |
 | `dcc.security.authorities.approver` | `DCC_APPROVER` | Authority for approval operations; referenced as `@dccAuthorities.approver`. |
 | `dcc.security.authorities.user` | `DCC_USER` | Baseline authenticated-user authority. |
-| `dcc.security.role-authorities.<role>` | _(none)_ | Expands a JWT role into authorities; unlisted roles pass through unchanged. |
+| `dcc.security.role-authorities.<role>` | _(none)_ | Expands a JWT role into authorities. |
+| `dcc.security.roles-passthrough` | `true` | Whether an unmapped role becomes its own authority (historical behaviour). Set `false` for IdP-managed roles (JWKS/OIDC): then only `role-authorities` entries confer power, so an IdP role name can no longer collide with a `DCC_*` authority by chance. |
 | `dcc.security.cors.allowed-origins` | `[]` | Allowed origins; empty disables CORS. |
 | `dcc.security.cors.allowed-methods` / `.allowed-headers` / `.allow-credentials` | GET/POST/…, `*`, `false` | CORS method/header/credentials settings. |
 
@@ -137,6 +139,8 @@ dcc:
   security:
     authorities:
       admin: DCC_ADMIN
+    # IdP-managed roles: only mapped roles confer power
+    roles-passthrough: false
     role-authorities:
       editor: [DCC_USER]
     cors:

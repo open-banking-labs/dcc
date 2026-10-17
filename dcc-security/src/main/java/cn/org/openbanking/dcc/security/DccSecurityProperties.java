@@ -27,7 +27,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *       approver: DCC_APPROVER
  *       user: DCC_USER
  *     # Optional expansion of a JWT role into one or more authorities.
- *     # A role with no entry is used verbatim as its own authority.
+ *     # A role with no entry is used verbatim as its own authority while
+ *     # roles-passthrough is on; with it off an unmapped role confers nothing.
+ *     roles-passthrough: true
  *     role-authorities:
  *       editor: [DCC_USER]
  *     cors:
@@ -77,9 +79,18 @@ public class DccSecurityProperties {
 
     /**
      * Optional JWT role -&gt; authorities expansion. A role not present here is used
-     * verbatim as its own authority (the historical behaviour).
+     * verbatim as its own authority when {@link #rolesPassthrough} is on (the
+     * historical behaviour); otherwise an unmapped role confers nothing.
      */
     private Map<String, List<String>> roleAuthorities = new LinkedHashMap<>();
+
+    /**
+     * Whether an unmapped JWT role becomes its own authority. Keep {@code true} only
+     * where the issuer already emits the logical authority names. Set {@code false}
+     * when roles follow an IdP naming scheme and only {@link #roleAuthorities}
+     * entries are allowed to confer power (recommended for JWKS/OIDC deployments).
+     */
+    private boolean rolesPassthrough = true;
 
     /** Cross-origin configuration for the exposure layers. */
     private Cors cors = new Cors();
@@ -138,6 +149,14 @@ public class DccSecurityProperties {
 
     public void setRoleAuthorities(Map<String, List<String>> roleAuthorities) {
         this.roleAuthorities = roleAuthorities;
+    }
+
+    public boolean isRolesPassthrough() {
+        return rolesPassthrough;
+    }
+
+    public void setRolesPassthrough(boolean rolesPassthrough) {
+        this.rolesPassthrough = rolesPassthrough;
     }
 
     public Cors getCors() {

@@ -5,6 +5,7 @@ import java.time.Instant;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.DomainException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
+import cn.org.openbanking.dcc.core.common.error.TenantInactiveException;
 import cn.org.openbanking.dcc.core.common.error.ValidationException;
 
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     ResponseEntity<ApiError> conflict(ConflictException ex) {
         return error(HttpStatus.CONFLICT, ex);
+    }
+
+    @ExceptionHandler(TenantInactiveException.class)
+    ResponseEntity<ApiError> tenantInactive(TenantInactiveException ex) {
+        return error(HttpStatus.FORBIDDEN, ex);
     }
 
     @ExceptionHandler(ValidationException.class)

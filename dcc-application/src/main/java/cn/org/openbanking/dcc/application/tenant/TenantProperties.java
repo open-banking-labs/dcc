@@ -14,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     default-tenant: default_tenant     # used where no caller tenant applies
  *     system-operator: system            # author recorded for system changes
  *     isolation: ROW                     # ROW | TABLE | SCHEMA
+ *     enforce-tenant-status: true        # reject use cases whose tenant is disabled/deleted
  * </pre>
  */
 @ConfigurationProperties(prefix = "dcc.tenant")
@@ -31,6 +32,15 @@ public class TenantProperties {
      * recorded so deployments can declare intent and future levels can branch on it.
      */
     private Isolation isolation = Isolation.ROW;
+
+    /**
+     * Whether use cases revalidate the caller's tenant against the registry. On by
+     * default: a token issued while the tenant was active keeps working only while
+     * the tenant stays enabled and not logically deleted. Turn off only when the
+     * upstream issuer is the sole gatekeeper (short-lived tokens provisioned by an
+     * IdP workflow that already disables access).
+     */
+    private boolean enforceTenantStatus = true;
 
     /** Tenant isolation granularity. */
     public enum Isolation {
@@ -64,5 +74,13 @@ public class TenantProperties {
 
     public void setIsolation(Isolation isolation) {
         this.isolation = isolation;
+    }
+
+    public boolean isEnforceTenantStatus() {
+        return enforceTenantStatus;
+    }
+
+    public void setEnforceTenantStatus(boolean enforceTenantStatus) {
+        this.enforceTenantStatus = enforceTenantStatus;
     }
 }

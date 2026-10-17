@@ -19,6 +19,7 @@ import cn.org.openbanking.dcc.application.tenant.TenantService;
 import cn.org.openbanking.dcc.core.common.audit.AuditAction;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
+import cn.org.openbanking.dcc.core.common.error.TenantInactiveException;
 import cn.org.openbanking.dcc.core.standard.StandardContent;
 
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,25 @@ class LogicalDeleteAuditIntegrationTest extends AbstractIntegrationTest {
 
     private static StandardContent content(String name) {
         return new StandardContent(name, null, "VARCHAR", 16, null, true, null, null, null, "123456");
+    }
+
+    @Test
+    void inactiveOrDeletedTenantIsRejectedAtEveryUseCaseBoundary() {
+        Scope scope = newScope();
+
+        // disabled via the platform path (not tenant-scoped, or re-enabling would deadlock)...
+        tenantService.update(scope.tenant(), new TenantService.UpdateCommand(null, null, false));
+        assertThatThrownBy(() -> standardService.search(scope.tenant(), null, null, null, null))
+                .isInstanceOf(TenantInactiveException.class);
+
+        // ...and the same claims work again once the status flips back
+        tenantService.update(scope.tenant(), new TenantService.UpdateCommand(null, null, true));
+        assertThat(standardService.search(scope.tenant(), null, null, null, null)).isEmpty();
+
+        // logically-deleted tenants are hidden by the entity restriction -> inactive
+        tenantService.delete(scope.tenant());
+        assertThatThrownBy(() -> environmentService.list(scope.tenant()))
+                .isInstanceOf(TenantInactiveException.class);
     }
 
     @Test

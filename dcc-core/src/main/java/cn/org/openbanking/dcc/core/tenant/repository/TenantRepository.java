@@ -15,6 +15,12 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
     boolean existsByCode(String code);
 
+    /**
+     * Whether a live, enabled tenant uses this code. Logically-deleted rows are excluded
+     * by the entity's {@code @SQLRestriction}, so one derived query covers both states.
+     */
+    boolean existsByCodeAndEnabledTrue(String code);
+
     /** Loads a tenant including logically-deleted ones so it can be restored (native query). */
     @Query(value = "select * from tenant where code = :code", nativeQuery = true)
     Optional<Tenant> findByCodeIncludingDeleted(@Param("code") String code);

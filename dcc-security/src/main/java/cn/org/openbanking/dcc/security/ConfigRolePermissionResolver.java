@@ -11,8 +11,9 @@ import org.springframework.stereotype.Component;
 /**
  * Configuration-driven {@link RolePermissionResolver}: a role listed under
  * {@code dcc.security.role-authorities} is expanded to the authorities there; a role
- * not listed is used verbatim as its own authority. With the default empty map this
- * is a no-op (role == authority), preserving the previous behaviour.
+ * not listed is used verbatim as its own authority when
+ * {@code dcc.security.roles-passthrough} is on (default, the historical behaviour),
+ * and confers nothing when it is off.
  */
 @Component
 public class ConfigRolePermissionResolver implements RolePermissionResolver {
@@ -34,7 +35,7 @@ public class ConfigRolePermissionResolver implements RolePermissionResolver {
             List<String> mapped = mapping == null ? null : mapping.get(role);
             if (mapped != null) {
                 authorities.addAll(mapped);
-            } else {
+            } else if (properties.isRolesPassthrough()) {
                 authorities.add(role);
             }
         }

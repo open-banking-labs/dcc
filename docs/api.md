@@ -9,7 +9,10 @@ require a bearer token (except the permit paths — health and API docs).
 
 Authentication: `Authorization: Bearer <jwt>`, verified by `dcc-security`. The JWT
 carries the tenant (`dcc.security.tenant-claim`) and roles (`dcc.security.roles-claim`)
-claims. Interactive docs: `/swagger-ui.html`.
+claims. Tenant status is revalidated at every tenant-scoped use case: a token issued
+before its tenant was disabled or logically deleted is rejected with `403
+tenant_inactive` (`dcc.tenant.enforce-tenant-status`, see
+[configuration.md](configuration.md)). Interactive docs: `/swagger-ui.html`.
 
 ## REST groups (`/api/*`)
 
