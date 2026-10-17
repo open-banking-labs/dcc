@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { DataTable } from '@/components/data/DataTable'
 import { useToast } from '@/components/feedback/Toast'
 import { FormDialog } from '@/components/form/FormDialog'
-import { Field, TextField } from '@/components/form/fields'
+import { Field, SelectField, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -148,7 +148,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
   )
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ subject: '', tenantCode: '', role: '' })
+  const [form, setForm] = useState({ subject: '', tenantCode: '', role: '', scopeType: 'TENANT', scopeCode: '' })
   const [removing, setRemoving] = useState<AssignmentView | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -159,10 +159,12 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         subject: form.subject.trim(),
         tenantCode: form.tenantCode.trim(),
         role: form.role.trim(),
+        scopeType: form.scopeType as AssignmentView['scopeType'],
+        scopeCode: form.scopeType === 'TENANT' ? null : form.scopeCode.trim(),
       })
       toast.success('已指派角色', `${form.subject.trim()} → ${form.role.trim()}`)
       setCreating(false)
-      setForm({ subject: '', tenantCode: '', role: '' })
+      setForm({ subject: '', tenantCode: '', role: '', scopeType: 'TENANT', scopeCode: '' })
       setPage(0)
       reload()
     } catch (err) {
@@ -194,6 +196,11 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
     { id: 'tenantCode', header: '租户', accessorFn: (row) => row.tenantCode },
     { id: 'role', header: '角色', accessorFn: (row) => row.role, cell: ({ row }) => (
       <span className="font-medium text-foreground">{row.original.role}</span>
+    ) },
+    { id: 'scope', header: '范围', accessorFn: (row) => `${row.scopeType}:${row.scopeCode ?? ''}`, cell: ({ row }) => (
+      <span className="whitespace-nowrap text-xs text-muted-foreground">
+        {row.original.scopeType === 'TENANT' ? '租户全域' : `${row.original.scopeType === 'ENVIRONMENT' ? '环境' : '应用'} · ${row.original.scopeCode}`}
+      </span>
     ) },
     { id: 'createdAt', header: '授予时间', accessorFn: (row) => row.createdAt, cell: ({ row }) => (
       <span className="whitespace-nowrap text-muted-foreground">{formatDateTime(row.original.createdAt)}</span>
@@ -228,7 +235,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         open={creating}
         onOpenChange={setCreating}
         title="指派角色"
-        description="在租户范围内授予一个角色；角色名会再走 dcc.security.role-authorities 映射。"
+        description="授予租户全域或指定环境/应用的角色；角色名会再走 dcc.security.role-authorities 映射。"
         submitText="指派"
         submitting={busy}
         onSubmit={() => void create()}
@@ -242,6 +249,23 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         <Field label="角色" htmlFor="dir-assignment-role" required>
           <TextField id="dir-assignment-role" value={form.role} onChange={(value) => setForm({ ...form, role: value })} placeholder="如 DCC_ADMIN / editor" />
         </Field>
+        <Field label="授权范围" htmlFor="dir-assignment-scope" required>
+          <SelectField id="dir-assignment-scope" value={form.scopeType}
+            onChange={(value) => setForm({ ...form, scopeType: value, scopeCode: value === 'TENANT' ? '' : form.scopeCode })}
+            options={[
+              { value: 'TENANT', label: '租户全域' },
+              { value: 'ENVIRONMENT', label: '指定环境' },
+              { value: 'APPLICATION', label: '指定应用' },
+            ]} />
+        </Field>
+        {form.scopeType !== 'TENANT' && (
+          <Field label={form.scopeType === 'ENVIRONMENT' ? '环境 code' : '应用 code'}
+            htmlFor="dir-assignment-scope-code" required
+            hint="必须是该租户中已存在的业务 code。">
+            <TextField id="dir-assignment-scope-code" value={form.scopeCode}
+              onChange={(value) => setForm({ ...form, scopeCode: value })} />
+          </Field>
+        )}
       </FormDialog>
 
       <ConfirmDialog

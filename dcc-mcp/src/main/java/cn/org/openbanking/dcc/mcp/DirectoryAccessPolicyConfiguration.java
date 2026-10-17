@@ -28,6 +28,12 @@ public class DirectoryAccessPolicyConfiguration {
             public Set<String> assignedRoles(String subject, String tenantId) {
                 return policy.assignedRoles(subject, tenantId);
             }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return policy.assignedRoles(subject, tenantId, scopeType, scopeCode, targetId);
+            }
         };
     }
 }

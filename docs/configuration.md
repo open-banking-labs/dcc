@@ -156,15 +156,22 @@ claim-based tokens still work while it is off):
 ```bash
 curl -X POST http://localhost:8080/api/directory/memberships \
   -H "Authorization: Bearer $DCC_TOKEN" -H "Content-Type: application/json" \
-  -d '{"subject":"ops.admin","tenant":"default_tenant"}'
+  -d '{"subject":"ops.admin","tenantCode":"default_tenant"}'
 curl -X POST http://localhost:8080/api/directory/role-assignments \
   -H "Authorization: Bearer $DCC_TOKEN" -H "Content-Type: application/json" \
-  -d '{"subject":"ops.admin","tenant":"default_tenant","role":"DCC_ADMIN"}'
+  -d '{"subject":"ops.admin","tenantCode":"default_tenant","role":"DCC_ADMIN"}'
 ```
 
 > The directory never removes what the identity provider grants; for strict
 > directory-only governance combine it with `roles-passthrough: false`. Directory rows
 > are audited and logically deleted (retention) like every other row.
+
+Role assignments may set `scopeType` to `TENANT` (default), `ENVIRONMENT`, or
+`APPLICATION`. Scoped assignments require an existing tenant-owned `scopeCode` and are
+activated only when `X-DCC-Scope` and the request's explicit `environmentId` or
+`applicationId` resolve to the same persisted target. For example:
+`X-DCC-Scope: environment=DEV;application=core`. Opaque artifact-ID endpoints remain
+tenant-wide and do not activate scoped grants (ADR 0004).
 
 ## Warm-up (`dcc-bootstrap`)
 

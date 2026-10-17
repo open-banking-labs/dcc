@@ -18,6 +18,8 @@ public interface TenantDirectoryPolicy {
     /** @return true when the subject may act inside the tenant (live membership). */
     boolean isMember(String subject, String tenantId);
 
-    /** @return the roles the directory grants the subject inside the tenant (never null). */
+    /** @return tenant-wide roles granted to the subject (never null). */
     Set<String> assignedRoles(String subject, String tenantId);
+
+    Set<String> assignedRoles(String subject, String tenantId, String scopeType, String scopeCode, Long targetId);
 }

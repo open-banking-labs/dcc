@@ -7,6 +7,7 @@ import cn.org.openbanking.dcc.application.tenant.RoleAssignmentService.Assignmen
 import cn.org.openbanking.dcc.application.tenant.TenantMembershipService;
 import cn.org.openbanking.dcc.application.tenant.TenantMembershipService.MembershipView;
 import cn.org.openbanking.dcc.security.InternalIdentity;
+import cn.org.openbanking.dcc.core.tenant.ScopeType;
 
 import jakarta.validation.Valid;
 
@@ -92,8 +93,10 @@ public class DirectoryController {
             @RequestParam(required = false) String subject,
             @RequestParam(required = false) String tenant,
             @RequestParam(required = false) String role,
+            @RequestParam(required = false) ScopeType scopeType,
+            @RequestParam(required = false) String scopeCode,
             @PageableDefault(size = 50) Pageable pageable) {
-        return assignments.search(subject, tenant, role, pageable);
+        return assignments.search(subject, tenant, role, scopeType, scopeCode, pageable);
     }
 
     /** Grants one role to a subject inside the tenant (unioned with claim roles). */

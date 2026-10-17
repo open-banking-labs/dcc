@@ -4,6 +4,8 @@ import cn.org.openbanking.dcc.core.common.entity.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 import lombok.AccessLevel;
@@ -19,8 +21,10 @@ import lombok.Setter;
  * <p>Assignments are **additive** to the token's claim roles: the directory can grant,
  * it never overrides what the identity provider already put on the token (restricting
  * IdP roles is the IdP's job, or {@code dcc.security.roles-passthrough: false}). Managed
- * platform-level like {@link TenantMembership}; live-triple uniqueness is a partial
- * unique index in the schema.
+ * platform-level like {@link TenantMembership}; live-uniqueness of
+ * {@code (tenant, subject, role, scope_type, scope_code)} is a partial unique index in
+ * the schema. The optional scope narrows the grant to one operating surface (ADR 0004);
+ * requests select theirs via the {@code X-DCC-Scope} header.
  */
 @Entity
 @Table(name = "role_assignment")
@@ -41,9 +45,24 @@ public class RoleAssignment extends BaseEntity {
     @Column(name = "role", nullable = false, length = 64)
     private String role;
 
+    /** Operating surface the grant is valid for; {@link ScopeType#TENANT} = tenant-wide. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_type", nullable = false, length = 16, updatable = false)
+    private ScopeType scopeType = ScopeType.TENANT;
+
+    /** Business code of the scoped environment / application; null for tenant-wide. */
+    @Column(name = "scope_code", length = 64, updatable = false)
+    private String scopeCode;
+
     public RoleAssignment(String subject, String tenantCode, String role) {
+        this(subject, tenantCode, role, ScopeType.TENANT, null);
+    }
+
+    public RoleAssignment(String subject, String tenantCode, String role, ScopeType scopeType, String scopeCode) {
         this.subject = subject;
         this.tenantCode = tenantCode;
         this.role = role;
+        this.scopeType = scopeType;
+        this.scopeCode = scopeCode;
     }
 }

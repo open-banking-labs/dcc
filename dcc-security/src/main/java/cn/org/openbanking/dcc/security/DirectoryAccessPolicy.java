@@ -23,6 +23,13 @@ public interface DirectoryAccessPolicy {
     /** @return true when the subject may act inside the tenant (live membership). */
     boolean isMember(String subject, String tenantId);
 
-    /** @return the roles the directory grants the subject inside the tenant (never null). */
+    /** @return tenant-wide roles granted to the subject (never null). */
     Set<String> assignedRoles(String subject, String tenantId);
+
+    /**
+     * Returns roles for one explicitly selected operating surface. Implementations
+     * must verify that {@code targetId} belongs to {@code tenantId} and has
+     * {@code scopeCode}; the request header alone is never trusted.
+     */
+    Set<String> assignedRoles(String subject, String tenantId, String scopeType, String scopeCode, Long targetId);
 }

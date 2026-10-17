@@ -29,6 +29,15 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  const environmentCode = localStorage.getItem('dcc.environmentCode')
+  const applicationCode = localStorage.getItem('dcc.applicationCode')
+  const scope = [
+    environmentCode ? `environment=${environmentCode}` : null,
+    applicationCode ? `application=${applicationCode}` : null,
+  ].filter(Boolean).join(';')
+  if (scope) {
+    config.headers['X-DCC-Scope'] = scope
+  }
   return config
 })
 

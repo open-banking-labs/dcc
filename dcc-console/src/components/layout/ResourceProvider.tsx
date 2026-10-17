@@ -6,6 +6,8 @@ import type { ApplicationView, EnvironmentView } from '@/types/tenant'
 
 const ENV_KEY = 'dcc.environmentId'
 const APP_KEY = 'dcc.applicationId'
+const ENV_CODE_KEY = 'dcc.environmentCode'
+const APP_CODE_KEY = 'dcc.applicationCode'
 
 function readStoredNumber(key: string): number | null {
   const raw = localStorage.getItem(key)
@@ -38,6 +40,12 @@ export function ResourceProvider({ children }: { children: ReactNode }) {
         setApplicationIdState((prev) =>
           prev != null && apps.some((app) => app.id === prev) ? prev : (apps[0]?.id ?? null),
         )
+        const selectedEnvironment = envs.find((env) => env.id === readStoredNumber(ENV_KEY)) ?? envs[0]
+        const selectedApplication = apps.find((app) => app.id === readStoredNumber(APP_KEY)) ?? apps[0]
+        if (selectedEnvironment) localStorage.setItem(ENV_CODE_KEY, selectedEnvironment.code)
+        else localStorage.removeItem(ENV_CODE_KEY)
+        if (selectedApplication) localStorage.setItem(APP_CODE_KEY, selectedApplication.code)
+        else localStorage.removeItem(APP_CODE_KEY)
         setError(null)
       })
       .catch((err: unknown) => {
@@ -54,15 +62,27 @@ export function ResourceProvider({ children }: { children: ReactNode }) {
 
   const setEnvironmentId = useCallback((id: number | null) => {
     setEnvironmentIdState(id)
-    if (id == null) localStorage.removeItem(ENV_KEY)
-    else localStorage.setItem(ENV_KEY, String(id))
-  }, [])
+    const selected = environments.find((environment) => environment.id === id)
+    if (id == null) {
+      localStorage.removeItem(ENV_KEY)
+      localStorage.removeItem(ENV_CODE_KEY)
+    } else {
+      localStorage.setItem(ENV_KEY, String(id))
+      if (selected) localStorage.setItem(ENV_CODE_KEY, selected.code)
+    }
+  }, [environments])
 
   const setApplicationId = useCallback((id: number | null) => {
     setApplicationIdState(id)
-    if (id == null) localStorage.removeItem(APP_KEY)
-    else localStorage.setItem(APP_KEY, String(id))
-  }, [])
+    const selected = applications.find((application) => application.id === id)
+    if (id == null) {
+      localStorage.removeItem(APP_KEY)
+      localStorage.removeItem(APP_CODE_KEY)
+    } else {
+      localStorage.setItem(APP_KEY, String(id))
+      if (selected) localStorage.setItem(APP_CODE_KEY, selected.code)
+    }
+  }, [applications])
 
   const value = useMemo<ResourceContextValue>(
     () => ({

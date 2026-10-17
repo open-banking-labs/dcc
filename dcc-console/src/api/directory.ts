@@ -21,6 +21,8 @@ export interface MembershipView {
 /** `RoleAssignmentService.AssignmentView`。 */
 export interface AssignmentView extends MembershipView {
   role: string
+  scopeType: 'TENANT' | 'ENVIRONMENT' | 'APPLICATION'
+  scopeCode: string | null
 }
 
 function toParams(params: Record<string, string | number | null | undefined>) {
@@ -46,7 +48,7 @@ export const directoryApi = {
       httpGet<DirectoryPage>('/directory/role-assignments', {
         params: toParams({ subject, tenant, role, page, size }),
       }),
-    create: (body: { subject: string; tenantCode: string; role: string }) =>
+    create: (body: { subject: string; tenantCode: string; role: string; scopeType: AssignmentView['scopeType']; scopeCode?: string | null }) =>
       httpPost<AssignmentView>('/directory/role-assignments', body),
     remove: (id: number) => httpDelete(`/directory/role-assignments/${id}`),
     restore: (id: number) => httpPost<AssignmentView>(`/directory/role-assignments/${id}/restore`),

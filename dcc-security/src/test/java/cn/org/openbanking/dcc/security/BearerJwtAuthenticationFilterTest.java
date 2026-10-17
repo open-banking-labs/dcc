@@ -117,6 +117,104 @@ class BearerJwtAuthenticationFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
+    @Test
+    void scopedRoleRequiresHeaderAndMatchingExplicitTargetParameter() throws Exception {
+        properties.setDirectoryMode(true);
+        DirectoryAccessPolicy scopedPolicy = new DirectoryAccessPolicy() {
+            @Override
+            public boolean isMember(String subject, String tenantId) {
+                return true;
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId) {
+                return Set.of();
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return "ENVIRONMENT".equals(scopeType) && "DEV".equals(scopeCode)
+                        && Long.valueOf(7).equals(targetId) ? Set.of("DCC_ADMIN") : Set.of();
+            }
+        };
+        BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties), scopedPolicy);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/standards");
+        request.addHeader("Authorization", "Bearer " + sign("alice", "tenant-a", List.of()));
+        request.addHeader("X-DCC-Scope", "environment=DEV");
+        request.addParameter("environmentId", "7");
+
+        scopedFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> assertThat(
+                SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority).toList())
+                .contains("DCC_ADMIN"));
+    }
+
+    @Test
+    void scopedRoleIsNotActivatedWithoutExplicitTargetParameter() throws Exception {
+        properties.setDirectoryMode(true);
+        DirectoryAccessPolicy scopedPolicy = new DirectoryAccessPolicy() {
+            @Override
+            public boolean isMember(String subject, String tenantId) {
+                return true;
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId) {
+                return Set.of();
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return Set.of("DCC_ADMIN");
+            }
+        };
+        BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties), scopedPolicy);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/standards");
+        request.addHeader("Authorization", "Bearer " + sign("alice", "tenant-a", List.of()));
+        request.addHeader("X-DCC-Scope", "environment=DEV");
+
+        scopedFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> assertThat(
+                SecurityContextHolder.getContext().getAuthentication().getAuthorities()).isEmpty());
+    }
+
+    @Test
+    void opaqueResourceEndpointCannotActivateScopeByInjectingAQueryParameter() throws Exception {
+        properties.setDirectoryMode(true);
+        DirectoryAccessPolicy scopedPolicy = new DirectoryAccessPolicy() {
+            @Override
+            public boolean isMember(String subject, String tenantId) {
+                return true;
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId) {
+                return Set.of();
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return Set.of("DCC_ADMIN");
+            }
+        };
+        BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties), scopedPolicy);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/standards/42");
+        request.addHeader("Authorization", "Bearer " + sign("alice", "tenant-a", List.of()));
+        request.addHeader("X-DCC-Scope", "environment=DEV");
+        request.addParameter("environmentId", "7");
+
+        scopedFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> assertThat(
+                SecurityContextHolder.getContext().getAuthentication().getAuthorities()).isEmpty());
+    }
+
     // ------------------------------------------------------------------ directory mode
 
     /** Fake policy: only charlie is a member of tenant-a, granted DCC_ADMIN there. */
@@ -132,6 +230,12 @@ class BearerJwtAuthenticationFilterTest {
                 return "charlie".equals(subject) && "tenant-a".equals(tenantId)
                         ? Set.of("DCC_ADMIN")
                         : Set.of();
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return Set.of();
             }
         };
     }

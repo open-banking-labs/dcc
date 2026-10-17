@@ -38,6 +38,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String SCOPE_HEADER = "X-DCC-Scope";
+    private static final Set<String> EXPLICIT_SCOPE_PATHS = Set.of(
+            "/api/standards", "/api/standards/export", "/api/standards/import",
+            "/api/tables", "/api/interfaces", "/api/templates",
+            "/api/generation/openapi", "/api/generation/jar", "/api/versioning/drift");
 
     private final JwtDecoder jwtDecoder;
     private final DccSecurityProperties properties;
@@ -84,6 +89,15 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                     roleSet = new HashSet<>(roleSet);
                     roleSet.addAll(directoryPolicy.assignedRoles(subject, tenant));
+                    if (supportsExplicitScope(request)) {
+                        for (DirectoryScope scope : DirectoryScope.parseAll(request.getHeader(SCOPE_HEADER))) {
+                            Long targetId = requestParameterAsLong(request, scope.requestParameter());
+                            if (targetId != null) {
+                                roleSet.addAll(directoryPolicy.assignedRoles(subject, tenant,
+                                        scope.type(), scope.code(), targetId));
+                            }
+                        }
+                    }
                 }
                 InternalIdentity identity = new InternalIdentity(subject, tenant, roleSet);
                 var authorities = rolePermissionResolver.authoritiesFor(roleSet).stream()
@@ -103,6 +117,56 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } finally {
             TenantContext.clear();
+        }
+    }
+
+    private static Long requestParameterAsLong(HttpServletRequest request, String name) {
+        String value = request.getParameter(name);
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static boolean supportsExplicitScope(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return EXPLICIT_SCOPE_PATHS.contains(path);
+    }
+
+    private record DirectoryScope(String type, String code, String requestParameter) {
+
+        private static List<DirectoryScope> parseAll(String header) {
+            if (!StringUtils.hasText(header)) {
+                return List.of();
+            }
+            return java.util.Arrays.stream(header.split(";"))
+                    .map(String::trim)
+                    .map(DirectoryScope::parseOne)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+        }
+
+        private static DirectoryScope parseOne(String value) {
+            int separator = value.indexOf('=');
+            if (separator <= 0 || separator == value.length() - 1
+                    || value.indexOf('=', separator + 1) >= 0) {
+                return null;
+            }
+            String kind = value.substring(0, separator).trim();
+            String code = value.substring(separator + 1).trim();
+            if (!code.matches("[A-Za-z0-9._-]{1,64}")) {
+                return null;
+            }
+            return switch (kind) {
+                case "environment" -> new DirectoryScope("ENVIRONMENT", code, "environmentId");
+                case "application" -> new DirectoryScope("APPLICATION", code, "applicationId");
+                default -> null;
+            };
         }
     }
 
