@@ -85,30 +85,41 @@ test('audit restore actions follow each backend resource permission', () => {
 })
 
 test('effective permissions cannot leak across token changes or failed requests', async () => {
-  let state = null
+  const states = []
+  let cursor = 0
   let effect
   const pending = []
   const { useEffectivePermissions } = load('api/me.ts', {
     react: {
-      useState: () => [state, (next) => { state = next }],
+      useState: (initial) => {
+        const index = cursor++
+        if (states[index] === undefined) states[index] = initial
+        return [states[index], (next) => {
+          states[index] = typeof next === 'function' ? next(states[index]) : next
+        }]
+      },
       useEffect: (next) => { effect = next },
     },
     '@/lib/apiClient': {
       httpGet: (url, config) => new Promise((resolve, reject) => pending.push({ url, config, resolve, reject })),
     },
   })
-  const render = (token) => Array.from(useEffectivePermissions(token))
-  assert.deepEqual(render('first'), [])
+  const render = (token) => {
+    cursor = 0
+    const result = useEffectivePermissions(token)
+    return { permissions: Array.from(result.permissions), loading: result.loading }
+  }
+  assert.deepEqual(render('first'), { permissions: [], loading: true })
   const cleanup = effect()
   assert.equal(pending[0].config.headers.Authorization, 'Bearer first')
   pending[0].resolve({ permissions: ['directory.write.platform'] })
   await new Promise(setImmediate)
-  assert.deepEqual(render('first'), ['directory.write.platform'])
-  assert.deepEqual(render('second'), [])
+  assert.deepEqual(render('first'), { permissions: ['directory.write.platform'], loading: false })
+  assert.deepEqual(render('second'), { permissions: [], loading: true })
   cleanup()
   effect()
   pending[1].reject(new Error('offline'))
   await new Promise(setImmediate)
-  assert.deepEqual(render('second'), [])
-  assert.deepEqual(render(null), [])
+  assert.deepEqual(render('second'), { permissions: [], loading: false })
+  assert.deepEqual(render(null), { permissions: [], loading: false })
 })

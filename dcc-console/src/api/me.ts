@@ -13,32 +13,50 @@ export const meApi = {
   get: (token: string) => httpGet<MeView>('/me', { headers: { Authorization: `Bearer ${token}` } }),
 }
 
+export interface EffectivePermissions {
+  permissions: string[]
+  /** 当前 token 的权限仍在解析中；此时不得据此判定“无权限”。 */
+  loading: boolean
+}
+
 /**
  * 权限绑定到 token，切换身份时立即清空，避免沿用上个会话的权限。
+ *
+ * 解析失败按空权限处理并结束 loading：后续请求由后端继续兜底，UI 不无限等待。
  */
 export function useEffectivePermissions(
   token: string | null | undefined,
-): string[] {
+): EffectivePermissions {
   const [result, setResult] = useState<{ token: string; permissions: string[] } | null>(null)
+  const [pendingToken, setPendingToken] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
       setResult(null)
+      setPendingToken(null)
       return
     }
     let cancelled = false
+    setPendingToken(token)
     meApi
       .get(token)
       .then((me) => {
         if (!cancelled) setResult({ token, permissions: me.permissions ?? [] })
       })
       .catch(() => {
-        if (!cancelled) setResult(null)
+        if (!cancelled) setResult({ token, permissions: [] })
+      })
+      .finally(() => {
+        if (!cancelled) setPendingToken(null)
       })
     return () => {
       cancelled = true
     }
   }, [token])
 
-  return token && result?.token === token ? result.permissions : []
+  const current = token && result?.token === token ? result.permissions : null
+  return {
+    permissions: current ?? [],
+    loading: Boolean(token) && (pendingToken === token || current === null),
+  }
 }

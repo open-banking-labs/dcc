@@ -21,6 +21,8 @@ export interface Session {
   displayName: string
   roles: string[]
   permissions: string[]
+  /** `/api/me` 权限仍在加载；此时不得渲染“无权限”结论。 */
+  permissionsLoading: boolean
   accessToken: string | null
   returnTo: string
   signin: () => void
@@ -55,7 +57,7 @@ function OidcSessionBridge({ children }: { children: ReactNode }) {
   const auth = useAuth()
   const token = auth.user?.access_token ?? null
   const roles = useMemo(() => extractRoles(token ?? undefined), [token])
-  const permissions = useEffectivePermissions(token)
+  const { permissions, loading: permissionsLoading } = useEffectivePermissions(token)
 
   const value = useMemo<Session>(() => {
     const profile = auth.user?.profile
@@ -71,12 +73,13 @@ function OidcSessionBridge({ children }: { children: ReactNode }) {
         '用户',
       roles,
       permissions,
+      permissionsLoading,
       accessToken: token,
       returnTo: (auth.user?.state as { returnTo?: string } | undefined)?.returnTo ?? '/',
       signin: () => void auth.signinRedirect(),
       signout: () => void auth.signoutRedirect(),
     }
-  }, [auth, roles, permissions, token])
+  }, [auth, roles, permissions, permissionsLoading, token])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
@@ -90,7 +93,7 @@ function DevSessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const roles = useMemo(() => extractRoles(token ?? undefined), [token])
-  const permissions = useEffectivePermissions(token)
+  const { permissions, loading: permissionsLoading } = useEffectivePermissions(token)
 
   const value = useMemo<Session>(() => {
     const payload = decodeJwtPayload(token ?? undefined)
@@ -102,13 +105,14 @@ function DevSessionProvider({ children }: { children: ReactNode }) {
       displayName: (payload?.sub as string) ?? '本地开发',
       roles,
       permissions,
+      permissionsLoading,
       accessToken: token,
       returnTo: '/',
       signin: () => {},
       signout: () => setDevToken(null),
       setDevToken,
     }
-  }, [token, roles, permissions, setDevToken])
+  }, [token, roles, permissions, permissionsLoading, setDevToken])
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { applicationsApi, environmentsApi } from '@/api/tenancy'
+import { useSession } from '@/auth/session'
 import { ResourceContext, type ResourceContextValue } from '@/hooks/useResourceContext'
+import { PERMISSION } from '@/lib/permissions'
 import type { ApplicationView, EnvironmentView } from '@/types/tenant'
 
 const ENV_KEY = 'dcc.environmentId'
@@ -18,6 +20,8 @@ function readStoredNumber(key: string): number | null {
 
 /** 加载环境/应用清单并持有当前选择（持久化到 localStorage）。 */
 export function ResourceProvider({ children }: { children: ReactNode }) {
+  const { permissions, permissionsLoading } = useSession()
+  const canReadTopology = permissions.includes(PERMISSION.topologyRead)
   const [environments, setEnvironments] = useState<EnvironmentView[]>([])
   const [applications, setApplications] = useState<ApplicationView[]>([])
   const [environmentId, setEnvironmentIdState] = useState<number | null>(() => readStoredNumber(ENV_KEY))
@@ -26,6 +30,17 @@ export function ResourceProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (permissionsLoading) return
+    if (!canReadTopology) {
+      // 没有租户拓扑权限（如平台管理员）时不得请求环境/应用，否则每次挂载都会得到 403。
+      setEnvironments([])
+      setApplications([])
+      setEnvironmentIdState(null)
+      setApplicationIdState(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
     let cancelled = false
     setLoading(true)
     Promise.all([environmentsApi.list(), applicationsApi.list()])
@@ -58,7 +73,7 @@ export function ResourceProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [canReadTopology, permissionsLoading])
 
   const setEnvironmentId = useCallback((id: number | null) => {
     setEnvironmentIdState(id)
