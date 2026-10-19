@@ -25,8 +25,8 @@ interface NavItem {
   to: string
   label: string
   icon: LucideIcon
-  /** 需要的 authority；缺省任何登录用户可见。 */
-  authority?: string | string[]
+  /** 需要的权限点；所有入口都必须显式声明，由服务端 /api/me 返回的权限过滤。 */
+  authority: string | string[]
 }
 
 interface NavSection {
@@ -38,23 +38,23 @@ const NAV: NavSection[] = [
   {
     group: '数据资产',
     items: [
-      { to: '/standards', label: '数标管理', icon: BookText },
-      { to: '/tables', label: '表结构', icon: Table2 },
-      { to: '/interfaces', label: '接口', icon: Plug },
-      { to: '/templates', label: '接口模板', icon: LayoutTemplate },
+      { to: '/standards', label: '数标管理', icon: BookText, authority: PERMISSION.artifactRead },
+      { to: '/tables', label: '表结构', icon: Table2, authority: PERMISSION.artifactRead },
+      { to: '/interfaces', label: '接口', icon: Plug, authority: PERMISSION.artifactRead },
+      { to: '/templates', label: '接口模板', icon: LayoutTemplate, authority: PERMISSION.artifactRead },
       { to: '/cases', label: '指导案例', icon: BookMarked, authority: PERMISSION.caseRead },
     ],
   },
   {
     group: '变更与发布',
     items: [
-      { to: '/migrations', label: '迁移单', icon: ArrowRightLeft },
-      { to: '/drift', label: '漂移检查', icon: Radar },
+      { to: '/migrations', label: '迁移单', icon: ArrowRightLeft, authority: PERMISSION.artifactRead },
+      { to: '/drift', label: '漂移检查', icon: Radar, authority: PERMISSION.artifactRead },
     ],
   },
   {
     group: '生成',
-    items: [{ to: '/generation', label: '产物生成', icon: Package }],
+    items: [{ to: '/generation', label: '产物生成', icon: Package, authority: PERMISSION.generationRead }],
   },
   {
     group: '平台管理',
@@ -64,7 +64,7 @@ const NAV: NavSection[] = [
       { to: '/applications', label: '应用', icon: AppWindow, authority: PERMISSION.topologyRead },
       { to: '/audit', label: '审计日志', icon: History, authority: PERMISSION.auditBusiness },
       { to: '/platform/audit', label: '平台审计', icon: History, authority: PERMISSION.auditPlatform },
-      { to: '/directory', label: '授权目录', icon: UserCog, authority: [PERMISSION.directoryRead, PERMISSION.directoryWritePlatform] },
+      { to: '/directory', label: '授权目录', icon: UserCog, authority: PERMISSION.directoryRead },
     ],
   },
 ]
@@ -74,8 +74,9 @@ export function Sidebar() {
   const permissions = useSession().permissions
   const visible = NAV.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.authority ||
-      (Array.isArray(item.authority) ? item.authority : [item.authority]).some((permission) => permissions.includes(permission))),
+    items: section.items.filter((item) =>
+      (Array.isArray(item.authority) ? item.authority : [item.authority])
+        .some((permission) => permissions.includes(permission))),
   })).filter((section) => section.items.length > 0)
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">

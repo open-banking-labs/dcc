@@ -15,13 +15,12 @@ import lombok.Setter;
 
 /**
  * Directory record: one role a subject is granted inside one tenant. Stored role names
- * are free-form and go through the same {@code dcc.security.role-authorities} mapping as
- * token roles, so deployments can assign IdP naming schemes or logical authority names.
+ * are expanded through the same {@code dcc.security.role-bundles} mapping as token roles;
+ * a name without a bundle confers no authority.
  *
  * <p>Assignments are **additive** to the token's claim roles: the directory can grant,
  * it never overrides what the identity provider already put on the token (restricting
- * IdP roles is the IdP's job, or {@code dcc.security.roles-passthrough: false}). Managed
- * platform-level like {@link TenantMembership}; live-uniqueness of
+ * IdP roles is the IdP's job). Managed platform-level like {@link TenantMembership}; live-uniqueness of
  * {@code (tenant, subject, role, scope_type, scope_code)} is a partial unique index in
  * the schema. The optional scope narrows the grant to one operating surface (ADR 0004);
  * requests select theirs via the {@code X-DCC-Scope} header.
@@ -41,7 +40,7 @@ public class RoleAssignment extends BaseEntity {
     @Column(name = "tenant_code", nullable = false, length = 64, updatable = false)
     private String tenantCode;
 
-    /** Role name as fed into {@code dcc.security.role-authorities}. */
+    /** Role name as fed into {@code dcc.security.role-bundles}. */
     @Column(name = "role", nullable = false, length = 64)
     private String role;
 

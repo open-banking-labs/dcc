@@ -18,39 +18,14 @@ class ConfigRolePermissionResolverTest {
     }
 
     @Test
-    void rolesAreUsedVerbatimWhenNothingIsMapped() {
-        // ROLE_EDITOR / ROLE_OTHER carry neither a mapping nor a bundle, so passthrough applies
-        assertThat(resolver().authoritiesFor(List.of("ROLE_EDITOR", "ROLE_OTHER")))
-                .containsExactlyInAnyOrder("ROLE_EDITOR", "ROLE_OTHER");
+    void unknownRolesConferNothing() {
+        assertThat(resolver().authoritiesFor(List.of("ROLE_EDITOR", "ROLE_OTHER"))).isEmpty();
     }
 
     @Test
-    void mappedRolesExpandAndUnmappedRolesAreKept() {
-        DccSecurityProperties properties = new DccSecurityProperties();
-        properties.getRoleAuthorities().put("editor", List.of("DCC_USER", "DCC_APPROVER"));
-
-        assertThat(resolver(properties).authoritiesFor(List.of("editor", "ROLE_OTHER")))
-                .containsExactlyInAnyOrder("DCC_USER", "DCC_APPROVER", "ROLE_OTHER");
-    }
-
-    @Test
-    void unmappedRolesConferNothingWhenPassthroughIsOff() {
-        DccSecurityProperties properties = new DccSecurityProperties();
-        properties.setRolesPassthrough(false);
-        properties.getRoleAuthorities().put("editor", List.of("DCC_USER", "DCC_APPROVER"));
-
-        // a role that merely looks like an authority no longer grants it
-        assertThat(resolver(properties).authoritiesFor(List.of("editor", "ROLE_OTHER", "ROLE_DCC_ADMIN")))
-                .containsExactlyInAnyOrder("DCC_USER", "DCC_APPROVER");
-    }
-
-    @Test
-    void strictModeStillHonoursDirectlyMappedAuthorities() {
-        DccSecurityProperties properties = new DccSecurityProperties();
-        properties.setRolesPassthrough(false);
-        properties.getRoleAuthorities().put("ops", List.of("DCC_ADMIN"));
-
-        assertThat(resolver(properties).authoritiesFor(List.of("ops"))).containsExactly("DCC_ADMIN");
+    void legacyRoleNamesConferNothing() {
+        assertThat(resolver().authoritiesFor(List.of("DCC_ADMIN"))).isEmpty();
+        assertThat(resolver().authoritiesFor(List.of("DCC_USER"))).isEmpty();
     }
 
     @Test
@@ -92,10 +67,8 @@ class ConfigRolePermissionResolverTest {
     void platformAdminCannotReadAnyTenantBusinessData() {
         Set<String> authorities = resolver().authoritiesFor(List.of("DCC_PLATFORM_ADMIN"));
 
-        assertThat(authorities).contains("tenant.admit", "case.write", "audit.platform",
-                "directory.write.platform");
-        assertThat(authorities).doesNotContain("artifact.read", "artifact.write", "topology.read",
-                "audit.business", "directory.write");
+        assertThat(authorities).containsExactlyInAnyOrder("tenant.admit", "directory.read",
+                "directory.write.platform", "audit.platform", "case.write", "case.read");
     }
 
     @Test
@@ -118,18 +91,6 @@ class ConfigRolePermissionResolverTest {
     }
 
     @Test
-    void legacyAdminKeepsEverythingAndLegacyUserKeepsWriteButNotAdmission() {
-        Set<String> legacyAdmin = resolver().authoritiesFor(List.of("DCC_ADMIN"));
-        assertThat(legacyAdmin).contains("artifact.write", "migration.execute", "tenant.admit",
-                "directory.write", "case.write");
-
-        Set<String> legacyUser = resolver().authoritiesFor(List.of("DCC_USER"));
-        assertThat(legacyUser).contains("artifact.read", "artifact.write", "migration.write");
-        assertThat(legacyUser).doesNotContain("tenant.admit", "directory.write", "audit.business",
-                "migration.approve");
-    }
-
-    @Test
     void permissionNamesAreRemappable() {
         DccSecurityProperties properties = new DccSecurityProperties();
         properties.getPermissions().put("artifact.write", "DCC_ARTIFACT_WRITE");
@@ -142,7 +103,6 @@ class ConfigRolePermissionResolverTest {
     @Test
     void bundleCyclesTerminateInsteadOfLooping() {
         DccSecurityProperties properties = new DccSecurityProperties();
-        properties.setRolesPassthrough(false);
         properties.getRoleBundles().put("GROUP_A", List.of("GROUP_B", "artifact.read"));
         properties.getRoleBundles().put("GROUP_B", List.of("GROUP_A"));
 
@@ -152,12 +112,12 @@ class ConfigRolePermissionResolverTest {
 
     @Test
     void bundlesAreConfigureOrTakeDefaults() {
-        // nothing configured -> the shipped five-role model plus the legacy hats
-        assertThat(new DccSecurityProperties().effectiveRoleBundles())
-                .containsKeys("DCC_READER", "DCC_MAINTAINER", "DCC_APPROVER", "DCC_TENANT_ADMIN",
-                        "DCC_PLATFORM_ADMIN", "DCC_ADMIN", "DCC_USER");
+        // nothing configured -> exactly the shipped six-role model
+        assertThat(new DccSecurityProperties().effectiveRoleBundles()).containsOnlyKeys(
+                "DCC_READER", "DCC_MAINTAINER", "DCC_APPROVER", "DCC_ENV_ADMIN",
+                "DCC_TENANT_ADMIN", "DCC_PLATFORM_ADMIN");
 
-        // anything configured replaces the defaults wholesale, so a deployment can drop the legacy hats
+        // anything configured replaces the defaults wholesale
         DccSecurityProperties configured = new DccSecurityProperties();
         configured.getRoleBundles().put("MY_ROLE", List.of("artifact.read"));
         assertThat(configured.effectiveRoleBundles()).containsOnlyKeys("MY_ROLE");
@@ -176,8 +136,6 @@ class ConfigRolePermissionResolverTest {
     @Test
     void identityProviderGroupsMapOntoRoles() {
         DccSecurityProperties properties = new DccSecurityProperties();
-        properties.setRolesPassthrough(false);
-        // configuring bundles replaces the shipped defaults, so the composed role must be defined too
         properties.getRoleBundles().put("DCC_APPROVER",
                 List.of("artifact.transition", "migration.approve", "artifact.read"));
         properties.getRoleBundles().put("DCC_APPROVERS", List.of("DCC_APPROVER"));

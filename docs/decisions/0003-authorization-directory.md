@@ -27,7 +27,7 @@ DCC itself. A full user/password system stays out of scope — authentication re
    subject + tenant + role) back a new seam, `DirectoryAccessPolicy`, consulted by
    `BearerJwtAuthenticationFilter` right after signature verification:
    * membership **gates** (no live membership in the claimed tenant → `403 not_a_directory_member`),
-   * assignments **add** (unioned with the claim roles before `role-authorities` mapping —
+   * assignments **add** (unioned with the claim roles before `role-bundles` expansion —
      the directory can grant, it never overrides the IdP).
 
 2. **Opt-in, default equal to the old behaviour.** `dcc.security.directory-mode`

@@ -42,7 +42,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Database-backed role → permission resolver (ADR 0005 §D8): with
  * {@code dcc.security.resolver-mode=database} the table is authoritative — the configuration
- * bundles (including the legacy hats) confer nothing at all.
+ * bundles confer nothing at all.
  */
 @SpringBootTest(properties = {"dcc.security.directory-mode=true", "dcc.security.resolver-mode=database"})
 @AutoConfigureMockMvc
@@ -98,7 +98,7 @@ class DatabaseRoleResolverIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.permissions", hasItem("artifact.transition")))
                 .andExpect(jsonPath("$.permissions", not(hasItem("artifact.write"))));
 
-        // and a legacy hat with no rows confers nothing: no config fallback in this mode
+        // and a removed legacy role name with no rows confers nothing: no config fallback in this mode
         mockMvc.perform(get("/api/me").header("Authorization", token(subject, tenant, "DCC_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.permissions", not(hasItem("artifact.write"))))

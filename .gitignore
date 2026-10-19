@@ -83,3 +83,6 @@ application-local.yml
 .aider*
 # Reasonix Code: session tool cache
 .reasonix/
+
+# Local dev tokens
+*.jwt

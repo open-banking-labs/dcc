@@ -8,7 +8,7 @@ import crypto from 'node:crypto'
 
 const secret = process.env.DCC_JWT_SECRET ?? 'dev-only-change-me-please-use-32-bytes'
 const tenant = process.env.DCC_TENANT ?? 'default_tenant'
-const roles = (process.env.DCC_ROLES ?? 'DCC_USER,DCC_ADMIN,DCC_APPROVER').split(',').map((r) => r.trim())
+const roles = (process.env.DCC_ROLES ?? 'DCC_TENANT_ADMIN').split(',').map((r) => r.trim()).filter(Boolean)
 const sub = process.env.DCC_SUB ?? 'local-dev'
 
 const base64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')

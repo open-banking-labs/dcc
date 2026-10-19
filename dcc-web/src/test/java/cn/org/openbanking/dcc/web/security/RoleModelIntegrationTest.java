@@ -37,7 +37,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * End-to-end checks of the five-role model (ADR 0005) against the real filter chain: effective
+ * End-to-end checks of the six-role model (ADR 0005) against the real filter chain: effective
  * permissions, the platform/tenant permission split, tenant-scope forcing on grants and the
  * four-eyes rule.
  */
@@ -90,11 +90,17 @@ class RoleModelIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.permissions", hasItem("artifact.read")))
                 .andExpect(jsonPath("$.permissions", not(hasItem("artifact.write"))));
 
-        // and the legacy hat keeps its historical breadth
-        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token("legacy", tenant, "DCC_ADMIN")))
+        // the platform administrator is not a superset: platform power only, no business data
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token("platform", tenant, "DCC_PLATFORM_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.permissions", hasItem("tenant.admit")))
-                .andExpect(jsonPath("$.permissions", hasItem("artifact.write")));
+                .andExpect(jsonPath("$.permissions", not(hasItem("artifact.read"))))
+                .andExpect(jsonPath("$.permissions", not(hasItem("artifact.write"))));
+
+        // the removed legacy names are inert even if an old token still carries them
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token("legacy", tenant, "DCC_ADMIN", "DCC_USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissions").isEmpty());
     }
 
     @Test

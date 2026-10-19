@@ -48,22 +48,18 @@ public class GrantPolicy {
     /**
      * Refuses role names the deployment never defined.
      *
-     * <p>With {@code roles-passthrough: true} (the default) an unknown role name becomes its own
-     * authority literally, so granting {@code "artifact.write"} would inject a permission point and
-     * bypass the bundles entirely. In {@code database} resolver mode the table is authoritative and an
-     * unknown name confers nothing, so the check is skipped there.
+     * <p>An unknown name would confer nothing, so allowing it would create a grant that looks valid
+     * but silently does nothing. In {@code database} resolver mode the table is authoritative, so the
+     * config-bundle check is skipped there.
      */
     private void requireKnownRole(String role) {
         if ("database".equalsIgnoreCase(properties.getResolverMode())) {
             return;
         }
         Set<String> known = new LinkedHashSet<>(properties.effectiveRoleBundles().keySet());
-        if (properties.getRoleAuthorities() != null) {
-            known.addAll(properties.getRoleAuthorities().keySet());
-        }
         if (!known.contains(role)) {
-            throw new ValidationException("role '" + role + "' is not defined by dcc.security.role-bundles "
-                    + "or dcc.security.role-authorities; known roles are " + known);
+            throw new ValidationException("role '" + role + "' is not defined by dcc.security.role-bundles; "
+                    + "known roles are " + known);
         }
     }
 

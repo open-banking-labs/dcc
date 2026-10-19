@@ -6,6 +6,9 @@ import { App } from './App'
 import { AuthGuard } from './auth/AuthGuard'
 import { CallbackPage } from './auth/CallbackPage'
 import { LoginPage } from './auth/LoginPage'
+import { useSession } from './auth/session'
+import { FullPageMessage } from './components/common/FullPageMessage'
+import { PERMISSION } from './lib/permissions'
 import { NotFoundPage } from './pages/NotFound'
 
 /** 按需加载页面组件（具名导出 → React.lazy），配合 AppLayout 的 Suspense 做代码分割。 */
@@ -40,6 +43,22 @@ const AuditPage = lazyPage(() => import('./pages/audit/AuditPage'), 'AuditPage')
 const CasesPage = lazyPage(() => import('./pages/cases/CasesPage'), 'CasesPage')
 const DirectoryPage = lazyPage(() => import('./pages/directory/DirectoryPage'), 'DirectoryPage')
 
+/** 按服务端返回的权限点选择首个可访问入口，避免无业务权限的管理员落到 403 首页。 */
+function HomeRedirect() {
+  const { permissions } = useSession()
+  const target = [
+    [PERMISSION.artifactRead, '/standards'],
+    [PERMISSION.tenantAdmit, '/tenants'],
+    [PERMISSION.topologyRead, '/environments'],
+    [PERMISSION.auditBusiness, '/audit'],
+    [PERMISSION.auditPlatform, '/platform/audit'],
+    [PERMISSION.directoryRead, '/directory'],
+    [PERMISSION.caseRead, '/cases'],
+    [PERMISSION.generationRead, '/generation'],
+  ].find(([permission]) => permissions.includes(permission))?.[1]
+  return <Navigate to={target ?? '/no-access'} replace />
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/auth/callback', element: <CallbackPage /> },
@@ -50,7 +69,8 @@ export const router = createBrowserRouter([
       {
         element: <App />,
         children: [
-          { index: true, element: <Navigate to="/standards" replace /> },
+          { index: true, element: <HomeRedirect /> },
+          { path: 'no-access', element: <FullPageMessage text="当前账号没有任何可访问的菜单，请联系管理员授权。" /> },
           { path: 'standards', element: <StandardsListPage /> },
           { path: 'standards/new', element: <StandardFormPage /> },
           { path: 'standards/:id', element: <StandardDetailPage /> },

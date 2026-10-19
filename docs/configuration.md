@@ -126,20 +126,15 @@ version — see [versioning.md](versioning.md).
 | `dcc.security.tenant-claim` | `tenant` | JWT claim carrying the tenant id. |
 | `dcc.security.roles-claim` | `roles` | JWT claim carrying the caller's roles. |
 | `dcc.security.permit-paths` | health/docs paths | Request paths served without authentication. |
-| `dcc.security.authorities.admin` | `DCC_ADMIN` | Legacy authority name referenced as `@dccAuthorities.admin`. Endpoints now check permission points (`@perms.*`, ADR 0005) instead; retained for embedders and for the legacy `DCC_ADMIN` bundle. |
-| `dcc.security.authorities.approver` | `DCC_APPROVER` | Legacy approval authority name. |
-| `dcc.security.authorities.user` | `DCC_USER` | Legacy baseline authenticated-user authority. |
 | `dcc.security.permissions.<permission>` | the name itself | Remaps a permission point (ADR 0005) to an authority string, e.g. `artifact.write: DCC_ARTIFACT_WRITE`. Unset means the permission name *is* the authority. |
-| `dcc.security.role-bundles.<role>` | five roles + legacy names | Role → permission points (ADR 0005). An entry may name a permission point or another role (IdP group → role composition). Defaults ship `DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` / `DCC_ENV_ADMIN` / `DCC_TENANT_ADMIN` / `DCC_PLATFORM_ADMIN`, plus the legacy hats `DCC_ADMIN` (everything) and `DCC_USER` (data-plane write, no tenant admission). **Configure or take defaults**: any `role-bundles` block replaces the shipped defaults wholesale, so a deployment can drop the legacy hats — and in `resolver-mode=database` they are dropped anyway. An entry that is neither a known role nor a declared permission point fails at startup. |
+| `dcc.security.role-bundles.<role>` | six roles | Role → permission points (ADR 0005). An entry may name a permission point or another role (IdP group → role composition). Defaults ship `DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` / `DCC_ENV_ADMIN` / `DCC_TENANT_ADMIN` / `DCC_PLATFORM_ADMIN`. **Configure or take defaults**: any `role-bundles` block replaces the shipped defaults wholesale. A role with no bundle confers nothing. An entry that is neither a known role nor a declared permission point fails at startup. |
 | `dcc.security.tenant-grantable-roles` | `DCC_READER`, `DCC_MAINTAINER`, `DCC_APPROVER`, `DCC_ENV_ADMIN`, `DCC_TENANT_ADMIN` | Roles a tenant administrator may grant inside its own tenant (`POST /api/role-assignments`). Platform roles are deliberately excluded, so a directory row cannot launder platform power. |
 | `dcc.security.scope-required-roles` | `DCC_ENV_ADMIN` | Roles that may only be granted for one environment or application. A tenant-wide grant of these is rejected (422): it would hand out the whole data plane instead of one surface. |
-| `dcc.security.dual-control-roles` | `DCC_PLATFORM_ADMIN`, `DCC_TENANT_ADMIN`, `DCC_ADMIN` | Grants of these roles are written and audited immediately but confer nothing until a **different** subject confirms them (`POST /api/directory/role-assignments/{id}/confirm`). Needs at least two platform administrators. |
-| `dcc.security.resolver-mode` | `config` | `config` uses `role-bundles` / `role-authorities`; `database` makes the platform-level `role_permission` table the only authority (no passthrough, no legacy hats) — see ADR 0005 §D8. |
+| `dcc.security.dual-control-roles` | `DCC_PLATFORM_ADMIN`, `DCC_TENANT_ADMIN` | Grants of these roles are written and audited immediately but confer nothing until a **different** subject confirms them (`POST /api/directory/role-assignments/{id}/confirm`). Needs at least two platform administrators. |
+| `dcc.security.resolver-mode` | `config` | `config` uses `role-bundles`; `database` makes the platform-level `role_permission` table the only authority — see ADR 0005 §D8. |
 | `dcc.security.break-glass.subjects` | `[]` | Subjects allowed emergency access; empty disables the feature. |
 | `dcc.security.break-glass.permissions` | `[]` | Permission points granted while break-glass is active (keep this list minimal). An unknown name fails at startup, and the effective set is logged when break-glass is enabled. |
 | `dcc.security.break-glass.reason-header` | `X-DCC-Change-Reason` | Header that must carry a non-blank reason, or break-glass does not apply. That reason is replayed into the audit trail by the exposure layers. |
-| `dcc.security.role-authorities.<role>` | _(none)_ | Expands a JWT role into authorities verbatim (legacy form; prefer `role-bundles`). |
-| `dcc.security.roles-passthrough` | `true` | Whether an unmapped role becomes its own authority (historical behaviour). Set `false` for IdP-managed roles (JWKS/OIDC): then only `role-authorities` / `role-bundles` entries confer power. A warning is logged while it is on. |
 | `dcc.security.directory-mode` | `false` | Directory-backed identity governance. The token becomes identity-only: a verified subject may act only in tenants where `tenant_membership` grants it (otherwise `403 not_a_directory_member`), and roles from `role_assignment` are unioned with the claim roles before authority mapping. Requires the authorization directory (see `POST /api/directory/*`, ADR 0003); a directory-mode deployment without its `DirectoryAccessPolicy` bean fails at startup. Tenant administrators grant inside their own tenant via `POST /api/memberships` / `POST /api/role-assignments`; platform bootstrap stays on `/api/directory/*` (ADR 0005). |
 | `dcc.security.cors.allowed-origins` | `[]` | Allowed origins; empty disables CORS. |
 | `dcc.security.cors.allowed-methods` / `.allowed-headers` / `.allow-credentials` | GET/POST/…, `*`, `false` | CORS method/header/credentials settings. |
@@ -147,14 +142,12 @@ version — see [versioning.md](versioning.md).
 ```yaml
 dcc:
   security:
-    authorities:
-      admin: DCC_ADMIN
-    # IdP-managed roles: only mapped roles confer power
-    roles-passthrough: false
     # directory governance: the token is an identity, the directory grants access
     directory-mode: true
-    role-authorities:
-      editor: [DCC_USER]
+    # IdP groups can compose the built-in roles; unknown roles confer nothing
+    role-bundles:
+      DCC_OPS_ADMINS: [DCC_PLATFORM_ADMIN]
+      DCC_TENANT_ADMINS: [DCC_TENANT_ADMIN]
     cors:
       allowed-origins: ["https://dcc.example.com"]
 ```
@@ -168,11 +161,11 @@ curl -X POST http://localhost:8080/api/directory/memberships \
   -d '{"subject":"ops.admin","tenantCode":"default_tenant"}'
 curl -X POST http://localhost:8080/api/directory/role-assignments \
   -H "Authorization: Bearer $DCC_TOKEN" -H "Content-Type: application/json" \
-  -d '{"subject":"ops.admin","tenantCode":"default_tenant","role":"DCC_ADMIN"}'
+  -d '{"subject":"ops.admin","tenantCode":"default_tenant","role":"DCC_TENANT_ADMIN"}'
 ```
 
-> The directory never removes what the identity provider grants; for strict
-> directory-only governance combine it with `roles-passthrough: false`. Directory rows
+> The directory never removes what the identity provider grants. Roles from both sources
+> are expanded through `role-bundles`; unknown role names confer nothing. Directory rows
 > are audited and logically deleted (retention) like every other row.
 
 Role assignments may set `scopeType` to `TENANT` (default), `ENVIRONMENT`, or

@@ -58,7 +58,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
 
     private String tenantMember;
     private String tenantForeign;
-    /** Member of {@link #tenantMember} with a directory-assigned DCC_ADMIN role. */
+    /** Member of {@link #tenantMember} with a directory-assigned DCC_MAINTAINER role. */
     private String assigned;
     /** Member of {@link #tenantMember} whose authority comes only from claim roles... none. */
     private String authorityless;
@@ -73,7 +73,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
         tenantService.create(new TenantService.CreateCommand(tenantForeign, "foreign tenant", null));
         memberships.create(new TenantMembershipService.CreateCommand(assigned, tenantMember));
         memberships.create(new TenantMembershipService.CreateCommand(authorityless, tenantMember));
-        assignments.create(new RoleAssignmentService.CreateCommand(assigned, tenantMember, "DCC_ADMIN"));
+        assignments.create(new RoleAssignmentService.CreateCommand(assigned, tenantMember, "DCC_MAINTAINER"));
     }
 
     private String token(String subject, String tenant, String... roles) {
@@ -90,10 +90,10 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void membershipGatePassesAndDirectoryRoleGrantsAdmin() throws Exception {
-        // claim roles say DCC_USER; the directory assignment supplies DCC_ADMIN, the
+        // claim roles say DCC_READER; the directory assignment supplies DCC_MAINTAINER, the
         // membership is live, so the request reaches the use case (404: no such table)
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_USER")))
+                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_READER")))
                 .andExpect(status().isNotFound());
     }
 
@@ -101,7 +101,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
     void claimRolesCannotBuyDirectoryMembership() throws Exception {
         // a perfectly valid admin token for a subject the directory never granted
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token("stranger", tenantMember, "DCC_ADMIN")))
+                        .header("Authorization", "Bearer " + token("stranger", tenantMember, "DCC_PLATFORM_ADMIN")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("not_a_directory_member"));
     }
@@ -110,7 +110,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
     void membershipIsScopedToTheTenant() throws Exception {
         // the same subject, a tenant of which they are not a member
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token(assigned, tenantForeign, "DCC_ADMIN")))
+                        .header("Authorization", "Bearer " + token(assigned, tenantForeign, "DCC_TENANT_ADMIN")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("not_a_directory_member"));
     }
@@ -125,9 +125,9 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void myMembershipsAreVisibleToAnyAuthenticatedMemberNotOnlyAdmins() throws Exception {
-        // the seeded member holds only DCC_USER: the endpoint is not admin-guarded
+        // the seeded member holds a tenant role; the endpoint is not admin-guarded
         mockMvc.perform(get("/api/directory/my-memberships")
-                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_USER")))
+                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_READER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tenantCode").value(tenantMember))
                 .andExpect(jsonPath("$[0].subject").value(assigned));
@@ -142,7 +142,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
         String admin = "user-" + UUID.randomUUID();
         memberships.create(new TenantMembershipService.CreateCommand(admin, tenantMember));
 
-        String adminAuth = "Bearer " + token(admin, tenantMember, "DCC_ADMIN");
+        String adminAuth = "Bearer " + token(admin, tenantMember, "DCC_PLATFORM_ADMIN");
 
         // grant a second member through the REST API
         String other = "user-" + UUID.randomUUID();
@@ -170,7 +170,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_USER")))
+                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_READER")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("not_a_directory_member"));
 
@@ -180,7 +180,7 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.subject").value(assigned));
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_USER")))
+                        .header("Authorization", "Bearer " + token(assigned, tenantMember, "DCC_READER")))
                 // restored membership but revoked-ish? assignment still live: admin again
                 .andExpect(status().isNotFound());
     }

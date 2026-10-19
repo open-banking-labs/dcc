@@ -21,21 +21,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     tenant-claim: tenant
  *     roles-claim: roles
  *     permit-paths: [...]
- *     # Logical authority names, referenced from @PreAuthorize as
- *     # @dccAuthorities.admin / .approver / .user — no literals in code.
- *     authorities:
- *       admin: DCC_ADMIN
- *       approver: DCC_APPROVER
- *       user: DCC_USER
- *     # Optional expansion of a JWT role into one or more authorities.
- *     # A role with no entry is used verbatim as its own authority while
- *     # roles-passthrough is on; with it off an unmapped role confers nothing.
- *     roles-passthrough: true
- *     role-authorities:
- *       editor: [DCC_USER]
  *     # Role -> permission-point bundle (ADR 0005). Bundles are the supported way to
  *     # shape a role: endpoints check permission points (@perms.*), never role names.
- *     # Defaults ship the five-role model plus legacy DCC_ADMIN/DCC_APPROVER/DCC_USER.
+ *     # An unknown role confers nothing. Defaults ship the six-role model.
  *     role-bundles:
  *       DCC_MAINTAINERS: [DCC_MAINTAINER]
  *     # Permission point -> authority string. Empty means "the name is the authority".
@@ -77,23 +65,6 @@ public class DccSecurityProperties {
             "/swagger-ui.html");
 
     /**
-     * Logical authority name -&gt; actual authority string. Controllers reference the
-     * logical names (e.g. {@code @dccAuthorities.admin}) so no authority literal is
-     * hard-coded. Defaults preserve the historical {@code DCC_*} names.
-     */
-    private Map<String, String> authorities = new LinkedHashMap<>(Map.of(
-            "admin", "DCC_ADMIN",
-            "approver", "DCC_APPROVER",
-            "user", "DCC_USER"));
-
-    /**
-     * Optional JWT role -&gt; authorities expansion. A role not present here is used
-     * verbatim as its own authority when {@link #rolesPassthrough} is on (the
-     * historical behaviour); otherwise an unmapped role confers nothing.
-     */
-    private Map<String, List<String>> roleAuthorities = new LinkedHashMap<>();
-
-    /**
      * Permission point -&gt; authority string. An absent entry means the permission name
      * <em>is</em> the authority, so {@code @perms.artifactWrite} resolves to
      * {@code artifact.write} unless a deployment remaps it to its IdP's vocabulary.
@@ -103,10 +74,8 @@ public class DccSecurityProperties {
     /**
      * Role -&gt; permission points (ADR 0005). A role lists the permission names declared in
      * {@link DccPermissions}; {@link ConfigRolePermissionResolver} expands them, mapped through
-     * {@link #permissions}, and unions the result with {@link #roleAuthorities} and (when
-     * passthrough is on) the role name itself. The shipped defaults carry both the five-role
-     * model and the legacy {@code DCC_ADMIN} / {@code DCC_APPROVER} / {@code DCC_USER} names, so
-     * an upgrade keeps working while a deployment migrates its identity provider groups.
+     * {@link #permissions}. Only roles declared here confer permissions; an unknown role confers
+     * nothing. The shipped defaults carry the six-role model.
      */
     private Map<String, List<String>> roleBundles = new LinkedHashMap<>();
 
@@ -116,8 +85,9 @@ public class DccSecurityProperties {
      *
      * <p>Deliberately "configure or take defaults" rather than "merge with defaults": Spring Boot's
      * map binder mutates the existing map, so a pre-populated default would silently survive an
-     * explicit {@code role-bundles} block — and a deployment must be able to drop the legacy hats
-     * (notably when {@code resolver-mode=database}).
+     * explicit {@code role-bundles} block. Returning the shipped defaults only when the configured
+     * map is empty lets a deployment replace them wholesale (notably for
+     * {@code resolver-mode=database}).
      */
     public Map<String, List<String>> effectiveRoleBundles() {
         return roleBundles.isEmpty() ? defaultRoleBundles() : roleBundles;
@@ -143,26 +113,15 @@ public class DccSecurityProperties {
      * written and audited immediately but confers nothing until a <em>different</em> subject confirms
      * it, so no single administrator can create a platform or tenant administrator.
      *
-     * <p>The legacy {@code DCC_ADMIN} hat is on the list too: its bundle is a superset of every other
-     * role, so leaving it out would make the invariant one config string away from being false.
      */
-    private List<String> dualControlRoles = List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN", "DCC_ADMIN");
+    private List<String> dualControlRoles = List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN");
 
     /**
-     * How roles become authorities: {@code config} (default) uses {@link #roleBundles} and
-     * {@link #roleAuthorities}; {@code database} makes the platform-level {@code role_permission}
-     * table the only authority (ADR 0005 §D8). See {@code GrantPolicy} for the closed-vocabulary
-     * consequence on granting.
+     * How roles become authorities: {@code config} (default) uses {@link #roleBundles};
+     * {@code database} makes the platform-level {@code role_permission} table the only authority
+     * (ADR 0005 §D8). See {@code GrantPolicy} for the closed-vocabulary consequence on granting.
      */
     private String resolverMode = "config";
-
-    /**
-     * Whether an unmapped JWT role becomes its own authority. Keep {@code true} only
-     * where the issuer already emits the logical authority names. Set {@code false}
-     * when roles follow an IdP naming scheme and only {@link #roleAuthorities}
-     * entries are allowed to confer power (recommended for JWKS/OIDC deployments).
-     */
-    private boolean rolesPassthrough = true;
 
     /**
      * Directory-backed identity governance. When on, a verified token is additionally
@@ -221,22 +180,6 @@ public class DccSecurityProperties {
         this.permitPaths = permitPaths;
     }
 
-    public Map<String, String> getAuthorities() {
-        return authorities;
-    }
-
-    public void setAuthorities(Map<String, String> authorities) {
-        this.authorities = authorities;
-    }
-
-    public Map<String, List<String>> getRoleAuthorities() {
-        return roleAuthorities;
-    }
-
-    public void setRoleAuthorities(Map<String, List<String>> roleAuthorities) {
-        this.roleAuthorities = roleAuthorities;
-    }
-
     public Map<String, String> getPermissions() {
         return permissions;
     }
@@ -283,14 +226,6 @@ public class DccSecurityProperties {
 
     public void setResolverMode(String resolverMode) {
         this.resolverMode = resolverMode;
-    }
-
-    public boolean isRolesPassthrough() {
-        return rolesPassthrough;
-    }
-
-    public void setRolesPassthrough(boolean rolesPassthrough) {
-        this.rolesPassthrough = rolesPassthrough;
     }
 
     public boolean isDirectoryMode() {
@@ -371,7 +306,7 @@ public class DccSecurityProperties {
     }
 
     /** Every permission point declared by {@link DccPermissions} (ADR 0005 §D8). */
-    private static final List<String> ALL_PERMISSIONS = List.of(
+    private static final List<String> PERMISSION_NAMES = List.of(
             "artifact.read", "artifact.write", "artifact.delete", "artifact.restore",
             "artifact.transition", "migration.write", "migration.approve", "migration.execute",
             "generation.read", "generation.package", "topology.read", "topology.write",
@@ -381,12 +316,11 @@ public class DccSecurityProperties {
 
     /** @return the declared permission-point catalog (ADR 0005 §D8). */
     public static List<String> permissionNames() {
-        return ALL_PERMISSIONS;
+        return PERMISSION_NAMES;
     }
 
     /**
-     * The shipped role bundles: the five-role model (ADR 0005 §D9) plus the legacy names
-     * (§D10) so an untouched deployment behaves exactly as before.
+     * The shipped role bundles: the six-role model (ADR 0005 §D9). Unknown roles confer nothing.
      */
     private static Map<String, List<String>> defaultRoleBundles() {
         List<String> reader = List.of("artifact.read", "generation.read", "topology.read");
@@ -406,12 +340,6 @@ public class DccSecurityProperties {
                 "case.read", "case.adopt"));
         bundles.put("DCC_PLATFORM_ADMIN", List.of("tenant.admit", "directory.read",
                 "directory.write.platform", "audit.platform", "case.write", "case.read"));
-        // Legacy hat: today's administrator did everything, including reading and editing.
-        bundles.put("DCC_ADMIN", ALL_PERMISSIONS);
-        // Legacy hat: today DCC_USER was the baseline and could write the data plane.
-        // Deliberately without tenant.admit / directory.* / audit.* (ADR 0005 §D10).
-        bundles.put("DCC_USER", union(reader, "artifact.write", "artifact.delete",
-                "migration.write", "topology.write"));
         return bundles;
     }
 

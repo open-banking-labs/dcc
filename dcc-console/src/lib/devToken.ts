@@ -25,15 +25,20 @@ export interface DevIdentity {
 export const DEFAULT_IDENTITY: DevIdentity = {
   sub: 'local-dev',
   tenant: 'default_tenant',
-  roles: [AUTHORITY.user, AUTHORITY.admin, AUTHORITY.approver],
+  roles: [AUTHORITY.tenantAdmin],
   hours: 8,
 }
 
 export const ROLE_OPTIONS = [
-  { value: AUTHORITY.admin, label: '管理员 (DCC_ADMIN)' },
+  { value: AUTHORITY.platformAdmin, label: '系统管理员 (DCC_PLATFORM_ADMIN)' },
+  { value: AUTHORITY.tenantAdmin, label: '租户管理员 (DCC_TENANT_ADMIN)' },
+  { value: AUTHORITY.envAdmin, label: '环境管理员 (DCC_ENV_ADMIN)' },
+  { value: AUTHORITY.maintainer, label: '维护者 (DCC_MAINTAINER)' },
   { value: AUTHORITY.approver, label: '审批人 (DCC_APPROVER)' },
-  { value: AUTHORITY.user, label: '普通用户 (DCC_USER)' },
+  { value: AUTHORITY.reader, label: '读者 (DCC_READER)' },
 ]
+
+const KNOWN_ROLES = new Set<string>(ROLE_OPTIONS.map((option) => option.value))
 
 /** 上次登录的身份（预填表单）；损坏则忽略。 */
 export function loadSavedIdentity(): DevIdentity {
@@ -41,10 +46,13 @@ export function loadSavedIdentity(): DevIdentity {
     const raw = localStorage.getItem(DEV_IDENTITY_KEY)
     if (!raw) return DEFAULT_IDENTITY
     const saved = JSON.parse(raw) as Partial<DevIdentity>
+    const roles = Array.isArray(saved.roles)
+      ? saved.roles.filter((role): role is string => typeof role === 'string' && KNOWN_ROLES.has(role))
+      : []
     return {
       sub: saved.sub ?? DEFAULT_IDENTITY.sub,
       tenant: saved.tenant ?? DEFAULT_IDENTITY.tenant,
-      roles: Array.isArray(saved.roles) && saved.roles.length > 0 ? saved.roles : DEFAULT_IDENTITY.roles,
+      roles: roles.length > 0 ? roles : DEFAULT_IDENTITY.roles,
       hours: saved.hours ?? DEFAULT_IDENTITY.hours,
     }
   } catch {

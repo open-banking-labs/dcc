@@ -29,9 +29,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * {@code dcc.security.permit-paths} stay open (health, API docs); everything else
  * requires a valid token. Method-level authorization ({@code @PreAuthorize}) is
  * enabled so finer, domain-aware rules live next to the code they guard; the
- * required authorities are named in config and referenced as
- * {@code @dccAuthorities.*} so no authority literal is hard-coded. CORS is applied
- * only when {@code dcc.security.cors.allowed-origins} is set.
+ * required authorities are permission points referenced through {@code @perms.*}
+ * so no authority literal is hard-coded. CORS is applied only when
+ * {@code dcc.security.cors.allowed-origins} is set.
  *
  * <p>Discovered by the applications' component scan (package
  * {@code cn.org.openbanking.dcc.security}).

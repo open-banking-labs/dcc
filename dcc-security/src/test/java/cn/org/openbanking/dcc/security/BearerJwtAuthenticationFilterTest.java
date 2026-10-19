@@ -63,7 +63,7 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void validTokenEstablishesIdentityAndTenant() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + sign("alice", "tenant-a", List.of("ROLE_EDITOR")));
+        request.addHeader("Authorization", "Bearer " + sign("alice", "tenant-a", List.of("DCC_READER")));
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean chained = new AtomicBoolean(false);
 
@@ -80,8 +80,8 @@ class BearerJwtAuthenticationFilterTest {
     }
 
     @Test
-    void roleMappingExpandsAuthorities() throws Exception {
-        properties.getRoleAuthorities().put("ROLE_EDITOR", List.of("DCC_APPROVER"));
+    void roleBundlesExpandAuthorities() throws Exception {
+        properties.getRoleBundles().put("ROLE_EDITOR", List.of("migration.approve"));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer " + sign("bob", "tenant-b", List.of("ROLE_EDITOR")));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -89,7 +89,7 @@ class BearerJwtAuthenticationFilterTest {
         filter.doFilter(request, response, (req, res) -> assertThat(
                 SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority).toList())
-                .containsExactly("DCC_APPROVER"));
+                .containsExactly("migration.approve"));
     }
 
     @Test
@@ -135,7 +135,7 @@ class BearerJwtAuthenticationFilterTest {
             public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
                     String scopeCode, Long targetId) {
                 return "ENVIRONMENT".equals(scopeType) && "DEV".equals(scopeCode)
-                        && Long.valueOf(7).equals(targetId) ? Set.of("OPS_ADMIN") : Set.of();
+                        && Long.valueOf(7).equals(targetId) ? Set.of("DCC_APPROVER") : Set.of();
             }
         };
         BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
@@ -149,7 +149,7 @@ class BearerJwtAuthenticationFilterTest {
         scopedFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> assertThat(
                 SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority).toList())
-                .contains("OPS_ADMIN"));
+                .contains("artifact.transition"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class BearerJwtAuthenticationFilterTest {
             @Override
             public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
                     String scopeCode, Long targetId) {
-                return Set.of("OPS_ADMIN");
+                return Set.of("DCC_APPROVER");
             }
         };
         BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
@@ -200,7 +200,7 @@ class BearerJwtAuthenticationFilterTest {
             @Override
             public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
                     String scopeCode, Long targetId) {
-                return Set.of("OPS_ADMIN");
+                return Set.of("DCC_APPROVER");
             }
         };
         BearerJwtAuthenticationFilter scopedFilter = new BearerJwtAuthenticationFilter(decoder, properties,
@@ -229,16 +229,16 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void breakGlassGrantsTheConfiguredPermissionsOnlyWithAReason() throws Exception {
         MockHttpServletRequest withReason = new MockHttpServletRequest();
-        withReason.addHeader("Authorization", "Bearer " + sign("ops", "tenant-a", List.of("ROLE_NONE")));
+        withReason.addHeader("Authorization", "Bearer " + sign("ops", "tenant-a", List.of("DCC_READER")));
         withReason.addHeader("X-DCC-Change-Reason", "incident 4711");
 
         breakGlassFilter("ops", "artifact.transition").doFilter(withReason, new MockHttpServletResponse(),
                 (req, res) -> assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                         .stream().map(GrantedAuthority::getAuthority).toList())
-                        .contains("artifact.transition", "ROLE_NONE"));
+                        .contains("artifact.transition", "artifact.read"));
 
         MockHttpServletRequest withoutReason = new MockHttpServletRequest();
-        withoutReason.addHeader("Authorization", "Bearer " + sign("ops", "tenant-a", List.of("ROLE_NONE")));
+        withoutReason.addHeader("Authorization", "Bearer " + sign("ops", "tenant-a", List.of("DCC_READER")));
 
         SecurityContextHolder.clearContext();
         breakGlassFilter("ops", "artifact.transition").doFilter(withoutReason, new MockHttpServletResponse(),
@@ -250,7 +250,7 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void breakGlassDoesNotApplyToOtherSubjects() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + sign("someone-else", "tenant-a", List.of("ROLE_NONE")));
+        request.addHeader("Authorization", "Bearer " + sign("someone-else", "tenant-a", List.of("DCC_READER")));
         request.addHeader("X-DCC-Change-Reason", "incident 4711");
 
         breakGlassFilter("ops", "artifact.transition").doFilter(request, new MockHttpServletResponse(),
@@ -285,7 +285,7 @@ class BearerJwtAuthenticationFilterTest {
 
     // ------------------------------------------------------------------ directory mode
 
-    /** Fake policy: only charlie is a member of tenant-a, granted OPS_ADMIN there. */
+    /** Fake policy: only charlie is a member of tenant-a, granted DCC_APPROVER there. */
     private DirectoryAccessPolicy policy() {
         return new DirectoryAccessPolicy() {
             @Override
@@ -296,7 +296,7 @@ class BearerJwtAuthenticationFilterTest {
             @Override
             public Set<String> assignedRoles(String subject, String tenantId) {
                 return "charlie".equals(subject) && "tenant-a".equals(tenantId)
-                        ? Set.of("OPS_ADMIN")
+                        ? Set.of("DCC_APPROVER")
                         : Set.of();
             }
 
@@ -329,7 +329,7 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void directoryModeUnionsAssignedRolesWithClaimRoles() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + sign("charlie", "tenant-a", List.of("ROLE_EDITOR")));
+        request.addHeader("Authorization", "Bearer " + sign("charlie", "tenant-a", List.of("DCC_MAINTAINER")));
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean chained = new AtomicBoolean(false);
 
@@ -337,7 +337,7 @@ class BearerJwtAuthenticationFilterTest {
             chained.set(true);
             assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority).toList())
-                    .containsExactlyInAnyOrder("OPS_ADMIN", "ROLE_EDITOR");
+                    .contains("artifact.write", "artifact.transition");
             assertThat(TenantContext.get()).isEqualTo("tenant-a");
         });
 
@@ -347,13 +347,13 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void directoryModeRejectsSubjectsWithNoMembership() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + sign("eve", "tenant-a", List.of("DCC_ADMIN", "ROLE_EDITOR")));
+        request.addHeader("Authorization", "Bearer " + sign("eve", "tenant-a", List.of("DCC_PLATFORM_ADMIN")));
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean chained = new AtomicBoolean(false);
 
         directoryModeFilter().doFilter(request, response, (req, res) -> chained.set(true));
 
-        // even a claim-level DCC_ADMIN role cannot buy directory membership
+        // even a claim-level DCC_PLATFORM_ADMIN role cannot buy directory membership
         assertThat(chained).isFalse();
         assertThat(response.getStatus()).isEqualTo(403);
         assertThat(response.getContentAsString()).contains("not_a_directory_member");
@@ -363,7 +363,7 @@ class BearerJwtAuthenticationFilterTest {
     @Test
     void directoryModeRequiresTheTenantClaim() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + signWithoutTenant("charlie", List.of("DCC_ADMIN")));
+        request.addHeader("Authorization", "Bearer " + signWithoutTenant("charlie", List.of("DCC_PLATFORM_ADMIN")));
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean chained = new AtomicBoolean(false);
 

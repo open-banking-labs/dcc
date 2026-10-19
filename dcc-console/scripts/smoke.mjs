@@ -17,7 +17,7 @@ function mintToken() {
   const payload = {
     sub: 'smoke',
     tenant: TENANT,
-    roles: ['DCC_USER', 'DCC_ADMIN', 'DCC_APPROVER'],
+    roles: ['DCC_TENANT_ADMIN', 'DCC_MAINTAINER', 'DCC_APPROVER'],
     iat: now,
     exp: now + 3600,
   }

@@ -35,7 +35,7 @@ class RoleAssignmentServiceTest {
     private final RoleAssignmentService service =
             new RoleAssignmentService(assignments, tenants, environments, applications,
                     new ChangeContext(new TenantProperties()),
-                    List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN", "DCC_ADMIN"));
+                    List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN"));
 
     @Test
     void createGrantsARoleForAnActiveTenant() {
@@ -43,11 +43,11 @@ class RoleAssignmentServiceTest {
         when(assignments.saveAndFlush(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0, RoleAssignment.class));
 
-        var view = service.create(new RoleAssignmentService.CreateCommand("user-1", "t-a", "DCC_ADMIN"));
+        var view = service.create(new RoleAssignmentService.CreateCommand("user-1", "t-a", "DCC_MAINTAINER"));
 
         assertThat(view.subject()).isEqualTo("user-1");
         assertThat(view.tenantCode()).isEqualTo("t-a");
-        assertThat(view.role()).isEqualTo("DCC_ADMIN");
+        assertThat(view.role()).isEqualTo("DCC_MAINTAINER");
         assertThat(view.scopeType()).isEqualTo(ScopeType.TENANT);
         assertThat(view.scopeCode()).isNull();
     }
@@ -60,7 +60,7 @@ class RoleAssignmentServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0, RoleAssignment.class));
 
         var view = service.create(new RoleAssignmentService.CreateCommand(
-                "user-1", "t-a", "DCC_ADMIN", ScopeType.ENVIRONMENT, " DEV "));
+                "user-1", "t-a", "DCC_ENV_ADMIN", ScopeType.ENVIRONMENT, " DEV "));
 
         assertThat(view.scopeType()).isEqualTo(ScopeType.ENVIRONMENT);
         assertThat(view.scopeCode()).isEqualTo("DEV");
@@ -71,13 +71,14 @@ class RoleAssignmentServiceTest {
         when(tenants.existsByCodeAndEnabledTrue("t-a")).thenReturn(true);
         when(assignments.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
 
-        assertThatThrownBy(() -> service.create(new RoleAssignmentService.CreateCommand("user-1", "t-a", "DCC_ADMIN")))
+        assertThatThrownBy(() -> service.create(
+                new RoleAssignmentService.CreateCommand("user-1", "t-a", "DCC_MAINTAINER")))
                 .isInstanceOf(ConflictException.class);
     }
 
     @Test
     void deleteMarksTheRowDeletedInsteadOfRemovingIt() {
-        RoleAssignment assignment = new RoleAssignment("user-1", "t-a", "DCC_ADMIN");
+        RoleAssignment assignment = new RoleAssignment("user-1", "t-a", "DCC_MAINTAINER");
         when(assignments.findById(3L)).thenReturn(Optional.of(assignment));
 
         service.delete(3L);
@@ -94,7 +95,7 @@ class RoleAssignmentServiceTest {
 
     @Test
     void restoreConflictsWhenALiveTripleExists() {
-        RoleAssignment assignment = new RoleAssignment("user-1", "t-a", "DCC_ADMIN");
+        RoleAssignment assignment = new RoleAssignment("user-1", "t-a", "DCC_MAINTAINER");
         assignment.markDeleted("system", "revoke");
         when(assignments.findByIdIncludingDeleted(3L)).thenReturn(Optional.of(assignment));
         org.mockito.Mockito.doThrow(new DataIntegrityViolationException("live duplicate"))

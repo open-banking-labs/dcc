@@ -1,7 +1,9 @@
-# ADR 0005: 三层租户与权限点模型（五角色）
+# ADR 0005: 三层租户与权限点模型（六角色）
 
 - Status: Accepted
 - Date: 2026-10-20
+- Revised: 2026-10-19 — 删除全部旧权限体系，不保留兼容层（`DCC_ADMIN` / `DCC_USER`、
+  `role-authorities`、`roles-passthrough`、`DccAuthorities` 均移除）
 - Supersedes: 无（扩展 ADR 0003 / 0004）
 - Depends on: ADR 0002（保留期与审计）、ADR 0003（授权目录）、ADR 0004（scoped grants）
 
@@ -53,17 +55,18 @@
 **只发给系统管理员的权限点**来表达：没有 `tenant.admit` 就进不了平台端点，tenant claim 仍然
 是每个请求的上下文。这样平台隔离由权限收敛获得，而不是由新的作用域机制获得。
 
-### D2 五个角色
+### D2 六个角色
 
 | 角色 | authority（默认值，可配置） | 作用域 |
 |------|------------------------------|--------|
 | 读者 | `DCC_READER` | 租户内 |
 | 维护者 | `DCC_MAINTAINER` | 租户内 |
 | 审批者 | `DCC_APPROVER` | 租户内 |
+| 环境管理员 | `DCC_ENV_ADMIN` | 单个环境 / 应用（必须带 scope） |
 | 租户管理员 | `DCC_TENANT_ADMIN` | 单租户 |
 | 系统管理员 | `DCC_PLATFORM_ADMIN` | 平台全局 |
 
-角色是**权限包**，端点判定的是**权限点**（D3）。五个角色之间非层叠：系统管理员不是任何角色
+角色是**权限包**，端点判定的是**权限点**（D3）。六个角色之间非层叠：系统管理员不是任何角色
 的超集，租户管理员不持有维护/审批权限。
 
 ### D3 端点判权限点，角色是权限包
@@ -71,9 +74,9 @@
 - 权限点是可配置的 authority 字符串，由 `DccPermissions`（bean 名 `@perms`）暴露，
   代码中写作 `@PreAuthorize("hasAuthority(@perms.artifactWrite)")`。
 - 角色 → 权限包的展开复用既有接缝 `RolePermissionResolver`：新增
-  `dcc.security.role-bundles.<role>: [perm, ...]`，与 `role-authorities` 求并集。
-- `DccAuthorities` 保留（`admin/approver/user` 三个 getter 继续返回旧字面量），避免删除库模块
-  的公开 API；但业务注解不再引用它。
+  `dcc.security.role-bundles.<role>: [perm, ...]`。没有 bundle 的角色**不赋予任何权限**。
+- 旧 authority 词表与兼容入口全部删除：不存在 `DccAuthorities`、`role-authorities` 或
+  `roles-passthrough`。旧 token 中的 `DCC_ADMIN` / `DCC_USER` 只作为普通未知字符串被忽略。
 
 ### D4 职责分离（四眼）
 
@@ -149,35 +152,30 @@
 | 读者 | `artifact.read` `generation.read` `topology.read` |
 | 维护者 | 读者 + `artifact.write` `artifact.delete` `migration.write` `generation.package` |
 | 审批者 | 读者 + `artifact.transition` `migration.approve` |
+| 环境管理员 | 读者 + `artifact.write` `artifact.delete` `migration.write` `migration.execute` `generation.package` |
 | 租户管理员 | 读者 + `artifact.restore` `migration.execute` `topology.write` `directory.read` `directory.write` `audit.business` `case.read` `case.adopt` |
-| 系统管理员 | `tenant.admit` `directory.read` `directory.write.platform` `audit.platform` `case.write` |
+| 系统管理员 | `tenant.admit` `directory.read` `directory.write.platform` `audit.platform` `case.write` `case.read` |
 
 系统管理员**不含** `artifact.read`：平台管理员看不到任何租户业务内容。
 
-### D10 兼容与升级（重要）
+### D10 升级：旧体系完全删除
 
-`role-bundles` 的默认值同时包含 legacy 三顶帽子，保证升级后不瘫痪：
+本版本**不提供兼容层**。`DCC_ADMIN`、`DCC_USER`、`role-authorities`、
+`roles-passthrough` 与 `DccAuthorities` 已从代码和默认配置中删除；携带旧角色的 token
+或目录行不产生任何权限。升级时必须把 IdP 组和存量目录授权迁移到下列角色名：
 
-| legacy 角色 | 默认权限包 |
-|-------------|-----------|
-| `DCC_ADMIN` | 全部权限（legacy 超级用户，等价于今天） |
-| `DCC_APPROVER` | 审批者权限包 |
-| `DCC_USER` | 读者 + `artifact.write` `artifact.delete` `migration.write` `topology.write`（复刻今天的事实行为） |
+| 角色 | 说明 |
+|------|------|
+| `DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` | 数据面读写与审批 |
+| `DCC_ENV_ADMIN` | 单环境 / 应用的数据面管理，必须带 scope |
+| `DCC_TENANT_ADMIN` | 本租户的环境、应用、目录、审计与执行 |
+| `DCC_PLATFORM_ADMIN` | 平台准入、平台审计、案例维护；无业务数据权限 |
 
-两处**故意的不兼容**，必须在发布说明中标注：
-
-1. `DCC_USER` 的 legacy 权限包**不含** `tenant.admit` —— 今天"任何登录用户可建租户"是缺陷，
-   复刻它等于不修。
-2. `roles-passthrough: true` 的生产部署必须改为 `false` 并显式映射 IdP 组，否则 claim 中任何
-   字符串都直接成为权限点（含 `artifact.write`）。启动时若检测到"passthrough 开启 + 未配置任何
-   `role-bundles`/`role-authorities`"则打印告警。
-
-生产建议配置（等价于目标模型，无 legacy 面）：
+IdP 组应显式映射到角色（未知角色不会自动成为权限）：
 
 ```yaml
 dcc:
   security:
-    roles-passthrough: false
     role-bundles:
       DCC_OPS_ADMINS: [DCC_PLATFORM_ADMIN]   # IdP 组 → 角色
       DCC_PLATFORM_ADMINS: [DCC_PLATFORM_ADMIN]
@@ -191,7 +189,7 @@ dcc:
 
 作用域标记：**P** = 平台（权限点只发平台管理员），**T** = 租户内。
 
-| 端点 | 现状 | 目标权限点 | 作用域 |
+| 端点 | 旧实现 | 目标权限点 | 作用域 |
 |------|------|-----------|--------|
 | `POST /api/tenants` | 无 | `tenant.admit` | P |
 | `GET /api/tenants`（全量） | 无 | `tenant.admit` | P |
@@ -201,19 +199,19 @@ dcc:
 | `GET /api/environments*` | 无 | `topology.read` | T |
 | `/api/applications` 写 / 读 | 无 | `topology.write` / `topology.read` | T |
 | `POST/PUT/rollback/import /api/{standards,tables,interfaces,templates}` | 无 | `artifact.write` | T |
-| `DELETE` 同上 | `@dccAuthorities.admin` | `artifact.delete` | T |
-| `POST /restore` 同上 | `@dccAuthorities.admin` | `artifact.restore` | T |
-| `POST /status` 同上 | `@dccAuthorities.approver` | `artifact.transition` | T |
+| `DELETE` 同上 | 旧 admin authority | `artifact.delete` | T |
+| `POST /restore` 同上 | 旧 admin authority | `artifact.restore` | T |
+| `POST /status` 同上 | 旧 approver authority | `artifact.transition` | T |
 | `GET` 同上（含 history/diff/verify/references/export） | 无 | `artifact.read` | T |
 | `POST /api/migrations`、`/submit` | 无 | `migration.write` | T |
-| `/approve`、`/reject` | `@dccAuthorities.approver` | `migration.approve` | T |
+| `/approve`、`/reject` | 旧 approver authority | `migration.approve` | T |
 | `/execute`、`/rollback` | 无 | `migration.execute` | T |
 | `GET /api/migrations*` | 无 | `artifact.read` | T |
-| `GET /api/audit*` | `@dccAuthorities.admin` | `audit.business` | T |
+| `GET /api/audit*` | 旧 admin authority | `audit.business` | T |
 | `GET /api/platform/audit`（新增） | — | `audit.platform` | P |
-| `/api/directory/*` 读写（既有） | `@dccAuthorities.admin` | `directory.read` / `directory.write.platform` | P |
+| `/api/directory/*` 读写（既有） | 旧 admin authority | `directory.read` / `directory.write.platform` | P |
 | `/api/memberships`、`/api/role-assignments`（新增） | — | `directory.write`（租户强制） | T |
-| `/api/directory/my-memberships` | `@dccAuthorities.user` | `directory.read` | T |
+| `/api/directory/my-memberships` | 旧 user authority | `directory.read` | T |
 | `/api/cases` 读写（新增） | — | `case.read` / `case.write` | P/T |
 | `POST /api/cases/{id}/adopt`（新增） | — | `case.adopt` | T |
 | `/api/generation/{validation,dto,openapi}` | 无 | `generation.read` | T |
@@ -222,7 +220,7 @@ dcc:
 | `/cli/v1/{hash,diff,bump,validate,drift}` | 无 | `artifact.read` | T |
 | `/cli/v1/export/*` | 无 | `generation.package` | T |
 | `/cli/v1/audit/*` | 无 | `audit.business` | T |
-| `/cli/v1/restore` | `@dccAuthorities.admin` | `artifact.restore` | T |
+| `/cli/v1/restore` | 旧 admin authority | `artifact.restore` | T |
 | MCP 读工具（含 `dcc-audit-*`） | 无 | `artifact.read` / `audit.business` | T |
 | MCP `generate-*` | 无 | `generation.read` | T |
 | `GET /api/me`（新增） | — | 认证即可 | T |
@@ -245,10 +243,10 @@ dcc:
 5. **平台作用域不引入新机制。** 初稿想在 filter 里区分"平台身份/租户身份"（不要求 tenant
    claim）。放弃：新增第二种身份语义会污染 `TenantContext` 与所有 `AbstractTenantController`
    子类；改用"平台权限点只发给系统管理员"，隔离效果等同、改动面小一个数量级。
-6. **`DccAuthorities` 不删只弃用。** `dcc-security` 是库模块，被 embedder 直接依赖；删三个
-   getter 是破坏性变更。保留 API，业务注解改用 `@perms`。
-7. **`DCC_USER` 的 legacy 包故意不完整。** "等价旧行为"原则（AGENTS.md）要求默认值复刻旧行为，
-   但"任何登录用户可建租户"本身是要修的缺陷，因此不复刻，并在 ADR 与发布说明中显式标注。
+6. **旧权限 API 最终删除（修订）。** 本轮明确不保留兼容层：`DccAuthorities`、
+   `role-authorities`、`roles-passthrough` 全部删除；业务注解只使用 `@perms`。
+7. **`DCC_USER` / `DCC_ADMIN` 最终删除（修订）。** 两者不再出现在默认 bundle 中，旧 token
+   携带它们也不会获得任何权限。
 8. **`/api/tenants/{code}` 放宽为"平台 or 本租户"。** 初稿要求 `tenant.admit`，会让租户管理员
    读不到自己租户的名称/描述，前端会缺数据。
 9. **MCP 的 `@PreAuthorize` 先验证再依赖。** MCP 工具由 Spring AI 反射调用，是否经过 AOP
@@ -277,7 +275,7 @@ dcc:
 
 - 端点从"判 3 个角色"变成"判 21 个权限点"，新增角色只改配置，不改控制器。
 - 平台与租户的破坏半径分离：系统管理员看不到任何业务数据，租户管理员出不了自己的租户。
-- 升级必须配套"角色映射表 + 存量重授权"，否则 `DCC_USER` 之外的老账号会失去写权限。
+- 升级必须配套"角色映射表 + 存量重授权"；旧角色不会自动迁移，也不会再获得任何权限。
 - 生产环境至少需要两个自然人持有审批权，否则四眼会导致死锁（部署前置条件）。
 - 端点数 × 表面数（web/cli/mcp）的判定面显著增加，必须用参数化 allow/deny 矩阵测试兜底，
   否则下一次新增端点会重新引入第 1 类缺陷。
@@ -338,8 +336,8 @@ dcc:
   重新提交一次即补齐；新单不受影响。迁移脚本已注明。
 - **四眼在"无绑定调用者"时放行**：系统作业/种子数据没有第二个自然人可比。真实请求一定经过
   `ChangeContextFilter`（dcc-web / dcc-mcp 均已注册），因此这条只对程序化流程生效。
-- **`role-bundles` 与默认值合并**：Spring Boot 对 Map 属性是合并而非替换，所以要彻底去掉 legacy
-  `DCC_ADMIN` 必须显式覆盖该键（例如 `role-bundles.DCC_ADMIN: []`）。已在 `configuration.md` 说明。
+- **`role-bundles` 是"配置或取默认"**：任何显式 `role-bundles` 块都会整体替换出厂默认，
+  避免 Spring Boot 的 Map 合并语义留下未预期的角色。
 
 ## 遗留项（不在本 ADR 内解决）
 
@@ -374,7 +372,7 @@ dcc:
 5. **数据库驱动解析器**：`dcc.security.resolver-mode: config|database`（默认 `config`，行为不变）。
    `database` 时由平台级表 `role_permission(role, permission)` 提供映射，
    `ConfigRolePermissionResolver` 不再注册——表成为唯一权威，未映射的角色一个权限都不给
-   （连 legacy `DCC_ADMIN` 也失效，这正是"闭合词表"的部署想要的）。表的改动同样进审计与保留期。
+   （未映射的角色名一个权限都不给，这正是"闭合词表"的部署想要的）。表的改动同样进审计与保留期。
 
 回归测试：`ScopedApprovalIntegrationTest`（7 个，含范围写/删与环境管理员边界）、
 `BearerJwtAuthenticationFilterTest`（break-glass 三条）、`DualControlIntegrationTest`（2 个）、
@@ -386,9 +384,9 @@ dcc:
 
 | 编号 | 问题 | 处理 |
 |------|------|------|
-| B1 | `dual-control-roles` 漏了 legacy `DCC_ADMIN`，而它的权限包是 `ALL_PERMISSIONS`（包含 `DCC_PLATFORM_ADMIN` 的全部权限）→ 单个平台管理员授一个 `DCC_ADMIN` 就绕过了双人确认 | `DCC_ADMIN` 加入默认 `dual-control-roles` |
+| B1 | 旧 `DCC_ADMIN` 曾绕过双人确认 | 该角色与整套 legacy 兼容层已删除；双人确认只覆盖 `DCC_PLATFORM_ADMIN` / `DCC_TENANT_ADMIN` |
 | B2 | 双人确认是**控制器传参**决定的（`create(command, boolean)`），任何新表面（CLI/MCP/种子）走单参重载都会铸出特权授权 | 判定下沉到 `RoleAssignmentService`：它自己读 `dcc.security.dual-control-roles`，单参重载删除；双人确认成为"授予"这条用例的不变式而非端点选择 |
-| B3 | 平台授权路径没有角色白名单，而 `roles-passthrough: true` 时任意字符串都成 authority → 授权 `"artifact.write"` 可绕过权限包直接注入权限点 | `GrantPolicy.requirePlatformGrant` 现在要求角色名必须定义在 `role-bundles` / `role-authorities` 中（`resolver-mode=database` 时不检查：表才是权威，未映射名不赋权） |
+| B3 | 平台授权路径没有角色白名单，曾允许任意字符串直接成为 authority | `GrantPolicy.requirePlatformGrant` 现在要求角色名必须定义在 `role-bundles` 中（`resolver-mode=database` 时不检查：表才是权威，未映射名不赋权） |
 | B4 | `role-bundles` 的默认值是预填 Map，而 Spring Boot 的 Map 绑定是**合并**语义 → 部署显式配置 `role-bundles` 后 legacy 帽子仍然存活，"database 模式无 legacy 帽子"的承诺不成立 | 改为**配置或取默认**：字段默认空，`effectiveRoleBundles()` 在空时回退到出厂默认；因此任何配置块整体替换默认（并有单测锁定） |
 | S1 | break-glass 权限名拼错会静默不赋权，只有出事时才发现 | `DccPermissions` 构造时校验，未知名称直接 `IllegalStateException`；启用时打一行"break-glass 已开启"的 WARN |
 | S2 | 四眼在"提交人未知"时静默放行 | 改为打 WARN 说明原因（两类：无绑定调用者、提交人未知），不再无声 |

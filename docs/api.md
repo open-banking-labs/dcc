@@ -42,11 +42,12 @@ Authorization is by **permission point**, not by role name (ADR 0005): every han
 `artifact.delete` for the logical delete, `artifact.transition` for publish/return,
 `migration.approve` for a migration approval, `migration.execute` for running an approved one,
 `topology.write` for environments/applications, `tenant.admit` for tenant admission. Roles
-(`DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` / `DCC_TENANT_ADMIN` / `DCC_PLATFORM_ADMIN`)
-are bundles of those points, configured under `dcc.security.role-bundles.*`; the legacy
-`DCC_ADMIN` / `DCC_APPROVER` / `DCC_USER` hats ship as default bundles. A write without the
-required point is `403`, and the four-eyes rule additionally rejects approving a change you
-submitted yourself (`409`). See
+(`DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` / `DCC_ENV_ADMIN` /
+`DCC_TENANT_ADMIN` / `DCC_PLATFORM_ADMIN`)
+are bundles of those points under `dcc.security.role-bundles.*` (plus the scoped
+`DCC_ENV_ADMIN`). Unknown roles confer nothing; the removed `DCC_ADMIN` / `DCC_USER` names are
+inert. A write without the required point is `403`, and the four-eyes rule additionally
+rejects approving a change you submitted yourself (`409`). See
 [decisions/0005-role-model-and-permission-points.md](decisions/0005-role-model-and-permission-points.md).
 
 The **approval gates** are scope-aware: `POST /api/{resource}/{id}/status`,

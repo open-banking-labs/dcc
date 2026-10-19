@@ -27,10 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Use cases for managing the authorization directory (role assignments). An
  * assignment grants one role to a subject inside one tenant; in directory mode it
- * is unioned with the token's claim roles before authority mapping, so deployments
- * can assign IdP role names ({@code dcc.security.role-authorities} maps them) or
- * logical authority names directly. Audited/retained like every other row and
- * managed platform-level (not tenant-scoped).
+ * is unioned with the token's claim roles before bundle expansion, so deployments
+ * assign names declared under {@code dcc.security.role-bundles}. Audited/retained
+ * like every other row and managed platform-level (not tenant-scoped).
  */
 @Service
 @Transactional
@@ -69,7 +68,7 @@ public class RoleAssignmentService {
     public RoleAssignmentService(RoleAssignmentRepository assignments, TenantRepository tenants,
             TenantEnvironmentRepository environments, TenantApplicationRepository applications,
             ChangeContext changeContext,
-            @Value("${dcc.security.dual-control-roles:DCC_PLATFORM_ADMIN,DCC_TENANT_ADMIN,DCC_ADMIN}")
+            @Value("${dcc.security.dual-control-roles:DCC_PLATFORM_ADMIN,DCC_TENANT_ADMIN}")
             List<String> dualControlRoles) {
         this.assignments = assignments;
         this.tenants = tenants;

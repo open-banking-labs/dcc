@@ -33,10 +33,10 @@ export const PERMISSION = {
  * 仅用于本地开发 Token 生成与展示；准入判断请使用 {@link PERMISSION}。
  */
 export const AUTHORITY = {
-  admin: 'DCC_ADMIN',
+  platformAdmin: 'DCC_PLATFORM_ADMIN',
   tenantAdmin: 'DCC_TENANT_ADMIN',
-  approver: 'DCC_APPROVER',
+  envAdmin: 'DCC_ENV_ADMIN',
   maintainer: 'DCC_MAINTAINER',
+  approver: 'DCC_APPROVER',
   reader: 'DCC_READER',
-  user: 'DCC_USER',
 } as const

@@ -16,15 +16,10 @@ import org.springframework.stereotype.Component;
 /**
  * Configuration-driven {@link RolePermissionResolver}.
  *
- * <p>A role contributes, in order:
- * <ol>
- *   <li>the authorities listed under {@code dcc.security.role-authorities} (verbatim), and</li>
- *   <li>the entries of its {@code dcc.security.role-bundles} bundle, where an entry is either
- *       <em>another role</em> (expanded recursively, so an identity-provider group can simply name
- *       a role) or a <em>permission point</em> (mapped through {@code dcc.security.permissions}), and</li>
- *   <li>its own name as an authority when {@code dcc.security.roles-passthrough} is on and the role
- *       is neither mapped nor bundled (the historical behaviour).</li>
- * </ol>
+ * <p>A role contributes only the entries of its {@code dcc.security.role-bundles} bundle. An entry
+ * is either <em>another role</em> (expanded recursively, so an identity-provider group can simply
+ * name a role) or a <em>permission point</em> (mapped through {@code dcc.security.permissions}).
+ * Roles without a bundle confer nothing: there is no pass-through and no implicit authority.
  *
  * <p>Bundles only ever <em>add</em>: the token claim and the authorization directory remain the two
  * sources of roles, and this class decides what a role means.
@@ -48,11 +43,6 @@ public class ConfigRolePermissionResolver implements RolePermissionResolver {
         this.properties = properties;
         this.permissions = permissions;
         validateBundles(properties.effectiveRoleBundles(), permissions.names());
-        if (properties.isRolesPassthrough()) {
-            log.warn("dcc.security.roles-passthrough is on: any JWT role becomes its own authority. "
-                    + "Keep it for local development only; production deployments should set it to "
-                    + "false and map identity-provider groups through dcc.security.role-bundles.");
-        }
     }
 
     @Override
@@ -100,19 +90,11 @@ public class ConfigRolePermissionResolver implements RolePermissionResolver {
      *                instead of looping
      */
     private Set<String> expand(String role, Set<String> visiting) {
-        Map<String, List<String>> mappings = properties.getRoleAuthorities();
         Map<String, List<String>> bundles = properties.effectiveRoleBundles();
-        List<String> mapped = mappings == null ? null : mappings.get(role);
         List<String> bundle = bundles == null ? null : bundles.get(role);
 
         Set<String> authorities = new LinkedHashSet<>();
-        if (mapped != null) {
-            authorities.addAll(mapped);
-        }
         if (bundle == null) {
-            if (mapped == null && properties.isRolesPassthrough()) {
-                authorities.add(role);
-            }
             return authorities;
         }
         if (!visiting.add(role)) {
