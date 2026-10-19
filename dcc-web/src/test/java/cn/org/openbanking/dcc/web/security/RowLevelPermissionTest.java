@@ -28,10 +28,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Verifies row-level permission: privileged operations (here, deleting an artifact)
- * require the DCC_ADMIN authority. Requests carry a real HS256 bearer token so the
- * shared security filter chain runs, exactly as in production. The tenant-scoped row
- * filtering itself is covered by the per-artifact integration tests.
+ * Verifies endpoint authorization: a privileged operation (here, logically deleting an artifact)
+ * requires the {@code artifact.delete} permission point (ADR 0005), not merely an authenticated
+ * caller. Requests carry a real HS256 bearer token so the shared security filter chain runs, exactly
+ * as in production. The tenant-scoped row filtering itself is covered by the per-artifact
+ * integration tests.
  */
 @AutoConfigureMockMvc
 class RowLevelPermissionTest extends AbstractIntegrationTest {
@@ -73,14 +74,15 @@ class RowLevelPermissionTest extends AbstractIntegrationTest {
 
     @Test
     void deleteWithoutAdminAuthorityIsForbidden() throws Exception {
-        mockMvc.perform(delete("/api/tables/999").header("Authorization", "Bearer " + token("DCC_USER")))
+        // DCC_READER is read-only: it carries no artifact.delete permission point
+        mockMvc.perform(delete("/api/tables/999").header("Authorization", "Bearer " + token("DCC_READER")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteWithAdminAuthorityPassesAuthorization() throws Exception {
         // authorised, so the guard passed and we reach the use case: 404 (no such table), not 403
-        mockMvc.perform(delete("/api/tables/999").header("Authorization", "Bearer " + token("DCC_ADMIN")))
+        mockMvc.perform(delete("/api/tables/999").header("Authorization", "Bearer " + token("DCC_MAINTAINER")))
                 .andExpect(status().isNotFound());
     }
 }

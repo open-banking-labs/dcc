@@ -12,6 +12,8 @@ import jakarta.validation.constraints.Size;
 
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
+import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
+import cn.org.openbanking.dcc.application.common.ScopeValidation;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.application.migration.MigrationPolicy;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
@@ -54,23 +56,29 @@ public class DataStandardService {
     private final TenantScope tenantScope;
     private final List<ReferenceChecker> referenceCheckers;
     private final MigrationPolicy migrationPolicy;
+    private final ScopeValidation scopeValidation;
     private final ContentDigest digest;
     private final ChangeContext changeContext;
+    private final SeparationOfDuties separationOfDuties;
 
     public DataStandardService(DataStandardRepository standards,
             DataStandardVersionRepository versions,
             TenantScope tenantScope,
             List<ReferenceChecker> referenceCheckers,
             MigrationPolicy migrationPolicy,
+            ScopeValidation scopeValidation,
             ContentDigest digest,
-            ChangeContext changeContext) {
+            ChangeContext changeContext,
+            SeparationOfDuties separationOfDuties) {
         this.standards = standards;
         this.versions = versions;
         this.tenantScope = tenantScope;
         this.referenceCheckers = referenceCheckers;
         this.migrationPolicy = migrationPolicy;
+        this.scopeValidation = scopeValidation;
         this.digest = digest;
         this.changeContext = changeContext;
+        this.separationOfDuties = separationOfDuties;
     }
 
     // ------------------------------------------------------------------ records
@@ -107,6 +115,7 @@ public class DataStandardService {
 
     public StandardView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
+        scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             validateContent(command.content());
             if (standards.existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
@@ -119,9 +128,11 @@ public class DataStandardService {
             standard = standards.save(standard);
 
             DataStandardVersion version = new DataStandardVersion(standard.getId(), SemVer.INITIAL.value(),
-                    VersionChangeType.MAJOR, command.content(), "initial version");
+                    VersionChangeType.MAJOR, command.content(),
+                    changeContext.messageOr(() -> "initial version"));
             version.setTenantId(tenantId);
-            version.stamp(digest.digest(command.content()), null, changeContext.author(), "initial version");
+            version.stamp(digest.digest(command.content()), null, changeContext.author(),
+                    changeContext.messageOr(() -> "initial version"));
             version = versions.save(version);
 
             standard.pointToVersion(version.getId(), version.getVersion());
@@ -208,6 +219,11 @@ public class DataStandardService {
     public StandardView transition(String tenantId, Long id, StandardStatus target) {
         return tenantScope.call(tenantId, () -> {
             DataStandard standard = requireStandard(tenantId, id);
+            if (target == StandardStatus.PUBLISHED) {
+                separationOfDuties.requireFourEyes(
+                        requireVersion(tenantId, id, standard.getCurrentVersion()).getAuthor(),
+                        "data standard '" + standard.getCode() + "'");
+            }
             standard.transitionTo(target);
             return toView(standard);
         });

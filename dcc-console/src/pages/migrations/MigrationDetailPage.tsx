@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom'
 
 import { migrationsApi } from '@/api/migrations'
 import { KeyValueList } from '@/components/common/KeyValueList'
-import { useHasAuthority } from '@/components/common/PermissionGate'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ErrorState, LoadingState } from '@/components/feedback/StateViews'
 import { useToast } from '@/components/feedback/Toast'
@@ -11,9 +10,10 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { useAsync } from '@/hooks/useAsync'
 import { useResourceContext } from '@/hooks/useResourceContext'
+import { useSession } from '@/auth/session'
 import { dash, formatDateTime } from '@/lib/format'
 import { ARTIFACT_TYPE_LABEL } from '@/lib/labels'
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import type { MigrationStatus } from '@/types'
 
 interface Action {
@@ -24,13 +24,13 @@ interface Action {
 }
 
 const ACTIONS: Record<MigrationStatus, Action[]> = {
-  PENDING_SUBMISSION: [{ key: 'submit', label: '提交' }],
+  PENDING_SUBMISSION: [{ key: 'submit', label: '提交', authority: PERMISSION.migrationWrite }],
   PENDING_APPROVAL: [
-    { key: 'approve', label: '批准', authority: AUTHORITY.approver },
-    { key: 'reject', label: '拒绝', authority: AUTHORITY.approver, variant: 'outline' },
+    { key: 'approve', label: '批准', authority: PERMISSION.migrationApprove },
+    { key: 'reject', label: '拒绝', authority: PERMISSION.migrationApprove, variant: 'outline' },
   ],
-  APPROVED: [{ key: 'execute', label: '执行' }],
-  MIGRATED: [{ key: 'rollback', label: '回滚', variant: 'outline' }],
+  APPROVED: [{ key: 'execute', label: '执行', authority: PERMISSION.migrationExecute }],
+  MIGRATED: [{ key: 'rollback', label: '回滚', authority: PERMISSION.migrationExecute, variant: 'outline' }],
   REJECTED: [],
   ROLLED_BACK: [],
 }
@@ -40,7 +40,9 @@ export function MigrationDetailPage() {
   const numericId = Number(id)
   const toast = useToast()
   const { environments } = useResourceContext()
-  const canApprove = useHasAuthority(AUTHORITY.approver)
+  const session = useSession()
+  const permissions = session.permissions ?? session.roles
+  const canApprove = permissions.includes(PERMISSION.migrationApprove)
 
   const { data: order, loading, error, reload } = useAsync(
     () => migrationsApi.get(numericId),
@@ -81,7 +83,9 @@ export function MigrationDetailPage() {
     return <LoadingState text="暂无数据" />
   }
 
-  const actions = ACTIONS[order.status].filter((action) => !action.authority || canApprove)
+  const actions = ACTIONS[order.status].filter(
+    (action) => !action.authority || permissions.includes(action.authority),
+  )
 
   return (
     <div className="space-y-4 p-6">

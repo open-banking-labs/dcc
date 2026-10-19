@@ -58,6 +58,18 @@ public class AuditService {
     }
 
     /**
+     * @return matching platform-level entries ({@code tenant_id is null}), newest first: tenant
+     * admission, directory grants and reference-case changes. These rows belong to no tenant, so
+     * the tenant-scoped {@link #search} deliberately cannot return them (ADR 0005 §D6).
+     */
+    public Page<AuditView> searchPlatform(String entityType, Long entityId, String actor,
+            AuditAction action, Instant from, Instant to, Pageable pageable) {
+        return auditLog
+                .search(null, entityType, entityId, actor, action, from, to, pageable)
+                .map(AuditService::toView);
+    }
+
+    /**
      * Recomputes the tamper-evident hash chain of one row: every entry's hash must match the
      * hash of its stored canonical form, and every {@code previous_hash} must point at the
      * preceding entry's hash. A missing, reordered or edited entry shows up as a problem.

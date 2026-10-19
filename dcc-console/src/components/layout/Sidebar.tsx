@@ -1,6 +1,7 @@
 import {
   AppWindow,
   ArrowRightLeft,
+  BookMarked,
   BookText,
   Building2,
   History,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 
 import { useSession } from '@/auth/session'
@@ -41,6 +42,7 @@ const NAV: NavSection[] = [
       { to: '/tables', label: '表结构', icon: Table2 },
       { to: '/interfaces', label: '接口', icon: Plug },
       { to: '/templates', label: '接口模板', icon: LayoutTemplate },
+      { to: '/cases', label: '指导案例', icon: BookMarked, authority: PERMISSION.caseRead },
     ],
   },
   {
@@ -60,8 +62,8 @@ const NAV: NavSection[] = [
       { to: '/tenants', label: '租户', icon: Building2 },
       { to: '/environments', label: '环境', icon: Layers },
       { to: '/applications', label: '应用', icon: AppWindow },
-      { to: '/audit', label: '审计日志', icon: History, authority: AUTHORITY.admin },
-      { to: '/directory', label: '授权目录', icon: UserCog, authority: AUTHORITY.admin },
+      { to: '/audit', label: '审计日志', icon: History, authority: PERMISSION.auditBusiness },
+      { to: '/directory', label: '授权目录', icon: UserCog, authority: PERMISSION.directoryWritePlatform },
     ],
   },
 ]

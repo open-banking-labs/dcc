@@ -54,6 +54,25 @@ public class RoleAssignment extends BaseEntity {
     @Column(name = "scope_code", length = 64, updatable = false)
     private String scopeCode;
 
+    /** Subject that created this grant (dual control: the confirmer must be someone else). */
+    @Column(name = "granted_by", length = 128)
+    private String grantedBy;
+
+    /**
+     * Whether this grant confers a privileged role and therefore needs a second person
+     * (ADR 0005 §D10). Stored on the row so the directory policy needs no configuration: it simply
+     * ignores a pending grant.
+     */
+    @Column(name = "confirmation_required", nullable = false)
+    private boolean confirmationRequired;
+
+    /** Second subject that confirmed the grant; {@code null} means still pending. */
+    @Column(name = "confirmed_by", length = 128)
+    private String confirmedBy;
+
+    @Column(name = "confirmed_at")
+    private java.time.Instant confirmedAt;
+
     public RoleAssignment(String subject, String tenantCode, String role) {
         this(subject, tenantCode, role, ScopeType.TENANT, null);
     }
@@ -64,5 +83,16 @@ public class RoleAssignment extends BaseEntity {
         this.role = role;
         this.scopeType = scopeType;
         this.scopeCode = scopeCode;
+    }
+
+    /** @return true when this grant is privileged but not yet confirmed, so it confers nothing. */
+    public boolean isPendingConfirmation() {
+        return confirmationRequired && confirmedBy == null;
+    }
+
+    /** Records the second person's confirmation. */
+    public void confirm(String confirmer, java.time.Instant when) {
+        this.confirmedBy = confirmer;
+        this.confirmedAt = when;
     }
 }

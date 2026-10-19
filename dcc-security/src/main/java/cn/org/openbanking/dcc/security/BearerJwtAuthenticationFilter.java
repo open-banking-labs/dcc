@@ -2,6 +2,7 @@ package cn.org.openbanking.dcc.security;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -49,18 +50,30 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
     private final RolePermissionResolver rolePermissionResolver;
     /** Only populated in directory mode; may be {@code null} otherwise. */
     private final @Nullable DirectoryAccessPolicy directoryPolicy;
+    /** Resolves break-glass permission names; {@code null} means "use the configured literal". */
+    private final @Nullable DccPermissions dccPermissions;
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(BearerJwtAuthenticationFilter.class);
 
     public BearerJwtAuthenticationFilter(JwtDecoder jwtDecoder, DccSecurityProperties properties,
             RolePermissionResolver rolePermissionResolver) {
-        this(jwtDecoder, properties, rolePermissionResolver, null);
+        this(jwtDecoder, properties, rolePermissionResolver, null, null);
     }
 
     public BearerJwtAuthenticationFilter(JwtDecoder jwtDecoder, DccSecurityProperties properties,
             RolePermissionResolver rolePermissionResolver, @Nullable DirectoryAccessPolicy directoryPolicy) {
+        this(jwtDecoder, properties, rolePermissionResolver, directoryPolicy, null);
+    }
+
+    public BearerJwtAuthenticationFilter(JwtDecoder jwtDecoder, DccSecurityProperties properties,
+            RolePermissionResolver rolePermissionResolver, @Nullable DirectoryAccessPolicy directoryPolicy,
+            @Nullable DccPermissions dccPermissions) {
         this.jwtDecoder = jwtDecoder;
         this.properties = properties;
         this.rolePermissionResolver = rolePermissionResolver;
         this.directoryPolicy = directoryPolicy;
+        this.dccPermissions = dccPermissions;
     }
 
     @Override
@@ -100,7 +113,9 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
                 InternalIdentity identity = new InternalIdentity(subject, tenant, roleSet);
-                var authorities = rolePermissionResolver.authoritiesFor(roleSet).stream()
+                Set<String> granted = new LinkedHashSet<>(rolePermissionResolver.authoritiesFor(roleSet));
+                granted.addAll(breakGlassAuthorities(request, subject));
+                var authorities = granted.stream()
                         .map(SimpleGrantedAuthority::new).toList();
                 var authentication = new UsernamePasswordAuthenticationToken(identity, header, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -118,6 +133,34 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    /**
+     * Emergency access (ADR 0005 §D10): a small, configured set of subjects may act one request at a
+     * time with a fixed set of extra permissions — but only if they state a reason.
+     *
+     * <p>Called after the directory membership gate on purpose: break-glass widens what a known
+     * member may do; it never lets an outsider into a tenant.
+     */
+    private Set<String> breakGlassAuthorities(HttpServletRequest request, @Nullable String subject) {
+        DccSecurityProperties.BreakGlass breakGlass = properties.getBreakGlass();
+        if (breakGlass == null || !StringUtils.hasText(subject)
+                || breakGlass.getSubjects() == null || !breakGlass.getSubjects().contains(subject)
+                || breakGlass.getPermissions() == null || breakGlass.getPermissions().isEmpty()) {
+            return Set.of();
+        }
+        String reason = request.getHeader(breakGlass.getReasonHeader());
+        if (!StringUtils.hasText(reason)) {
+            // no stated reason, no emergency: the caller keeps exactly its normal authorities
+            return Set.of();
+        }
+        log.warn("BREAK-GLASS: subject '{}' acts with {} on {} {} — reason: {}", subject,
+                breakGlass.getPermissions(), request.getMethod(), request.getRequestURI(), reason);
+        Set<String> granted = new LinkedHashSet<>();
+        for (String permission : breakGlass.getPermissions()) {
+            granted.add(dccPermissions == null ? permission : dccPermissions.resolve(permission));
+        }
+        return granted;
     }
 
     private static Long requestParameterAsLong(HttpServletRequest request, String name) {

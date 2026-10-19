@@ -12,26 +12,31 @@ import org.springframework.stereotype.Component;
 
 /**
  * MCP tools for generating downstream artifacts. Thin adapters over
- * {@code dcc-application}; the caller's tenant comes from the authenticated context.
+ * {@code dcc-application}; the caller's tenant comes from the authenticated context and the
+ * generation permission is enforced explicitly (ADR 0005).
  */
 @Component
 public class GenerationTool {
 
     private final GenerationService generation;
+    private final McpAuthorizer authorizer;
 
-    public GenerationTool(GenerationService generation) {
+    public GenerationTool(GenerationService generation, McpAuthorizer authorizer) {
         this.generation = generation;
+        this.authorizer = authorizer;
     }
 
     @McpTool(name = "generate-validation",
             description = "Generate Java validation code for a data standard (required/length/regex).")
     public GeneratedSource generateValidation(@McpToolParam(description = "Data standard id") Long standardId) {
+        authorizer.requireGenerationRead();
         return generation.generateValidation(TenantContext.get(), standardId);
     }
 
     @McpTool(name = "generate-dto",
             description = "Generate Java Request/Response DTOs for a business interface.")
     public List<GeneratedSource> generateDto(@McpToolParam(description = "Interface id") Long interfaceId) {
+        authorizer.requireGenerationRead();
         return generation.generateDto(TenantContext.get(), interfaceId);
     }
 
@@ -40,6 +45,7 @@ public class GenerationTool {
     public String generateOpenApi(
             @McpToolParam(description = "Environment id") Long environmentId,
             @McpToolParam(description = "Application id") Long applicationId) {
+        authorizer.requireGenerationRead();
         return generation.generateOpenApi(TenantContext.get(), environmentId, applicationId);
     }
 }

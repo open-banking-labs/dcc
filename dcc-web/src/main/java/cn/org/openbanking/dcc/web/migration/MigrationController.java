@@ -37,44 +37,50 @@ public class MigrationController extends AbstractTenantController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.migrationWrite)")
     public MigrationOrderView create(@Valid @RequestBody CreateCommand command) {
         return service.create(currentTenantId(), command);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public MigrationOrderView get(@PathVariable Long id) {
         return service.get(currentTenantId(), id);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<MigrationOrderView> search(@RequestParam(required = false) Long targetEnvironmentId,
             @RequestParam(required = false) MigrationStatus status) {
         return service.search(currentTenantId(), targetEnvironmentId, status);
     }
 
     @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAuthority(@perms.migrationWrite)")
     public MigrationOrderView submit(@PathVariable Long id) {
         return service.submit(currentTenantId(), id);
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
+    @PreAuthorize("@scopeGuard.mayApproveMigration(#id)")
     public MigrationOrderView approve(@PathVariable Long id) {
         return service.approve(currentTenantId(), id);
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
+    @PreAuthorize("@scopeGuard.mayApproveMigration(#id)")
     public MigrationOrderView reject(@PathVariable Long id) {
         return service.reject(currentTenantId(), id);
     }
 
     @PostMapping("/{id}/execute")
+    @PreAuthorize("@scopeGuard.mayExecuteMigration(#id)")
     public MigrationOrderView execute(@PathVariable Long id) {
         return service.execute(currentTenantId(), id);
     }
 
     @PostMapping("/{id}/rollback")
+    @PreAuthorize("@scopeGuard.mayExecuteMigration(#id)")
     public MigrationOrderView rollback(@PathVariable Long id) {
         return service.rollback(currentTenantId(), id);
     }

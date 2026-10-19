@@ -8,6 +8,8 @@ import java.util.List;
 
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
+import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
+import cn.org.openbanking.dcc.application.common.ScopeValidation;
 import cn.org.openbanking.dcc.application.common.SnapshotCodec;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.application.migration.MigrationPolicy;
@@ -69,8 +71,10 @@ public class TableStructureService {
     private final ReferenceRecorder referenceRecorder;
     private final TableDdlGenerator ddlGenerator;
     private final MigrationPolicy migrationPolicy;
+    private final ScopeValidation scopeValidation;
     private final ContentDigest digest;
     private final ChangeContext changeContext;
+    private final SeparationOfDuties separationOfDuties;
 
     public TableStructureService(TableStructureRepository tables,
             TableStructureVersionRepository versions,
@@ -81,8 +85,10 @@ public class TableStructureService {
             ReferenceRecorder referenceRecorder,
             TableDdlGenerator ddlGenerator,
             MigrationPolicy migrationPolicy,
+            ScopeValidation scopeValidation,
             ContentDigest digest,
-            ChangeContext changeContext) {
+            ChangeContext changeContext,
+            SeparationOfDuties separationOfDuties) {
         this.tables = tables;
         this.versions = versions;
         this.standards = standards;
@@ -92,8 +98,10 @@ public class TableStructureService {
         this.referenceRecorder = referenceRecorder;
         this.ddlGenerator = ddlGenerator;
         this.migrationPolicy = migrationPolicy;
+        this.scopeValidation = scopeValidation;
         this.digest = digest;
         this.changeContext = changeContext;
+        this.separationOfDuties = separationOfDuties;
     }
 
     public record CreateCommand(@NotBlank @Size(max = 128) String code, @NotNull TableContent content) {
@@ -117,6 +125,7 @@ public class TableStructureService {
 
     public TableView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
+        scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             TableContent content = resolveContent(tenantId, command.content());
             if (tables.existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
@@ -129,9 +138,11 @@ public class TableStructureService {
             table = tables.save(table);
 
             TableStructureVersion version = new TableStructureVersion(table.getId(), SemVer.INITIAL.value(),
-                    VersionChangeType.MAJOR, codec.write(content), "initial version");
+                    VersionChangeType.MAJOR, codec.write(content),
+                    changeContext.messageOr(() -> "initial version"));
             version.setTenantId(tenantId);
-            version.stamp(digest.digest(content), null, changeContext.author(), "initial version");
+            version.stamp(digest.digest(content), null, changeContext.author(),
+                    changeContext.messageOr(() -> "initial version"));
             version = versions.save(version);
 
             table.pointToVersion(version.getId(), version.getVersion());
@@ -217,6 +228,11 @@ public class TableStructureService {
     public TableView transition(String tenantId, Long id, StandardStatus target) {
         return tenantScope.call(tenantId, () -> {
             TableStructure table = requireTable(tenantId, id);
+            if (target == StandardStatus.PUBLISHED) {
+                separationOfDuties.requireFourEyes(
+                        requireVersion(tenantId, id, table.getCurrentVersion()).getAuthor(),
+                        "table structure '" + table.getCode() + "'");
+            }
             table.transitionTo(target);
             return toView(table, currentContent(tenantId, table));
         });

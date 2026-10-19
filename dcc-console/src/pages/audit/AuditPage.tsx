@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime } from '@/lib/format'
 import { AUDIT_ACTION_LABEL, AUDIT_ENTITY_LABEL } from '@/lib/labels'
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import type { AuditAction, AuditEntryView } from '@/types/audit'
 
 const PAGE_SIZE = 20
@@ -69,7 +69,7 @@ function HistoryDialog({
   onRestored: () => void
 }) {
   const toast = useToast()
-  const isAdmin = useHasAuthority(AUTHORITY.admin)
+  const mayRestore = useHasAuthority(PERMISSION.artifactRestore)
   const { data, loading, error, reload } = useAsync(
     () => (target ? auditApi.history(target.entityType, target.entityId) : Promise.resolve([])),
     [target?.entityType, target?.entityId],
@@ -159,7 +159,7 @@ function HistoryDialog({
         )}
 
         <div className="mt-2 flex justify-end gap-2">
-          {isAdmin && deletedNow && (
+          {mayRestore && deletedNow && (
             <Button size="sm" variant="outline" disabled={restoring} onClick={() => void doRestore()}>
               {restoring ? '处理中…' : '恢复该对象'}
             </Button>
@@ -222,7 +222,7 @@ function isRestorable(entry: AuditEntryView): boolean {
 /** 审计日志（管理员）：谁在何时对哪行做了什么；删除过的行可在此恢复。 */
 export function AuditPage() {
   const toast = useToast()
-  const isAdmin = useHasAuthority(AUTHORITY.admin)
+  const mayRestore = useHasAuthority(PERMISSION.artifactRestore)
 
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS)
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS)
@@ -337,7 +337,7 @@ export function AuditPage() {
             >
               链路
             </Button>
-            {isAdmin && isRestorable(entry) && (
+            {mayRestore && isRestorable(entry) && (
               <Button
                 size="sm"
                 variant="ghost"

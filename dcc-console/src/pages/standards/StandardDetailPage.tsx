@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime, yesNo } from '@/lib/format'
 import { CHANGE_TYPE_LABEL, STANDARD_STATUS_LABEL } from '@/lib/labels'
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import { STANDARD_TRANSITIONS } from '@/lib/status'
 import type { FieldChange } from '@/types'
 
@@ -33,7 +33,7 @@ export function StandardDetailPage() {
   const { data: history } = useAsync(() => standardsApi.history(numericId), [numericId])
   const { data: references } = useAsync(() => standardsApi.references(numericId), [numericId])
 
-  const canTransition = useHasAuthority(AUTHORITY.approver)
+  const canTransition = useHasAuthority(PERMISSION.artifactTransition)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [diffFrom, setDiffFrom] = useState('')
@@ -126,7 +126,7 @@ export function StandardDetailPage() {
                   转为 {STANDARD_STATUS_LABEL[target]}
                 </Button>
               ))}
-            <PermissionGate authority={AUTHORITY.admin}>
+            <PermissionGate authority={PERMISSION.artifactDelete}>
               <Button
                 size="sm"
                 variant="outline"

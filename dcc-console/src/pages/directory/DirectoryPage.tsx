@@ -197,6 +197,20 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
     }
   }
 
+  /** 双人确认：特权角色由另一个主体确认后才真正生效。 */
+  const confirmAssignment = async (id: number) => {
+    setBusy(true)
+    try {
+      await directoryApi.assignments.confirm(id)
+      toast.success('已确认授权', `#${id}`)
+      reload()
+    } catch (err) {
+      toast.error('确认失败', err instanceof Error ? err.message : undefined)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const columns: ColumnDef<AssignmentView, any>[] = [
     { id: 'subject', header: '操作者', accessorFn: (row) => row.subject, cell: ({ row }) => (
       <span className="font-mono text-xs">{row.original.subject}</span>
@@ -210,11 +224,25 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         {row.original.scopeType === 'TENANT' ? '租户全域' : `${row.original.scopeType === 'ENVIRONMENT' ? '环境' : '应用'} · ${row.original.scopeCode}`}
       </span>
     ) },
+    { id: 'confirmation', header: '生效状态', accessorFn: (row) => row.confirmedBy ?? '', cell: ({ row }) => {
+      if (!row.original.confirmationRequired) {
+        return <span className="text-xs text-muted-foreground">生效</span>
+      }
+      return row.original.confirmedBy
+        ? <span className="text-xs text-muted-foreground">已确认 · {row.original.confirmedBy}</span>
+        : <span className="text-xs font-medium text-destructive">待第二人确认</span>
+    } },
     { id: 'createdAt', header: '授予时间', accessorFn: (row) => row.createdAt, cell: ({ row }) => (
       <span className="whitespace-nowrap text-muted-foreground">{formatDateTime(row.original.createdAt)}</span>
     ) },
     { id: 'actions', header: '操作', enableSorting: false, cell: ({ row }) => (
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-1">
+        {row.original.confirmationRequired && !row.original.confirmedBy && (
+          <Button size="sm" variant="ghost" disabled={busy}
+            onClick={() => void confirmAssignment(row.original.id)}>
+            确认
+          </Button>
+        )}
         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
           onClick={() => setRemoving(row.original)}>
           收回

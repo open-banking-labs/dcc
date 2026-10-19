@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime, yesNo } from '@/lib/format'
 import { CHANGE_TYPE_LABEL, STANDARD_STATUS_LABEL } from '@/lib/labels'
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import { STANDARD_TRANSITIONS } from '@/lib/status'
 import type { TableChangeSet, TableDdl } from '@/types'
 
@@ -29,7 +29,7 @@ export function TableDetailPage() {
 
   const { data: table, loading, error, reload } = useAsync(() => tablesApi.get(numericId), [numericId])
   const { data: history } = useAsync(() => tablesApi.history(numericId), [numericId])
-  const canTransition = useHasAuthority(AUTHORITY.approver)
+  const canTransition = useHasAuthority(PERMISSION.artifactTransition)
 
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -153,7 +153,7 @@ export function TableDetailPage() {
                   转为 {STANDARD_STATUS_LABEL[target]}
                 </Button>
               ))}
-            <PermissionGate authority={AUTHORITY.admin}>
+            <PermissionGate authority={PERMISSION.artifactDelete}>
               <Button
                 size="sm"
                 variant="outline"

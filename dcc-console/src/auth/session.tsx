@@ -2,12 +2,16 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 import { AuthProvider, useAuth } from 'react-oidc-context'
 
+import { useEffectivePermissions } from '@/api/me'
 import { decodeJwtPayload, extractRoles } from '@/lib/jwt'
 import { oidcConfig, oidcConfigured } from '@/lib/oidc'
 
 /**
  * 统一会话抽象：OIDC（生产，`VITE_OIDC_*` 已配置）或本地开发 Token 模式
  * （未配置 OIDC 时，供联调使用）。UI 只依赖本接口，不直接绑 OIDC 库。
+ *
+ * `roles` 是 token 里的角色（身份）；`permissions` 是后端 `/api/me` 解析出的**权限点**
+ * （claim 角色 + 目录授权 + 角色权限包）。显隐一律用 permissions（ADR 0005）。
  */
 export interface Session {
   mode: 'oidc' | 'dev'
@@ -16,6 +20,7 @@ export interface Session {
   error: string | null
   displayName: string
   roles: string[]
+  permissions: string[]
   accessToken: string | null
   returnTo: string
   signin: () => void
@@ -48,6 +53,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
 function OidcSessionBridge({ children }: { children: ReactNode }) {
   const auth = useAuth()
+  const token = auth.user?.access_token ?? null
+  const roles = useMemo(() => extractRoles(token ?? undefined), [token])
+  const permissions = useEffectivePermissions(token, roles)
+
   const value = useMemo<Session>(() => {
     const profile = auth.user?.profile
     return {
@@ -60,13 +69,14 @@ function OidcSessionBridge({ children }: { children: ReactNode }) {
         (profile?.preferred_username as string) ||
         (profile?.sub as string) ||
         '用户',
-      roles: extractRoles(auth.user?.access_token),
-      accessToken: auth.user?.access_token ?? null,
+      roles,
+      permissions,
+      accessToken: token,
       returnTo: (auth.user?.state as { returnTo?: string } | undefined)?.returnTo ?? '/',
       signin: () => void auth.signinRedirect(),
       signout: () => void auth.signoutRedirect(),
     }
-  }, [auth])
+  }, [auth, roles, permissions, token])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
@@ -79,6 +89,9 @@ function DevSessionProvider({ children }: { children: ReactNode }) {
     setToken(next)
   }, [])
 
+  const roles = useMemo(() => extractRoles(token ?? undefined), [token])
+  const permissions = useEffectivePermissions(token, roles)
+
   const value = useMemo<Session>(() => {
     const payload = decodeJwtPayload(token ?? undefined)
     return {
@@ -87,14 +100,15 @@ function DevSessionProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       error: null,
       displayName: (payload?.sub as string) ?? '本地开发',
-      roles: extractRoles(token ?? undefined),
+      roles,
+      permissions,
       accessToken: token,
       returnTo: '/',
       signin: () => {},
       signout: () => setDevToken(null),
       setDevToken,
     }
-  }, [token, setDevToken])
+  }, [token, roles, permissions, setDevToken])
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

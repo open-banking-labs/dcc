@@ -28,13 +28,42 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 | Generation | `/api/generation` | `GET /standards/{id}/validation`, `/interfaces/{id}/dto`, `/openapi`, `/jar` |
 | Migration | `/api/migrations` | create, search, `submit`, `approve`, `reject`, `execute`, `rollback` |
 | Versioning | `/api/versioning` | `GET /{type}/{id}/hash`, `POST /{type}/hash`, `GET /{type}/{id}/diff`, `/{id}/bump`, `GET /drift` |
-| Audit | `/api/audit` | admin-only: `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
-| Directory | `/api/directory` | admin-only: `GET|POST /memberships`, `DELETE /memberships/{id}`, `POST /memberships/{id}/restore`; tenant/environment/application role grants via `GET|POST /role-assignments`, `DELETE|restore`; plus `GET /my-memberships` (any authenticated caller lists their own grants, backing the console tenant switcher) — gates `dcc.security.directory-mode` |
-| Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenant/environment/application administration |
+| Audit | `/api/audit` | tenant administrator (`audit.business`): `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
+| Platform audit | `/api/platform/audit` | system administrator (`audit.platform`): the same filtered+paged search over platform-level rows (`tenant_id is null`: tenant admission, grants, reference cases) |
+| Directory (platform) | `/api/directory` | system administrator, bootstrap only: cross-tenant `GET|POST /memberships`, `DELETE /memberships/{id}`, `POST /memberships/{id}/restore`; `GET|POST /role-assignments`, `DELETE|restore`; plus `GET /my-memberships` (any authenticated caller lists their own grants, backing the console tenant switcher) |
+| Directory (tenant) | `/api/memberships`, `/api/role-assignments` | tenant administrator: grant/list/revoke members and roles **inside its own tenant** (the tenant is taken from the token and never from the body; only `dcc.security.tenant-grantable-roles` may be granted), plus `POST /role-assignments/{id}/confirm` for a pending privileged grant |
+| Reference cases | `/api/cases` | `GET /` + `GET /{id}` (`case.read`), `POST /{id}/adopt` (`case.adopt`, creates a tenant draft); `POST` / `PUT /{id}` / `DELETE /{id}` / `POST /{id}/restore` are `case.write`, i.e. platform-only |
+| Case adoptions | `/api/case-adoptions`, `/api/platform/case-adoptions/{caseId}` | tenant side (`case.read`): my copies, each flagged `stale` once the case moved on — copies are never rewritten; platform side (`case.write`): which tenants adopted which version, with no tenant artifact identifier |
+| Identity | `/api/me` | the caller's own identity, tenant and effective permission points — the console's only source of truth for menu/button gating |
+| Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenants: `tenant.admit` (platform); environments/applications: `topology.read` / `topology.write` (tenant) |
 
-Privileged operations are guarded by method security: lifecycle transitions require the
-*approver* authority, deletes require the *admin* authority — names configured under
-`dcc.security.authorities.*` (see [configuration.md](configuration.md)).
+Authorization is by **permission point**, not by role name (ADR 0005): every handler carries
+`@PreAuthorize("hasAuthority(@perms.<point>)")`, e.g. `artifact.write` for editing,
+`artifact.delete` for the logical delete, `artifact.transition` for publish/return,
+`migration.approve` for a migration approval, `migration.execute` for running an approved one,
+`topology.write` for environments/applications, `tenant.admit` for tenant admission. Roles
+(`DCC_READER` / `DCC_MAINTAINER` / `DCC_APPROVER` / `DCC_TENANT_ADMIN` / `DCC_PLATFORM_ADMIN`)
+are bundles of those points, configured under `dcc.security.role-bundles.*`; the legacy
+`DCC_ADMIN` / `DCC_APPROVER` / `DCC_USER` hats ship as default bundles. A write without the
+required point is `403`, and the four-eyes rule additionally rejects approving a change you
+submitted yourself (`409`). See
+[decisions/0005-role-model-and-permission-points.md](decisions/0005-role-model-and-permission-points.md).
+
+The **approval gates** are scope-aware: `POST /api/{resource}/{id}/status`,
+`POST /api/migrations/{id}/{approve,reject}` and `POST /api/migrations/{id}/{execute,rollback}`
+are authorized by `@scopeGuard`, which resolves the resource's real environment/application from
+the row and accepts either a tenant-wide grant or a directory grant scoped to that surface. So a
+`DCC_APPROVER` grant scoped to `UAT` can approve UAT changes only — no `X-DCC-Scope` header needed,
+and a forged header cannot extend it. `PENDING_REVIEW` (submit for review) requires
+`artifact.write`; every other target requires `artifact.transition`. The same guard covers the
+opaque-id writes: `PUT /api/{resource}/{id}` and `POST /{id}/rollback` need `artifact.write`,
+`DELETE /{id}` needs `artifact.delete` — all satisfiable by a grant scoped to the object's surface.
+Restore stays tenant-wide by design (the row is logically deleted, so it has no visible surface).
+
+Privileged grants are **dual-control**: a `DCC_PLATFORM_ADMIN` or `DCC_TENANT_ADMIN` grant is
+recorded immediately but confers nothing until a different subject calls
+`POST /api/directory/role-assignments/{id}/confirm` (platform) or
+`POST /api/role-assignments/{id}/confirm` (tenant).
 
 Deletes are **logical** (retention): `DELETE /api/{resource}/{id}` marks the row deleted,
 keeps it (and its version history) for the retention period, and records the change in the
@@ -63,6 +92,8 @@ Slim, POST + JSON, shaped for the CLI and pipelines. Version defaults to `v1`
 | `POST /cli/v1/validate` | `{type, modelId, version}` |
 | `POST /cli/v1/export/java` \| `/sql` | `{type, modelId, version}` |
 | `POST /cli/v1/drift` | `{environmentId, applicationId}` |
+| `POST /cli/v1/audit/history` \| `/search` \| `/verify` | `{entityType, entityId, …}` (requires `audit.business`) |
+| `POST /cli/v1/restore` | `{type, id}` (requires `artifact.restore`) |
 
 ## MCP
 
@@ -71,9 +102,10 @@ The MCP server registers tools via annotations. Representative tools:
 `get-table`, `list-tables`, `diff-table`, `generate-table-ddl`,
 `generate-validation`, `generate-dto`, `generate-openapi`, `dcc-hash`, `dcc-diff`,
 `dcc-bump`, the read-only `dcc-audit-history` / `dcc-audit-search` / `dcc-audit-verify`
-trail tools, plus migration/template/interface tools. Restores are deliberately not an
-MCP tool: privileged writes flow through REST / the command API, which enforce the admin
-authority. A template-driven prompt,
+trail tools, plus migration/template/interface tools. The whole MCP endpoint requires
+`artifact.read`; the audit tools additionally require `audit.business` (ADR 0005). Restores
+are deliberately not an MCP tool: privileged writes flow through REST / the command API,
+which enforce the same permission points. A template-driven prompt,
 `review-change`, drafts a review checklist (see [templating.md](templating.md) and
 [modules/dcc-mcp.md](modules/dcc-mcp.md)).
 

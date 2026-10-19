@@ -10,6 +10,7 @@ import cn.org.openbanking.dcc.web.common.AbstractTenantController;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,33 +35,39 @@ public class TenantApplicationController extends AbstractTenantController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.topologyWrite)")
     public ApplicationView create(@Valid @RequestBody CreateCommand command) {
         return service.create(currentTenantId(), command);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@perms.topologyRead)")
     public List<ApplicationView> list() {
         return service.list(currentTenantId());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority(@perms.topologyRead)")
     public ApplicationView get(@PathVariable Long id) {
         return service.get(currentTenantId(), id);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority(@perms.topologyWrite)")
     public ApplicationView update(@PathVariable Long id, @Valid @RequestBody UpdateCommand command) {
         return service.update(currentTenantId(), id, command);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority(@perms.topologyWrite)")
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }
 
     /** Brings a logically-deleted application back into the default view. */
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority(@perms.topologyWrite)")
     public ApplicationView restore(@PathVariable Long id) {
         return service.restore(currentTenantId(), id);
     }

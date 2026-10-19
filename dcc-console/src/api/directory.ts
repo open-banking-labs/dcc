@@ -23,6 +23,12 @@ export interface AssignmentView extends MembershipView {
   role: string
   scopeType: 'TENANT' | 'ENVIRONMENT' | 'APPLICATION'
   scopeCode: string | null
+  /** 授予人（双人确认：确认人必须不同）。 */
+  grantedBy: string | null
+  /** 特权角色（如 DCC_TENANT_ADMIN）需第二人确认，未确认前不生效。 */
+  confirmationRequired: boolean
+  confirmedBy: string | null
+  confirmedAt: string | null
 }
 
 function toParams(params: Record<string, string | number | null | undefined>) {
@@ -60,5 +66,7 @@ export const directoryApi = {
       httpPost<AssignmentView>('/directory/role-assignments', body),
     remove: (id: number) => httpDelete(`/directory/role-assignments/${id}`),
     restore: (id: number) => httpPost<AssignmentView>(`/directory/role-assignments/${id}/restore`),
+    /** 双人确认：特权角色必须由**另一个**主体确认后才生效。 */
+    confirm: (id: number) => httpPost<AssignmentView>(`/directory/role-assignments/${id}/confirm`),
   },
 }

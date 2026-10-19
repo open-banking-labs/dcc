@@ -22,9 +22,11 @@ import org.springframework.stereotype.Component;
 public class TableTool {
 
     private final TableStructureService tables;
+    private final McpAuthorizer authorizer;
 
-    public TableTool(TableStructureService tables) {
+    public TableTool(TableStructureService tables, McpAuthorizer authorizer) {
         this.tables = tables;
+        this.authorizer = authorizer;
     }
 
     @McpTool(name = "get-table", description = "Return a table structure (with its current content) by id.")
@@ -59,6 +61,7 @@ public class TableTool {
     public TableDdl generateTableDdl(
             @McpToolParam(description = "Table structure id") Long id,
             @McpToolParam(required = false, description = "Optional schema name") String schema) {
+        authorizer.requireGenerationRead();
         return tables.createDdl(TenantContext.get(), id, schema);
     }
 }

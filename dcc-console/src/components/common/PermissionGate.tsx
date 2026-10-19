@@ -2,7 +2,11 @@ import type { ReactNode } from 'react'
 
 import { useSession } from '@/auth/session'
 
-/** 按当前会话的 roles（authority）显隐内容。 */
+/**
+ * 按当前会话的**权限点**显隐内容（ADR 0005）。
+ *
+ * 传入的是 `PERMISSION.*`，不是角色名：角色只是服务端的权限包，UI 无法也不会自行推导。
+ */
 export function PermissionGate({
   authority,
   children,
@@ -13,10 +17,12 @@ export function PermissionGate({
   fallback?: ReactNode
 }) {
   const session = useSession()
-  return <>{session.roles.includes(authority) ? children : fallback}</>
+  const permissions = session.permissions ?? session.roles
+  return <>{permissions.includes(authority) ? children : fallback}</>
 }
 
-/** 命令式判断当前用户是否持有某 authority。 */
+/** 命令式判断当前用户是否持有某权限点。 */
 export function useHasAuthority(authority: string): boolean {
-  return useSession().roles.includes(authority)
+  const session = useSession()
+  return (session.permissions ?? session.roles).includes(authority)
 }

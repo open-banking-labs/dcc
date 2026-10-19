@@ -3,7 +3,9 @@ package cn.org.openbanking.dcc.application.migration;
 import java.time.Instant;
 import java.util.List;
 
+import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.MigrationContext;
+import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.application.interfaceapi.InterfaceService;
 import cn.org.openbanking.dcc.application.standard.DataStandardService;
@@ -40,6 +42,8 @@ public class MigrationService {
 
     private final MigrationOrderRepository orders;
     private final MigrationContext context;
+    private final SeparationOfDuties separationOfDuties;
+    private final ChangeContext changeContext;
     private final TenantScope tenantScope;
     private final DataStandardService standardService;
     private final TableStructureService tableService;
@@ -52,6 +56,8 @@ public class MigrationService {
 
     public MigrationService(MigrationOrderRepository orders,
             MigrationContext context,
+            SeparationOfDuties separationOfDuties,
+            ChangeContext changeContext,
             TenantScope tenantScope,
             DataStandardService standardService,
             TableStructureService tableService,
@@ -63,6 +69,8 @@ public class MigrationService {
             InterfaceTemplateRepository templates) {
         this.orders = orders;
         this.context = context;
+        this.separationOfDuties = separationOfDuties;
+        this.changeContext = changeContext;
         this.tenantScope = tenantScope;
         this.standardService = standardService;
         this.tableService = tableService;
@@ -81,7 +89,7 @@ public class MigrationService {
     public record MigrationOrderView(Long id, String tenantId, Long sourceEnvironmentId, Long targetEnvironmentId,
             ArtifactType artifactType, Long artifactId, String artifactCode, String sourceVersion,
             MigrationStatus status, String note, Long targetArtifactId, String targetVersion,
-            Instant createdAt, Instant updatedAt) {
+            String submittedBy, Instant createdAt, Instant updatedAt) {
     }
 
     /** A migration result: the target artifact id/version and its version before the migration. */
@@ -102,12 +110,24 @@ public class MigrationService {
         });
     }
 
+    /** Submits an order for approval and records who submitted it (four-eyes, ADR 0005 §D4). */
     public MigrationOrderView submit(String tenantId, Long id) {
-        return transition(tenantId, id, MigrationStatus.PENDING_APPROVAL);
+        return tenantScope.call(tenantId, () -> {
+            MigrationOrder order = require(tenantId, id);
+            order.transitionTo(MigrationStatus.PENDING_APPROVAL);
+            order.setSubmittedBy(changeContext.author());
+            return toView(order);
+        });
     }
 
+    /** Approves an order; the submitter cannot approve its own order. */
     public MigrationOrderView approve(String tenantId, Long id) {
-        return transition(tenantId, id, MigrationStatus.APPROVED);
+        return tenantScope.call(tenantId, () -> {
+            MigrationOrder order = require(tenantId, id);
+            separationOfDuties.requireFourEyes(order.getSubmittedBy(), "migration order " + order.getId());
+            order.transitionTo(MigrationStatus.APPROVED);
+            return toView(order);
+        });
     }
 
     public MigrationOrderView reject(String tenantId, Long id) {
@@ -289,6 +309,6 @@ public class MigrationService {
         return new MigrationOrderView(order.getId(), order.getTenantId(), order.getSourceEnvironmentId(),
                 order.getTargetEnvironmentId(), order.getArtifactType(), order.getArtifactId(), order.getArtifactCode(),
                 order.getSourceVersion(), order.getStatus(), order.getNote(), order.getTargetArtifactId(),
-                order.getTargetVersion(), order.getCreatedAt(), order.getUpdatedAt());
+                order.getTargetVersion(), order.getSubmittedBy(), order.getCreatedAt(), order.getUpdatedAt());
     }
 }

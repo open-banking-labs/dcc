@@ -39,6 +39,7 @@ public class TemplateController extends AbstractTenantController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.artifactWrite)")
     public TemplateView create(@RequestParam Long environmentId,
             @RequestParam Long applicationId,
             @Valid @RequestBody CreateCommand command) {
@@ -46,11 +47,13 @@ public class TemplateController extends AbstractTenantController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public TemplateView get(@PathVariable Long id) {
         return service.get(currentTenantId(), id);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<TemplateView> search(@RequestParam(required = false) Long environmentId,
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) StandardStatus status) {
@@ -58,45 +61,51 @@ public class TemplateController extends AbstractTenantController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@scopeGuard.mayWriteArtifact('INTERFACE_TEMPLATE', #id)")
     public TemplateView update(@PathVariable Long id, @Valid @RequestBody UpdateCommand command) {
         return service.update(currentTenantId(), id, command);
     }
 
     @PostMapping("/{id}/rollback")
+    @PreAuthorize("@scopeGuard.mayWriteArtifact('INTERFACE_TEMPLATE', #id)")
     public TemplateView rollback(@PathVariable Long id, @RequestParam String version) {
         return service.rollback(currentTenantId(), id, version);
     }
 
     @PostMapping("/{id}/status")
+    @PreAuthorize("@scopeGuard.mayTransition('INTERFACE_TEMPLATE', #id, #target)")
     public TemplateView transition(@PathVariable Long id, @RequestParam StandardStatus target) {
         return service.transition(currentTenantId(), id, target);
     }
 
     @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<VersionView> history(@PathVariable Long id) {
         return service.history(currentTenantId(), id);
     }
 
     @GetMapping("/{id}/versions/{version}/verify")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public boolean verify(@PathVariable Long id, @PathVariable String version) {
         return service.verify(currentTenantId(), id, version);
     }
 
     @GetMapping("/{id}/diff")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public TemplateDiffView diff(@PathVariable Long id, @RequestParam String from, @RequestParam String to) {
         return service.diff(currentTenantId(), id, from, to);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    @PreAuthorize("@scopeGuard.mayDeleteArtifact('INTERFACE_TEMPLATE', #id)")
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }
 
     /** Brings a logically-deleted interface template back into the default view. */
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    @PreAuthorize("hasAuthority(@perms.artifactRestore)")
     public TemplateView restore(@PathVariable Long id) {
         return service.restore(currentTenantId(), id);
     }

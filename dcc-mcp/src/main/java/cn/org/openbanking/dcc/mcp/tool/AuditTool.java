@@ -26,15 +26,18 @@ public class AuditTool {
     private static final int PAGE_SIZE = 50;
 
     private final AuditService auditService;
+    private final McpAuthorizer authorizer;
 
-    public AuditTool(AuditService auditService) {
+    public AuditTool(AuditService auditService, McpAuthorizer authorizer) {
         this.auditService = auditService;
+        this.authorizer = authorizer;
     }
 
     @McpTool(name = "dcc-audit-history", description = "Return the full, oldest-first audit history of one row (who, when, why and the before/after images).")
     public List<AuditView> history(
             @McpToolParam(description = "Entity type, e.g. DataStandard/TableStructure/InterfaceDefinition/InterfaceTemplate") String entityType,
             @McpToolParam(description = "Entity id") Long entityId) {
+        authorizer.requireAuditBusiness();
         return auditService.history(TenantContext.get(), entityType, entityId);
     }
 
@@ -46,6 +49,7 @@ public class AuditTool {
             @McpToolParam(required = false, description = "Actor filter") String actor,
             @McpToolParam(required = false, description = "Action filter: CREATE/UPDATE/LOGICAL_DELETE/RESTORE") AuditAction action,
             @McpToolParam(required = false, description = "Page number (50 per page)") Integer page) {
+        authorizer.requireAuditBusiness();
         Page<AuditView> result = auditService.search(TenantContext.get(), entityType, entityId, actor, action,
                 null, null, PageRequest.of(page == null ? 0 : page, PAGE_SIZE));
         return result.getContent();
@@ -56,6 +60,7 @@ public class AuditTool {
     public VerifyView verify(
             @McpToolParam(description = "Entity type") String entityType,
             @McpToolParam(description = "Entity id") Long entityId) {
+        authorizer.requireAuditBusiness();
         return auditService.verify(TenantContext.get(), entityType, entityId);
     }
 }

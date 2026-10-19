@@ -45,6 +45,7 @@ public class DataStandardController extends AbstractTenantController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.artifactWrite)")
     public StandardView create(@RequestParam Long environmentId,
             @RequestParam Long applicationId,
             @Valid @RequestBody CreateCommand command) {
@@ -52,11 +53,13 @@ public class DataStandardController extends AbstractTenantController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public StandardView get(@PathVariable Long id) {
         return service.get(currentTenantId(), id);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<StandardView> search(@RequestParam(required = false) Long environmentId,
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) String category,
@@ -65,61 +68,69 @@ public class DataStandardController extends AbstractTenantController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@scopeGuard.mayWriteArtifact('DATA_STANDARD', #id)")
     public StandardView update(@PathVariable Long id, @Valid @RequestBody UpdateCommand command) {
         return service.update(currentTenantId(), id, command);
     }
 
     @PostMapping("/{id}/rollback")
+    @PreAuthorize("@scopeGuard.mayWriteArtifact('DATA_STANDARD', #id)")
     public StandardView rollback(@PathVariable Long id, @RequestParam String version) {
         return service.rollback(currentTenantId(), id, version);
     }
 
     @PostMapping("/{id}/status")
-    @PreAuthorize("hasAuthority(@dccAuthorities.approver)")
+    @PreAuthorize("@scopeGuard.mayTransition('DATA_STANDARD', #id, #target)")
     public StandardView transition(@PathVariable Long id, @RequestParam StandardStatus target) {
         return service.transition(currentTenantId(), id, target);
     }
 
     @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<VersionView> history(@PathVariable Long id) {
         return service.history(currentTenantId(), id);
     }
 
     @GetMapping("/{id}/versions/{version}/verify")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public boolean verify(@PathVariable Long id, @PathVariable String version) {
         return service.verify(currentTenantId(), id, version);
     }
 
     @GetMapping("/{id}/references")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<String> references(@PathVariable Long id) {
         return service.references(currentTenantId(), id);
     }
 
     @GetMapping("/{id}/diff")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public DiffView diff(@PathVariable Long id, @RequestParam String from, @RequestParam String to) {
         return service.diff(currentTenantId(), id, from, to);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    @PreAuthorize("@scopeGuard.mayDeleteArtifact('DATA_STANDARD', #id)")
     public void delete(@PathVariable Long id) {
         service.delete(currentTenantId(), id);
     }
 
     /** Brings a logically-deleted standard back into the default view. */
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    @PreAuthorize("hasAuthority(@perms.artifactRestore)")
     public StandardView restore(@PathVariable Long id) {
         return service.restore(currentTenantId(), id);
     }
 
     @GetMapping("/export")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<StandardExportItem> export(@RequestParam Long environmentId, @RequestParam Long applicationId) {
         return service.export(currentTenantId(), environmentId, applicationId);
     }
 
     @PostMapping("/import")
+    @PreAuthorize("hasAuthority(@perms.artifactWrite)")
     public ImportResult importItems(@RequestParam Long environmentId,
             @RequestParam Long applicationId,
             @RequestBody List<StandardExportItem> items) {

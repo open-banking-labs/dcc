@@ -9,6 +9,7 @@ import cn.org.openbanking.dcc.core.migration.ArtifactType;
 import cn.org.openbanking.dcc.core.standard.diff.FieldChange;
 import cn.org.openbanking.dcc.web.common.AbstractTenantController;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,18 +34,21 @@ public class VersioningController extends AbstractTenantController {
 
     /** {@code dcc hash} for a stored version. */
     @GetMapping("/{type}/{id}/hash")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public String hash(@PathVariable ArtifactType type, @PathVariable Long id, @RequestParam String version) {
         return service.irHash(currentTenantId(), type, id, version);
     }
 
     /** {@code dcc hash} for raw content (the request body is the model JSON). */
     @PostMapping("/{type}/hash")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public String hashContent(@PathVariable ArtifactType type, @RequestBody String json) {
         return service.hashContent(type, json);
     }
 
     /** {@code dcc diff}: the human-readable change list between two versions. */
     @GetMapping("/{type}/{id}/diff")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<FieldChange> diff(@PathVariable ArtifactType type, @PathVariable Long id,
             @RequestParam String from, @RequestParam String to) {
         return service.diff(currentTenantId(), type, id, from, to);
@@ -52,6 +56,7 @@ public class VersioningController extends AbstractTenantController {
 
     /** {@code dcc bump}: the advisory SemVer level for the change between two versions. */
     @GetMapping("/{type}/{id}/bump")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public BumpSuggestion bump(@PathVariable ArtifactType type, @PathVariable Long id,
             @RequestParam String from, @RequestParam String to) {
         return service.suggest(currentTenantId(), type, id, from, to);
@@ -59,6 +64,7 @@ public class VersioningController extends AbstractTenantController {
 
     /** Drift check: artifacts in scope whose stored snapshots no longer verify. */
     @GetMapping("/drift")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public List<DriftFinding> drift(@RequestParam Long environmentId, @RequestParam Long applicationId) {
         return service.drift(currentTenantId(), environmentId, applicationId);
     }

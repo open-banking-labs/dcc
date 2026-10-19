@@ -8,6 +8,8 @@ import cn.org.openbanking.dcc.application.tenant.TenantMembershipService;
 import cn.org.openbanking.dcc.application.tenant.TenantMembershipService.MembershipView;
 import cn.org.openbanking.dcc.security.InternalIdentity;
 import cn.org.openbanking.dcc.core.tenant.ScopeType;
+import cn.org.openbanking.dcc.security.DccSecurityProperties;
+import cn.org.openbanking.dcc.web.common.GrantPolicy;
 
 import jakarta.validation.Valid;
 
@@ -35,29 +37,35 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/directory")
-@PreAuthorize("hasAuthority(@dccAuthorities.admin)")
 public class DirectoryController {
 
     private final TenantMembershipService memberships;
     private final RoleAssignmentService assignments;
+    private final GrantPolicy grantPolicy;
+    private final DccSecurityProperties properties;
 
-    public DirectoryController(TenantMembershipService memberships, RoleAssignmentService assignments) {
+    public DirectoryController(TenantMembershipService memberships, RoleAssignmentService assignments,
+            GrantPolicy grantPolicy, DccSecurityProperties properties) {
         this.memberships = memberships;
         this.assignments = assignments;
+        this.grantPolicy = grantPolicy;
+        this.properties = properties;
     }
 
     // ------------------------------------------------------------ memberships
 
     /** The caller's own live memberships (any authenticated user, not admin-only). */
     @GetMapping("/my-memberships")
-    @PreAuthorize("hasAuthority(@dccAuthorities.user)")
+    @PreAuthorize("isAuthenticated()")
     public List<TenantMembershipService.MembershipView> myMemberships(
             @AuthenticationPrincipal InternalIdentity identity) {
         return memberships.membershipsOf(identity == null ? null : identity.subject());
     }
 
     /** Filtered, paged membership search, newest first; all filters optional. */
+    /** Filtered, paged membership search across tenants, newest first; platform administration only. */
     @GetMapping("/memberships")
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public Page<MembershipView> searchMemberships(
             @RequestParam(required = false) String subject,
             @RequestParam(required = false) String tenant,
@@ -68,6 +76,7 @@ public class DirectoryController {
     /** Grants a subject the permission to act inside the tenant. */
     @PostMapping("/memberships")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public TenantMembershipService.MembershipView createMembership(@Valid @RequestBody TenantMembershipService.CreateCommand command) {
         return memberships.create(command);
     }
@@ -75,12 +84,14 @@ public class DirectoryController {
     /** Logically deletes a membership (compliance retention). */
     @DeleteMapping("/memberships/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public void deleteMembership(@PathVariable Long id) {
         memberships.delete(id);
     }
 
     /** Restores a logically-deleted membership. */
     @PostMapping("/memberships/{id}/restore")
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public TenantMembershipService.MembershipView restoreMembership(@PathVariable Long id) {
         return memberships.restore(id);
     }
@@ -88,7 +99,9 @@ public class DirectoryController {
     // ---------------------------------------------------------- assignments
 
     /** Filtered, paged assignment search, newest first; all filters optional. */
+    /** Filtered, paged assignment search across tenants, newest first; platform administration only. */
     @GetMapping("/role-assignments")
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public Page<AssignmentView> searchAssignments(
             @RequestParam(required = false) String subject,
             @RequestParam(required = false) String tenant,
@@ -102,20 +115,34 @@ public class DirectoryController {
     /** Grants one role to a subject inside the tenant (unioned with claim roles). */
     @PostMapping("/role-assignments")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public AssignmentView createAssignment(@Valid @RequestBody RoleAssignmentService.CreateCommand command) {
+        grantPolicy.requirePlatformGrant(command.role(), command.scopeType());
         return assignments.create(command);
     }
 
     /** Logically deletes an assignment (compliance retention). */
     @DeleteMapping("/role-assignments/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public void deleteAssignment(@PathVariable Long id) {
         assignments.delete(id);
     }
 
     /** Restores a logically-deleted assignment. */
     @PostMapping("/role-assignments/{id}/restore")
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
     public AssignmentView restoreAssignment(@PathVariable Long id) {
         return assignments.restore(id);
+    }
+
+    /**
+     * Confirms a pending privileged grant (dual control, ADR 0005 §D10). The confirmer must be a
+     * different subject from the one that created the grant; until then the grant confers nothing.
+     */
+    @PostMapping("/role-assignments/{id}/confirm")
+    @PreAuthorize("hasAuthority(@perms.directoryWritePlatform)")
+    public AssignmentView confirmAssignment(@PathVariable Long id) {
+        return assignments.confirm(id);
     }
 }

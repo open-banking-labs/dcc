@@ -51,6 +51,7 @@ public class JpaTenantDirectoryPolicy implements TenantDirectoryPolicy {
             return Set.of();
         }
         return assignments.findAllBySubjectAndTenantCodeAndScopeType(subject, tenantId, ScopeType.TENANT).stream()
+                .filter(assignment -> !assignment.isPendingConfirmation())
                 .map(RoleAssignment::getRole)
                 .collect(java.util.stream.Collectors.toSet());
     }
@@ -80,6 +81,7 @@ public class JpaTenantDirectoryPolicy implements TenantDirectoryPolicy {
         }
         return assignments.findAllBySubjectAndTenantCodeAndScopeTypeAndScopeCode(
                         subject, tenantId, type, scopeCode).stream()
+                .filter(assignment -> !assignment.isPendingConfirmation())
                 .map(RoleAssignment::getRole)
                 .collect(java.util.stream.Collectors.toSet());
     }

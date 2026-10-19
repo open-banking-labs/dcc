@@ -117,9 +117,9 @@ class DirectoryAccessIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void memberWithoutGrantableRoleStillNeedsAnAuthority() throws Exception {
-        // membership passes the directory gate, but no directory role and only DCC_USER
+        // membership passes the directory gate, but no directory role and only DCC_READER
         mockMvc.perform(delete("/api/tables/999")
-                        .header("Authorization", "Bearer " + token(authorityless, tenantMember, "DCC_USER")))
+                        .header("Authorization", "Bearer " + token(authorityless, tenantMember, "DCC_READER")))
                 .andExpect(status().isForbidden());
     }
 

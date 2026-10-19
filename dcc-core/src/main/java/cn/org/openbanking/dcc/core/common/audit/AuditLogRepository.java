@@ -32,7 +32,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
 
     /**
      * Filtered, paged search; newest entry first. Any of the filter parameters may be
-     * {@code null} to mean "no constraint".
+     * {@code null} to mean "no constraint"; a {@code null} {@code tenantId} selects the
+     * platform-level rows ({@code tenant_id is null}) rather than returning nothing.
      *
      * <p>Built with Criteria rather than {@code (:param is null or …)} JPQL: PostgreSQL
      * cannot infer the SQL type of a null untyped parameter, which breaks the temporal
@@ -50,7 +51,9 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
             AuditAction action, Instant from, Instant to) {
         return (root, query, builder) -> {
             List<Predicate> parts = new ArrayList<>();
-            parts.add(builder.equal(root.get("tenantId"), tenantId));
+            parts.add(tenantId == null
+                    ? builder.isNull(root.get("tenantId"))
+                    : builder.equal(root.get("tenantId"), tenantId));
             if (entityType != null) {
                 parts.add(builder.equal(root.get("entityType"), entityType));
             }

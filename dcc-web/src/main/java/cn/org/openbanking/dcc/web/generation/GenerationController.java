@@ -7,10 +7,10 @@ import cn.org.openbanking.dcc.generator.bundle.GeneratedBundle;
 import cn.org.openbanking.dcc.generator.source.GeneratedSource;
 import cn.org.openbanking.dcc.web.common.AbstractTenantController;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,21 +31,25 @@ public class GenerationController extends AbstractTenantController {
     }
 
     @GetMapping("/standards/{id}/validation")
+    @PreAuthorize("hasAuthority(@perms.generationRead)")
     public GeneratedSource validation(@PathVariable Long id) {
         return service.generateValidation(currentTenantId(), id);
     }
 
     @GetMapping("/interfaces/{id}/dto")
+    @PreAuthorize("hasAuthority(@perms.generationRead)")
     public List<GeneratedSource> dto(@PathVariable Long id) {
         return service.generateDto(currentTenantId(), id);
     }
 
     @GetMapping(value = "/openapi", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority(@perms.generationRead)")
     public String openApi(@RequestParam Long environmentId, @RequestParam Long applicationId) {
         return service.generateOpenApi(currentTenantId(), environmentId, applicationId);
     }
 
     @GetMapping("/jar")
+    @PreAuthorize("hasAuthority(@perms.generationPackage)")
     public ResponseEntity<byte[]> jar(@RequestParam Long environmentId,
             @RequestParam Long applicationId,
             @RequestParam(required = false) String version) {

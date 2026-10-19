@@ -1,5 +1,6 @@
 import type { ArtifactType, MigrationStatus, StandardStatus, TemplateSectionCode, VersionChangeType } from '@/types'
 import type { AuditAction } from '@/types/audit'
+import type { ReferenceCaseFeature } from '@/types/case'
 
 export const STANDARD_STATUS_LABEL: Record<StandardStatus, string> = {
   DRAFT: '草稿',
@@ -28,6 +29,15 @@ export const ARTIFACT_TYPE_LABEL: Record<ArtifactType, string> = {
   TABLE_STRUCTURE: '表结构',
   INTERFACE: '接口',
   INTERFACE_TEMPLATE: '接口模板',
+}
+
+/** 指导性案例的功能标签：前四项与产物类型同名，SKELETON 是环境/应用骨架范例。 */
+export const CASE_FEATURE_LABEL: Record<ReferenceCaseFeature, string> = {
+  DATA_STANDARD: '数标',
+  TABLE_STRUCTURE: '表结构',
+  INTERFACE: '接口',
+  INTERFACE_TEMPLATE: '接口模板',
+  SKELETON: '环境/应用骨架',
 }
 
 /** audit_log.entity_type（Hibernate 实体 SimpleName）→ 中文标签。 */

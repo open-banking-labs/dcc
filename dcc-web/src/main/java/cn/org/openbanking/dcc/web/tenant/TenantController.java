@@ -9,6 +9,7 @@ import cn.org.openbanking.dcc.application.tenant.TenantService.UpdateCommand;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,33 +38,39 @@ public class TenantController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit)")
     public TenantView create(@Valid @RequestBody CreateCommand command) {
         return service.create(command);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit)")
     public List<TenantView> list() {
         return service.list();
     }
 
     @GetMapping("/{code}")
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit) or #code == T(cn.org.openbanking.dcc.security.TenantContext).get()")
     public TenantView get(@PathVariable String code) {
         return service.getByCode(code);
     }
 
     @PutMapping("/{code}")
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit)")
     public TenantView update(@PathVariable String code, @Valid @RequestBody UpdateCommand command) {
         return service.update(code, command);
     }
 
     @DeleteMapping("/{code}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit)")
     public void delete(@PathVariable String code) {
         service.delete(code);
     }
 
     /** Brings a logically-deleted tenant back into the default view. */
     @PostMapping("/{code}/restore")
+    @PreAuthorize("hasAuthority(@perms.tenantAdmit)")
     public TenantView restore(@PathVariable String code) {
         return service.restore(code);
     }

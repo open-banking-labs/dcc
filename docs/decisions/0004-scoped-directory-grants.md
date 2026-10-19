@@ -60,5 +60,10 @@ Two facts define the design space:
   its audited row.
 - Known limitation: opaque-ID detail/update/delete operations remain tenant-wide. A
   later increment may reverse-resolve their resource scope before method authorization.
+  **Resolved for the approval gates by ADR 0005**: `ResourceScopeResolver` + `@scopeGuard`
+  reverse-resolve a resource's environment/application from the row before authorization, so
+  publish / send-back / deprecate, migration approve/reject and migration execute/rollback are
+  decidable per environment without a scope header. Delete/restore and detail reads remain
+  tenant-wide (tracked in ADR 0005's remaining work).
 - Future work (same ADR series): per-artifact-type roles, database-backed
   role→authority mapping, scoped-grant expiry.

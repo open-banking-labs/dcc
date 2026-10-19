@@ -41,6 +41,16 @@ public class ChangeContext {
         return change == null ? systemOperator : change.author();
     }
 
+    /**
+     * @return the author as bound by the exposure layer, or {@code null} when no caller is bound
+     *         (system jobs, seeders, tests). Used by the four-eyes check: a flow without a real
+     *         caller has no human to separate duties from.
+     */
+    public String boundAuthor() {
+        Change change = CURRENT.get();
+        return change == null || change.author() == null || change.author().isBlank() ? null : change.author();
+    }
+
     /** @return the human-supplied reason, or {@code null} when none is bound. */
     public String message() {
         Change change = CURRENT.get();

@@ -34,7 +34,8 @@ class RoleAssignmentServiceTest {
             org.mockito.Mockito.mock(TenantApplicationRepository.class);
     private final RoleAssignmentService service =
             new RoleAssignmentService(assignments, tenants, environments, applications,
-                    new ChangeContext(new TenantProperties()));
+                    new ChangeContext(new TenantProperties()),
+                    List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN", "DCC_ADMIN"));
 
     @Test
     void createGrantsARoleForAnActiveTenant() {

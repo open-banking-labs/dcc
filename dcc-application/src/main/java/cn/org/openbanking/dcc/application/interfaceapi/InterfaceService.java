@@ -6,6 +6,8 @@ import java.util.List;
 
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
+import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
+import cn.org.openbanking.dcc.application.common.ScopeValidation;
 import cn.org.openbanking.dcc.application.common.SnapshotCodec;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.application.migration.MigrationPolicy;
@@ -59,8 +61,10 @@ public class InterfaceService {
     private final SnapshotCodec codec;
     private final ReferenceRecorder referenceRecorder;
     private final MigrationPolicy migrationPolicy;
+    private final ScopeValidation scopeValidation;
     private final ContentDigest digest;
     private final ChangeContext changeContext;
+    private final SeparationOfDuties separationOfDuties;
 
     public InterfaceService(InterfaceDefinitionRepository interfaces,
             InterfaceVersionRepository versions,
@@ -70,8 +74,10 @@ public class InterfaceService {
             SnapshotCodec codec,
             ReferenceRecorder referenceRecorder,
             MigrationPolicy migrationPolicy,
+            ScopeValidation scopeValidation,
             ContentDigest digest,
-            ChangeContext changeContext) {
+            ChangeContext changeContext,
+            SeparationOfDuties separationOfDuties) {
         this.interfaces = interfaces;
         this.versions = versions;
         this.standards = standards;
@@ -80,8 +86,10 @@ public class InterfaceService {
         this.codec = codec;
         this.referenceRecorder = referenceRecorder;
         this.migrationPolicy = migrationPolicy;
+        this.scopeValidation = scopeValidation;
         this.digest = digest;
         this.changeContext = changeContext;
+        this.separationOfDuties = separationOfDuties;
     }
 
     public record CreateCommand(@NotBlank @Size(max = 64) String interfaceNo, Long templateId,
@@ -107,6 +115,7 @@ public class InterfaceService {
 
     public InterfaceView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
+        scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             InterfaceContent content = resolveContent(tenantId, command.content());
             // interface number is unique within tenant + environment
@@ -119,9 +128,11 @@ public class InterfaceService {
             definition = interfaces.save(definition);
 
             InterfaceVersion version = new InterfaceVersion(definition.getId(), SemVer.INITIAL.value(),
-                    VersionChangeType.MAJOR, codec.write(content), "initial version");
+                    VersionChangeType.MAJOR, codec.write(content),
+                    changeContext.messageOr(() -> "initial version"));
             version.setTenantId(tenantId);
-            version.stamp(digest.digest(content), null, changeContext.author(), "initial version");
+            version.stamp(digest.digest(content), null, changeContext.author(),
+                    changeContext.messageOr(() -> "initial version"));
             version = versions.save(version);
 
             definition.pointToVersion(version.getId(), version.getVersion());
@@ -207,6 +218,11 @@ public class InterfaceService {
     public InterfaceView transition(String tenantId, Long id, StandardStatus target) {
         return tenantScope.call(tenantId, () -> {
             InterfaceDefinition definition = require(tenantId, id);
+            if (target == StandardStatus.PUBLISHED) {
+                separationOfDuties.requireFourEyes(
+                        requireVersion(tenantId, id, definition.getCurrentVersion()).getAuthor(),
+                        "interface '" + definition.getInterfaceNo() + "'");
+            }
             definition.transitionTo(target);
             return toView(definition, currentContent(tenantId, definition));
         });

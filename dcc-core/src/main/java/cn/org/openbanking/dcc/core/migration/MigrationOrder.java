@@ -60,6 +60,13 @@ public class MigrationOrder extends TenantScopedEntity {
     @Column(name = "note", length = 512)
     private String note;
 
+    /**
+     * Subject that submitted this order for approval (ADR 0005 §D4). Compared with the approver's
+     * identity so a subject cannot approve its own order.
+     */
+    @Column(name = "submitted_by", length = 128)
+    private String submittedBy;
+
     @Column(name = "target_artifact_id")
     private Long targetArtifactId;
 

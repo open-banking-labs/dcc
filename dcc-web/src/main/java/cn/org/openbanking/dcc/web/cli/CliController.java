@@ -74,40 +74,47 @@ public class CliController extends AbstractTenantController {
     }
 
     @PostMapping("/hash")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public HashResponse hash(@Valid @RequestBody ModelRequest request) {
         return new HashResponse(service.hash(currentTenantId(), request.type(), request.modelId(), request.version()));
     }
 
     @PostMapping("/diff")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public DiffResponse diff(@Valid @RequestBody RangeRequest request) {
         return new DiffResponse(service.diff(currentTenantId(), request.type(), request.modelId(),
                 request.fromVersion(), request.toVersion()));
     }
 
     @PostMapping("/bump")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public BumpSuggestion bump(@Valid @RequestBody RangeRequest request) {
         return service.bump(currentTenantId(), request.type(), request.modelId(),
                 request.fromVersion(), request.toVersion());
     }
 
     @PostMapping("/validate")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public ValidationResult validate(@Valid @RequestBody ModelRequest request) {
         return service.validate(currentTenantId(), request.type(), request.modelId(), request.version());
     }
 
     @PostMapping("/export/java")
+    @PreAuthorize("hasAuthority(@perms.generationPackage)")
     public ExportResponse exportJava(@Valid @RequestBody ModelRequest request) {
         return new ExportResponse(service.export(currentTenantId(), request.type(), request.modelId(),
                 request.version(), "java"));
     }
 
     @PostMapping("/export/sql")
+    @PreAuthorize("hasAuthority(@perms.generationPackage)")
     public ExportResponse exportSql(@Valid @RequestBody ModelRequest request) {
         return new ExportResponse(service.export(currentTenantId(), request.type(), request.modelId(),
                 request.version(), "sql"));
     }
 
     @PostMapping("/drift")
+    @PreAuthorize("hasAuthority(@perms.artifactRead)")
     public DriftResponse drift(@Valid @RequestBody DriftRequest request) {
         return new DriftResponse(service.drift(currentTenantId(), request.environmentId(), request.applicationId()));
     }
@@ -127,12 +134,14 @@ public class CliController extends AbstractTenantController {
 
     /** @see AuditService#history */
     @PostMapping("/audit/history")
+    @PreAuthorize("hasAuthority(@perms.auditBusiness)")
     public List<AuditView> auditHistory(@Valid @RequestBody AuditHistoryRequest request) {
         return auditService.history(currentTenantId(), request.entityType(), request.entityId());
     }
 
     /** @see AuditService#search */
     @PostMapping("/audit/search")
+    @PreAuthorize("hasAuthority(@perms.auditBusiness)")
     public Page<AuditView> auditSearch(@RequestBody AuditSearchRequest request) {
         AuditSearchRequest filter = request == null ? new AuditSearchRequest(null, null, null, null, null, null, 0, 50)
                 : request;
@@ -144,13 +153,14 @@ public class CliController extends AbstractTenantController {
 
     /** @see AuditService#verify */
     @PostMapping("/audit/verify")
+    @PreAuthorize("hasAuthority(@perms.auditBusiness)")
     public VerifyView auditVerify(@Valid @RequestBody AuditVerifyRequest request) {
         return auditService.verify(currentTenantId(), request.entityType(), request.entityId());
     }
 
-    /** Brings a logically-deleted aggregate back; admin authority, audited as RESTORE. */
+    /** Brings a logically-deleted aggregate back; requires the retention-restore permission. */
     @PostMapping("/restore")
-    @PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+    @PreAuthorize("hasAuthority(@perms.artifactRestore)")
     public void restore(@Valid @RequestBody RestoreRequest request) {
         restoreService.restore(currentTenantId(), request.type(), request.id());
     }

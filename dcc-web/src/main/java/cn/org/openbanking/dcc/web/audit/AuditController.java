@@ -22,11 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Read-only access to the append-only audit trail for the caller's tenant. Restricted to
- * administrators because it exposes who changed what and the before/after images.
+ * the tenant administrator because it exposes who changed what and the before/after images;
+ * platform-level rows (tenants, memberships, grants) live on the platform audit endpoint.
  */
 @RestController
 @RequestMapping("/api/audit")
-@PreAuthorize("hasAuthority(@dccAuthorities.admin)")
+@PreAuthorize("hasAuthority(@perms.auditBusiness)")
 public class AuditController extends AbstractTenantController {
 
     private final AuditService service;

@@ -57,6 +57,7 @@ public class DccSecurityConfiguration {
     @Bean
     public BearerJwtAuthenticationFilter bearerJwtAuthenticationFilter(
             JwtDecoder decoder, DccSecurityProperties properties, RolePermissionResolver rolePermissionResolver,
+            DccPermissions dccPermissions,
             org.springframework.beans.factory.ObjectProvider<DirectoryAccessPolicy> directoryPolicy) {
         DirectoryAccessPolicy policy = null;
         if (properties.isDirectoryMode()) {
@@ -65,7 +66,8 @@ public class DccSecurityConfiguration {
             policy = java.util.Objects.requireNonNull(directoryPolicy.getIfAvailable(),
                     "dcc.security.directory-mode is enabled but no DirectoryAccessPolicy bean is present");
         }
-        return new BearerJwtAuthenticationFilter(decoder, properties, rolePermissionResolver, policy);
+        return new BearerJwtAuthenticationFilter(decoder, properties, rolePermissionResolver, policy,
+                dccPermissions);
     }
 
     @Bean

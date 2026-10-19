@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { useAsync } from '@/hooks/useAsync'
 import { useResourceContext } from '@/hooks/useResourceContext'
 import { formatDateTime } from '@/lib/format'
-import { AUTHORITY } from '@/lib/permissions'
+import { PERMISSION } from '@/lib/permissions'
 import { standardStatusOptions } from '@/lib/status'
 import type { StandardStatus, TableView } from '@/types'
 
@@ -86,7 +86,7 @@ export function TableListPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to={`/tables/${row.original.id}/edit`}>编辑</Link>
           </Button>
-          <PermissionGate authority={AUTHORITY.admin}>
+          <PermissionGate authority={PERMISSION.artifactDelete}>
             <Button
               size="sm"
               variant="ghost"

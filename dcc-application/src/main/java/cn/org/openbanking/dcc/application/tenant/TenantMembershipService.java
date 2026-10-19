@@ -107,6 +107,50 @@ public class TenantMembershipService {
         }
     }
 
+    // ------------------------------------------------- tenant-scoped (tenant administrator, ADR 0005 §D5)
+
+    /**
+     * Logically deletes a membership of <em>this</em> tenant. A row belonging to another tenant is
+     * reported as not found rather than forbidden, so the endpoint cannot be used to probe whether
+     * an id exists elsewhere.
+     */
+    @Transactional
+    public void deleteInTenant(String tenantCode, Long id) {
+        TenantMembership membership = requireInTenant(tenantCode, id);
+        membership.markDeleted(changeContext.author(), changeContext.messageOr(() -> "delete membership"));
+    }
+
+    /** Restores a logically-deleted membership of this tenant. */
+    @Transactional
+    public MembershipView restoreInTenant(String tenantCode, Long id) {
+        TenantMembership membership = memberships.findByIdIncludingDeleted(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("TenantMembership", "id", id));
+        requireSameTenant(tenantCode, membership);
+        if (membership.isDeleted()) {
+            membership.restore();
+            try {
+                memberships.flush();
+            } catch (DataIntegrityViolationException ex) {
+                throw new ConflictException("cannot restore membership: a live row already grants subject '"
+                        + membership.getSubject() + "' in tenant '" + membership.getTenantCode() + "'");
+            }
+        }
+        return toView(membership);
+    }
+
+    private TenantMembership requireInTenant(String tenantCode, Long id) {
+        TenantMembership membership = memberships.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("TenantMembership", "id", id));
+        requireSameTenant(tenantCode, membership);
+        return membership;
+    }
+
+    private void requireSameTenant(String tenantCode, TenantMembership membership) {
+        if (tenantCode == null || !tenantCode.equals(membership.getTenantCode())) {
+            throw ResourceNotFoundException.of("TenantMembership", "id", membership.getId());
+        }
+    }
+
     private static MembershipView toView(TenantMembership membership) {
         return new MembershipView(membership.getId(), membership.getSubject(), membership.getTenantCode(),
                 membership.getCreatedAt(), membership.getUpdatedAt());
