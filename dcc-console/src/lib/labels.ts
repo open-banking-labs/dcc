@@ -55,6 +55,11 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   StandardReference: '标准引用',
   TenantMembership: '租户成员',
   RoleAssignment: '角色指派',
+  MigrationOrder: '迁移单',
+  TemplateVersion: '模板版本',
+  ReferenceCase: '指导案例',
+  ReferenceCaseAdoption: '案例采纳',
+  RolePermission: '角色权限',
 }
 
 /** audit_log.action → 中文标签。 */

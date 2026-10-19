@@ -24,6 +24,7 @@ export interface MigrationOrderView {
   note: string | null
   targetArtifactId: number | null
   targetVersion: string | null
+  submittedBy: string | null
   createdAt: string
   updatedAt: string
 }

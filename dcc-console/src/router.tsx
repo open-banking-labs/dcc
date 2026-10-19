@@ -76,6 +76,7 @@ export const router = createBrowserRouter([
           { path: 'applications', element: <ApplicationsPage /> },
           { path: 'cases', element: <CasesPage /> },
           { path: 'audit', element: <AuditPage /> },
+          { path: 'platform/audit', element: <AuditPage /> },
           { path: 'directory', element: <DirectoryPage /> },
         ],
       },

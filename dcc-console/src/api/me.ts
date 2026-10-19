@@ -10,39 +10,35 @@ import type { MeView } from '@/types/me'
  * 与角色权限包解析后的并集（ADR 0005）。这里只做展示用途，真正的准入始终由后端判定。
  */
 export const meApi = {
-  get: () => httpGet<MeView>('/me'),
+  get: (token: string) => httpGet<MeView>('/me', { headers: { Authorization: `Bearer ${token}` } }),
 }
 
 /**
- * 取当前会话的有效权限点；请求未返回前先用 claim 角色兜底，失败时保持兜底值，
- * 避免界面在加载瞬间闪回全部按钮。
+ * 权限绑定到 token，切换身份时立即清空，避免沿用上个会话的权限。
  */
 export function useEffectivePermissions(
   token: string | null | undefined,
-  fallback: string[],
 ): string[] {
-  const [permissions, setPermissions] = useState<string[]>(fallback)
+  const [result, setResult] = useState<{ token: string; permissions: string[] } | null>(null)
 
   useEffect(() => {
     if (!token) {
-      setPermissions(fallback)
+      setResult(null)
       return
     }
     let cancelled = false
     meApi
-      .get()
+      .get(token)
       .then((me) => {
-        if (!cancelled) setPermissions(me.permissions ?? fallback)
+        if (!cancelled) setResult({ token, permissions: me.permissions ?? [] })
       })
       .catch(() => {
-        if (!cancelled) setPermissions(fallback)
+        if (!cancelled) setResult(null)
       })
     return () => {
       cancelled = true
     }
-    // fallback 是派生值，随 token 变化；不作为依赖，避免每次渲染重复请求
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  return permissions
+  return token && result?.token === token ? result.permissions : []
 }

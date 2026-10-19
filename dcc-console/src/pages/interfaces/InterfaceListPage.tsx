@@ -83,9 +83,11 @@ export function InterfaceListPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to={`/interfaces/${row.original.id}`}>查看</Link>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to={`/interfaces/${row.original.id}/edit`}>编辑</Link>
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/interfaces/${row.original.id}/edit`}>编辑</Link>
+            </Button>
+          </PermissionGate>
           <PermissionGate authority={PERMISSION.artifactDelete}>
             <Button
               size="sm"
@@ -122,10 +124,12 @@ export function InterfaceListPage() {
         title="接口"
         description="业务接口：CRUD、版本、生命周期"
         actions={
-          <Button size="sm" onClick={() => navigate('/interfaces/new')}>
-            <Plus className="h-4 w-4" />
-            新建
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button size="sm" onClick={() => navigate('/interfaces/new')}>
+              <Plus className="h-4 w-4" />
+              新建
+            </Button>
+          </PermissionGate>
         }
       />
 

@@ -55,7 +55,7 @@ function OidcSessionBridge({ children }: { children: ReactNode }) {
   const auth = useAuth()
   const token = auth.user?.access_token ?? null
   const roles = useMemo(() => extractRoles(token ?? undefined), [token])
-  const permissions = useEffectivePermissions(token, roles)
+  const permissions = useEffectivePermissions(token)
 
   const value = useMemo<Session>(() => {
     const profile = auth.user?.profile
@@ -90,7 +90,7 @@ function DevSessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const roles = useMemo(() => extractRoles(token ?? undefined), [token])
-  const permissions = useEffectivePermissions(token, roles)
+  const permissions = useEffectivePermissions(token)
 
   const value = useMemo<Session>(() => {
     const payload = decodeJwtPayload(token ?? undefined)

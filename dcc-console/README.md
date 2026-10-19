@@ -62,17 +62,21 @@ npm run dev          # http://localhost:5173
 
 > 审计与恢复能力对齐后端 retention 特性：「平台管理 → 审计日志」（管理员）提供检索（对象类型/id/执行者/操作/时间窗，服务端分页）、单行链路（完整历史 + 哈希链校验）与已删除对象的恢复；删除均为逻辑删除（保留行、版本与引用），恢复若与新对象编码冲突由数据库部分唯一索引仲裁。见 `docs/decisions/0002-retention-and-audit-trail.md`。
 >
-> 「平台管理 → 授权目录」（管理员）维护 `tenant_membership`（谁可进哪个租户）与 `role_assignment`（租户内角色指派），即 `dcc.security.directory-mode` 的数据面；增删恢复全部落审计（见 ADR 0003），已删除行可在审计日志页按 `TenantMembership` / `RoleAssignment` 类型恢复。
+> 「平台管理 → 授权目录」按有效权限选择接口：平台管理使用 `/api/directory/*`，可指定租户；租户内管理使用 `/api/memberships`、`/api/role-assignments`，租户由服务端从当前身份确定，不发送租户参数。只读用户不显示写操作；特权授权显示待确认状态，授予人不能确认自己的授权。
+>
+> 「平台管理 → 平台审计」使用 `/api/platform/audit`，展示租户准入、授权目录与指导案例记录；该接口仅提供检索与记录详情。业务审计继续使用 `/api/audit`，提供链路和哈希校验；恢复按钮按对象类型对应的权限显示。
 
 ## 构建
 
 ```bash
 npm run build        # tsc --noEmit && vite build
 npm run typecheck    # 仅类型检查
+npm test             # API 契约和权限会话隔离检查，无需后端
 ```
 
 ## 约定
 
-- 列表接口返回裸数组，分页/排序在前端（TanStack Table）。
+- 资产列表返回裸数组，分页/排序在前端（TanStack Table）；目录和审计接口使用服务端分页。
 - 写操作的环境/应用上下文来自顶栏 `EnvAppSwitcher`，作为 query 参数带上。
-- 删除需 `DCC_ADMIN`、生命周期流转需 `DCC_APPROVER`；`PermissionGate` 按 token 的 `roles` claim 显隐。
+- 菜单及操作显隐以 `/api/me` 的有效权限点为准，不根据 JWT 角色推导权限。权限请求显式携带当前 Token；切换身份、请求失败或尚未返回时不沿用旧权限。
+- 前端权限判断仅用于界面展示；资源真实环境/应用范围与职责分离规则仍由服务端校验（ADR 0005）。

@@ -12,6 +12,8 @@ import { FormDialog } from '@/components/form/FormDialog'
 import { Field, NumberField, SelectField, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PermissionGate } from '@/components/common/PermissionGate'
+import { PERMISSION } from '@/lib/permissions'
 import { useAsync } from '@/hooks/useAsync'
 import { useResourceContext } from '@/hooks/useResourceContext'
 import { formatDateTime } from '@/lib/format'
@@ -177,10 +179,12 @@ export function MigrationListPage() {
         title="迁移单"
         description="环境间迁移及其审批流程"
         actions={
+          <PermissionGate authority={PERMISSION.migrationWrite}>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>
+          </PermissionGate>
         }
       />
 

@@ -1,8 +1,8 @@
 import { httpDelete, httpGet, httpPost } from '@/lib/apiClient'
 
 /** Spring Data Page 序列化（前端只取用到的字段）。 */
-export interface DirectoryPage {
-  content: Array<Record<string, unknown>>
+export interface DirectoryPage<T> {
+  content: T[]
   totalElements: number
   totalPages: number
   number: number
@@ -36,18 +36,22 @@ function toParams(params: Record<string, string | number | null | undefined>) {
 }
 
 /** 授权目录（管理员）：成员关系 + 租户内角色指派，gate 着 directory-mode。 */
-export const directoryApi = {
+export function createDirectoryApi(platform: boolean) {
+  const prefix = platform ? '/directory' : ''
+  const membershipBody = (body: { subject: string; tenantCode: string }) =>
+    platform ? body : { subject: body.subject }
+  return {
   /** 当前操作者自己的成员关系（任意登录用户）。 */
   myMemberships: () => httpGet<MembershipView[]>('/directory/my-memberships'),
   memberships: {
     search: (subject: string | null, tenant: string | null, page: number, size: number) =>
-      httpGet<DirectoryPage>('/directory/memberships', {
-        params: toParams({ subject, tenant, page, size }),
+      httpGet<DirectoryPage<MembershipView>>(`${prefix}/memberships`, {
+        params: toParams({ subject, tenant: platform ? tenant : null, page, size }),
       }),
     create: (body: { subject: string; tenantCode: string }) =>
-      httpPost<MembershipView>('/directory/memberships', body),
-    remove: (id: number) => httpDelete(`/directory/memberships/${id}`),
-    restore: (id: number) => httpPost<MembershipView>(`/directory/memberships/${id}/restore`),
+      httpPost<MembershipView>(`${prefix}/memberships`, membershipBody(body)),
+    remove: (id: number) => httpDelete(`${prefix}/memberships/${id}`),
+    restore: (id: number) => httpPost<MembershipView>(`${prefix}/memberships/${id}/restore`),
   },
   assignments: {
     search: (
@@ -59,14 +63,20 @@ export const directoryApi = {
       page: number,
       size: number,
     ) =>
-      httpGet<DirectoryPage>('/directory/role-assignments', {
-        params: toParams({ subject, tenant, role, scopeType, scopeCode, page, size }),
+      httpGet<DirectoryPage<AssignmentView>>(`${prefix}/role-assignments`, {
+        params: toParams({ subject, tenant: platform ? tenant : null, role, scopeType, scopeCode, page, size }),
       }),
     create: (body: { subject: string; tenantCode: string; role: string; scopeType: AssignmentView['scopeType']; scopeCode?: string | null }) =>
-      httpPost<AssignmentView>('/directory/role-assignments', body),
-    remove: (id: number) => httpDelete(`/directory/role-assignments/${id}`),
-    restore: (id: number) => httpPost<AssignmentView>(`/directory/role-assignments/${id}/restore`),
+      httpPost<AssignmentView>(`${prefix}/role-assignments`, platform ? body : {
+        subject: body.subject, role: body.role, scopeType: body.scopeType, scopeCode: body.scopeCode,
+      }),
+    remove: (id: number) => httpDelete(`${prefix}/role-assignments/${id}`),
+    restore: (id: number) => httpPost<AssignmentView>(`${prefix}/role-assignments/${id}/restore`),
     /** 双人确认：特权角色必须由**另一个**主体确认后才生效。 */
-    confirm: (id: number) => httpPost<AssignmentView>(`/directory/role-assignments/${id}/confirm`),
+    confirm: (id: number) => httpPost<AssignmentView>(`${prefix}/role-assignments/${id}/confirm`),
   },
 }
+}
+
+export const directoryApi = createDirectoryApi(true)
+export const tenantDirectoryApi = createDirectoryApi(false)

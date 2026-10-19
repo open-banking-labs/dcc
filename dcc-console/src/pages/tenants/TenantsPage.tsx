@@ -10,6 +10,8 @@ import { FormDialog } from '@/components/form/FormDialog'
 import { Field, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PermissionGate } from '@/components/common/PermissionGate'
+import { PERMISSION } from '@/lib/permissions'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime } from '@/lib/format'
@@ -136,6 +138,7 @@ export function TenantsPage() {
       header: '操作',
       enableSorting: false,
       cell: ({ row }) => (
+        <PermissionGate authority={PERMISSION.tenantAdmit}>
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" onClick={() => openEdit(row.original)}>
             编辑
@@ -149,6 +152,7 @@ export function TenantsPage() {
             删除
           </Button>
         </div>
+        </PermissionGate>
       ),
     },
   ]
@@ -159,10 +163,12 @@ export function TenantsPage() {
         title="租户"
         description="平台级租户管理（隔离根）"
         actions={
+          <PermissionGate authority={PERMISSION.tenantAdmit}>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>
+          </PermissionGate>
         }
       />
 

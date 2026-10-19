@@ -101,9 +101,11 @@ export function StandardsListPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to={`/standards/${row.original.id}`}>查看</Link>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to={`/standards/${row.original.id}/edit`}>编辑</Link>
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/standards/${row.original.id}/edit`}>编辑</Link>
+            </Button>
+          </PermissionGate>
           <PermissionGate authority={PERMISSION.artifactDelete}>
             <Button
               size="sm"
@@ -168,10 +170,12 @@ export function StandardsListPage() {
               <Download className="h-4 w-4" />
               {exporting ? '导出中…' : '导出'}
             </Button>
-            <Button size="sm" onClick={() => navigate('/standards/new')}>
-              <Plus className="h-4 w-4" />
-              新建
-            </Button>
+            <PermissionGate authority={PERMISSION.artifactWrite}>
+              <Button size="sm" onClick={() => navigate('/standards/new')}>
+                <Plus className="h-4 w-4" />
+                新建
+              </Button>
+            </PermissionGate>
           </>
         }
       />

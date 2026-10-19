@@ -26,7 +26,7 @@ interface NavItem {
   label: string
   icon: LucideIcon
   /** 需要的 authority；缺省任何登录用户可见。 */
-  authority?: string
+  authority?: string | string[]
 }
 
 interface NavSection {
@@ -59,22 +59,24 @@ const NAV: NavSection[] = [
   {
     group: '平台管理',
     items: [
-      { to: '/tenants', label: '租户', icon: Building2 },
-      { to: '/environments', label: '环境', icon: Layers },
-      { to: '/applications', label: '应用', icon: AppWindow },
+      { to: '/tenants', label: '租户', icon: Building2, authority: PERMISSION.tenantAdmit },
+      { to: '/environments', label: '环境', icon: Layers, authority: PERMISSION.topologyRead },
+      { to: '/applications', label: '应用', icon: AppWindow, authority: PERMISSION.topologyRead },
       { to: '/audit', label: '审计日志', icon: History, authority: PERMISSION.auditBusiness },
-      { to: '/directory', label: '授权目录', icon: UserCog, authority: PERMISSION.directoryWritePlatform },
+      { to: '/platform/audit', label: '平台审计', icon: History, authority: PERMISSION.auditPlatform },
+      { to: '/directory', label: '授权目录', icon: UserCog, authority: [PERMISSION.directoryRead, PERMISSION.directoryWritePlatform] },
     ],
   },
 ]
 
 /** 左侧固定侧边栏：纯文字 + 图标，选中项用背景色；按 authority 过滤受限入口。 */
 export function Sidebar() {
-  const roles = useSession().roles
+  const permissions = useSession().permissions
   const visible = NAV.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.authority || roles.includes(item.authority)),
-  }))
+    items: section.items.filter((item) => !item.authority ||
+      (Array.isArray(item.authority) ? item.authority : [item.authority]).some((permission) => permissions.includes(permission))),
+  })).filter((section) => section.items.length > 0)
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="flex h-12 shrink-0 items-center border-b border-border px-4">

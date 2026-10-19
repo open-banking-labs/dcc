@@ -2,7 +2,11 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { directoryApi, type AssignmentView, type MembershipView } from '@/api/directory'
+import { directoryApi, tenantDirectoryApi, type AssignmentView, type MembershipView } from '@/api/directory'
+import { useSession } from '@/auth/session'
+import { useHasAuthority } from '@/components/common/PermissionGate'
+import { decodeJwtPayload } from '@/lib/jwt'
+import { PERMISSION } from '@/lib/permissions'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { DataTable } from '@/components/data/DataTable'
 import { useToast } from '@/components/feedback/Toast'
@@ -26,7 +30,19 @@ interface DirectoryFilters {
 
 const EMPTY_FILTERS: DirectoryFilters = { subject: '', tenant: '', role: '', scopeType: '', scopeCode: '' }
 
+function useDirectoryAccess() {
+  const session = useSession()
+  const platform = useHasAuthority(PERMISSION.directoryWritePlatform)
+  return {
+    api: platform ? directoryApi : tenantDirectoryApi,
+    platform,
+    writable: platform || session.permissions.includes(PERMISSION.directoryWrite),
+    subject: decodeJwtPayload(session.accessToken ?? undefined)?.sub,
+  }
+}
+
 function MembershipPane({ filters }: { filters: DirectoryFilters }) {
+  const { api, platform, writable } = useDirectoryAccess()
   const toast = useToast()
   const [page, setPage] = useState(0)
   const subject = filters.subject || null
@@ -35,8 +51,8 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
   useEffect(() => setPage(0), [subject, tenant])
 
   const { data, loading, error, reload } = useAsync(
-    () => directoryApi.memberships.search(subject, tenant, page, PAGE_SIZE),
-    [subject, tenant, page],
+    () => api.memberships.search(subject, tenant, page, PAGE_SIZE),
+    [subject, tenant, page, platform],
   )
 
   const [creating, setCreating] = useState(false)
@@ -45,9 +61,13 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
   const [busy, setBusy] = useState(false)
 
   const create = async () => {
+    if (!form.subject.trim() || (platform && !form.tenantCode.trim())) {
+      toast.error('请填写操作者和租户')
+      return
+    }
     setBusy(true)
     try {
-      await directoryApi.memberships.create({ subject: form.subject.trim(), tenantCode: form.tenantCode.trim() })
+      await api.memberships.create({ subject: form.subject.trim(), tenantCode: form.tenantCode.trim() })
       toast.success('已授权成员', form.subject.trim())
       setCreating(false)
       setForm({ subject: '', tenantCode: '' })
@@ -64,7 +84,7 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
     if (!removing) return
     setBusy(true)
     try {
-      await directoryApi.memberships.remove(removing.id)
+      await api.memberships.remove(removing.id)
       toast.success('已收回成员权限', removing.subject)
       setRemoving(null)
       reload()
@@ -84,11 +104,11 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
       <span className="whitespace-nowrap text-muted-foreground">{formatDateTime(row.original.createdAt)}</span>
     ) },
     { id: 'actions', header: '操作', enableSorting: false, cell: ({ row }) => (
-      <div className="flex justify-end">
+      <div className="flex justify-end">{writable && (
         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
           onClick={() => setRemoving(row.original)}>
           收回
-        </Button>
+        </Button>)}
       </div>
     ) },
   ]
@@ -99,11 +119,11 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
     <>
       <div className="flex items-center justify-between p-3">
         <p className="text-xs text-muted-foreground">
-          成员关系决定「这个操作者能不能进这个租户」；directory-mode 开启后即生效。
+          {platform ? '平台成员目录' : '当前租户成员'}
         </p>
-        <Button size="sm" onClick={() => setCreating(true)}>
+        {writable && <Button size="sm" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" />授权成员
-        </Button>
+        </Button>}
       </div>
       <DataTable columns={columns} data={pageData?.content ?? []} loading={loading} error={error} onRetry={reload}
         pageSize={PAGE_SIZE} emptyText="该租户暂无成员关系" />
@@ -121,9 +141,9 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
         <Field label="操作者 (sub)" htmlFor="dir-membership-subject" required>
           <TextField id="dir-membership-subject" value={form.subject} onChange={(value) => setForm({ ...form, subject: value })} placeholder="如 IdP 的 sub" />
         </Field>
-        <Field label="租户 code" htmlFor="dir-membership-tenant" required>
+        {platform && <Field label="租户 code" htmlFor="dir-membership-tenant" required>
           <TextField id="dir-membership-tenant" value={form.tenantCode} onChange={(value) => setForm({ ...form, tenantCode: value })} placeholder="如 default_tenant" />
-        </Field>
+        </Field>}
       </FormDialog>
 
       <ConfirmDialog
@@ -140,6 +160,7 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
 }
 
 function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
+  const { api, platform, writable, subject: currentSubject } = useDirectoryAccess()
   const toast = useToast()
   const [page, setPage] = useState(0)
   const subject = filters.subject || null
@@ -151,8 +172,8 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
   useEffect(() => setPage(0), [subject, tenant, role, scopeType, scopeCode])
 
   const { data, loading, error, reload } = useAsync(
-    () => directoryApi.assignments.search(subject, tenant, role, scopeType, scopeCode, page, PAGE_SIZE),
-    [subject, tenant, role, scopeType, scopeCode, page],
+    () => api.assignments.search(subject, tenant, role, scopeType, scopeCode, page, PAGE_SIZE),
+    [subject, tenant, role, scopeType, scopeCode, page, platform],
   )
 
   const [creating, setCreating] = useState(false)
@@ -161,16 +182,21 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
   const [busy, setBusy] = useState(false)
 
   const create = async () => {
+    if (!form.subject.trim() || !form.role.trim() || (platform && !form.tenantCode.trim()) ||
+        (form.scopeType !== 'TENANT' && !form.scopeCode.trim())) {
+      toast.error('请填写完整的角色授权信息')
+      return
+    }
     setBusy(true)
     try {
-      await directoryApi.assignments.create({
+      const assignment = await api.assignments.create({
         subject: form.subject.trim(),
         tenantCode: form.tenantCode.trim(),
         role: form.role.trim(),
         scopeType: form.scopeType as AssignmentView['scopeType'],
         scopeCode: form.scopeType === 'TENANT' ? null : form.scopeCode.trim(),
       })
-      toast.success('已指派角色', `${form.subject.trim()} → ${form.role.trim()}`)
+      toast.success(assignment.confirmationRequired && !assignment.confirmedBy ? '已提交，待第二人确认' : '已指派角色', `${form.subject.trim()} → ${form.role.trim()}`)
       setCreating(false)
       setForm({ subject: '', tenantCode: '', role: '', scopeType: 'TENANT', scopeCode: '' })
       setPage(0)
@@ -186,7 +212,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
     if (!removing) return
     setBusy(true)
     try {
-      await directoryApi.assignments.remove(removing.id)
+      await api.assignments.remove(removing.id)
       toast.success('已收回角色', `${removing.subject} 的 ${removing.role}`)
       setRemoving(null)
       reload()
@@ -201,7 +227,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
   const confirmAssignment = async (id: number) => {
     setBusy(true)
     try {
-      await directoryApi.assignments.confirm(id)
+      await api.assignments.confirm(id)
       toast.success('已确认授权', `#${id}`)
       reload()
     } catch (err) {
@@ -237,16 +263,17 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
     ) },
     { id: 'actions', header: '操作', enableSorting: false, cell: ({ row }) => (
       <div className="flex justify-end gap-1">
-        {row.original.confirmationRequired && !row.original.confirmedBy && (
-          <Button size="sm" variant="ghost" disabled={busy}
+        {writable && row.original.confirmationRequired && !row.original.confirmedBy && (
+          <Button size="sm" variant="ghost" disabled={busy || row.original.grantedBy === currentSubject}
+            title={row.original.grantedBy === currentSubject ? '需由其他操作者确认' : '确认授权'}
             onClick={() => void confirmAssignment(row.original.id)}>
             确认
           </Button>
         )}
-        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+        {writable && <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
           onClick={() => setRemoving(row.original)}>
           收回
-        </Button>
+        </Button>}
       </div>
     ) },
   ]
@@ -257,11 +284,11 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
     <>
       <div className="flex items-center justify-between p-3">
         <p className="text-xs text-muted-foreground">
-          角色指派经 role-authorities 映射后与 claim 角色并集生效；只增不减，收回走 claim 侧。
+          {platform ? '平台角色指派' : '当前租户角色指派'}
         </p>
-        <Button size="sm" onClick={() => setCreating(true)}>
+        {writable && <Button size="sm" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" />指派角色
-        </Button>
+        </Button>}
       </div>
       <DataTable columns={columns} data={pageData?.content ?? []} loading={loading} error={error} onRetry={reload}
         pageSize={PAGE_SIZE} emptyText="暂无角色指派" />
@@ -271,7 +298,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         open={creating}
         onOpenChange={setCreating}
         title="指派角色"
-        description="授予租户全域或指定环境/应用的角色；角色名会再走 dcc.security.role-authorities 映射。"
+        description="授予租户、环境或应用范围的角色；特权授权需第二人确认后生效。"
         submitText="指派"
         submitting={busy}
         onSubmit={() => void create()}
@@ -279,11 +306,11 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         <Field label="操作者 (sub)" htmlFor="dir-assignment-subject" required>
           <TextField id="dir-assignment-subject" value={form.subject} onChange={(value) => setForm({ ...form, subject: value })} />
         </Field>
-        <Field label="租户 code" htmlFor="dir-assignment-tenant" required>
+        {platform && <Field label="租户 code" htmlFor="dir-assignment-tenant" required>
           <TextField id="dir-assignment-tenant" value={form.tenantCode} onChange={(value) => setForm({ ...form, tenantCode: value })} />
-        </Field>
+        </Field>}
         <Field label="角色" htmlFor="dir-assignment-role" required>
-          <TextField id="dir-assignment-role" value={form.role} onChange={(value) => setForm({ ...form, role: value })} placeholder="如 DCC_ADMIN / editor" />
+          <TextField id="dir-assignment-role" value={form.role} onChange={(value) => setForm({ ...form, role: value })} placeholder="如 DCC_MAINTAINER / DCC_APPROVER" />
         </Field>
         <Field label="授权范围" htmlFor="dir-assignment-scope" required>
           <SelectField id="dir-assignment-scope" value={form.scopeType}
@@ -338,6 +365,7 @@ function Pager({ page, totalPages, totalElements, onPage }: {
 
 /** 授权目录（管理员）：directory-mode 的门槛与超出 claim 的授信都在这里维护。 */
 export function DirectoryPage() {
+  const { platform } = useDirectoryAccess()
   const [draft, setDraft] = useState<DirectoryFilters>(EMPTY_FILTERS)
   const [applied, setApplied] = useState<DirectoryFilters>(EMPTY_FILTERS)
 
@@ -351,16 +379,16 @@ export function DirectoryPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="授权目录"
-        description="按 (操作者, 租户) 管理准入成员与角色指派；Tel 需要管理员权限，所有变更进审计"
+        description={platform ? '跨租户管理成员与角色指派' : '管理当前租户的成员与角色指派'}
       />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
         <Field label="操作者" className="w-44">
           <TextField value={draft.subject} onChange={(value) => setDraft({ ...draft, subject: value })} placeholder="精确匹配" />
         </Field>
-        <Field label="租户" className="w-40">
+        {platform && <Field label="租户" className="w-40">
           <TextField value={draft.tenant} onChange={(value) => setDraft({ ...draft, tenant: value })} placeholder="精确匹配" />
-        </Field>
+        </Field>}
         <Field label="角色（仅指派）" className="w-32">
           <TextField value={draft.role} onChange={(value) => setDraft({ ...draft, role: value })} placeholder="精确匹配" />
         </Field>

@@ -10,6 +10,8 @@ import { FormDialog } from '@/components/form/FormDialog'
 import { Field, NumberField, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PermissionGate } from '@/components/common/PermissionGate'
+import { PERMISSION } from '@/lib/permissions'
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime } from '@/lib/format'
 import type { EnvironmentView } from '@/types'
@@ -131,6 +133,7 @@ export function EnvironmentsPage() {
       header: '操作',
       enableSorting: false,
       cell: ({ row }) => (
+        <PermissionGate authority={PERMISSION.topologyWrite}>
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" onClick={() => openEdit(row.original)}>
             编辑
@@ -144,6 +147,7 @@ export function EnvironmentsPage() {
             删除
           </Button>
         </div>
+        </PermissionGate>
       ),
     },
   ]
@@ -154,10 +158,12 @@ export function EnvironmentsPage() {
         title="环境"
         description="租户内的环境（DEV / TEST / PROD，可自定义）"
         actions={
+          <PermissionGate authority={PERMISSION.topologyWrite}>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>
+          </PermissionGate>
         }
       />
 

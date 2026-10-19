@@ -1,5 +1,6 @@
 import { httpGet, httpPost } from '@/lib/apiClient'
 import type { AuditAction, AuditEntryView, AuditVerifyView } from '@/types/audit'
+import { PERMISSION } from '@/lib/permissions'
 
 /** 动态类型参数（均为后端可选筛选项）。 */
 export interface AuditSearchParams {
@@ -28,8 +29,8 @@ export interface AuditPage {
 
 /** 审计日志（管理员）。注意 audit_log 由后端按 JWT 租户过滤。 */
 export const auditApi = {
-  search: (params: AuditSearchParams) =>
-    httpGet<AuditPage>('/audit', {
+  search: (params: AuditSearchParams, platform = false) =>
+    httpGet<AuditPage>(platform ? '/platform/audit' : '/audit', {
       params: Object.fromEntries(
         Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
       ),
@@ -69,5 +70,14 @@ export function restoreAuditEntity(entityType: string, id: number, code: string 
 /** 该审计对象类型是否有对应的恢复端点。 */
 export function canRestore(entityType: string): boolean {
   return Boolean(RESTORE_PATH[entityType])
+}
+
+export function hasRestorePermission(entityType: string, permissions: string[]): boolean {
+  if (!canRestore(entityType)) return false
+  const permission = entityType === 'Tenant' ? PERMISSION.tenantAdmit
+    : entityType === 'TenantEnvironment' || entityType === 'TenantApplication' ? PERMISSION.topologyWrite
+    : entityType === 'TenantMembership' || entityType === 'RoleAssignment' ? PERMISSION.directoryWritePlatform
+    : PERMISSION.artifactRestore
+  return permissions.includes(permission)
 }
 

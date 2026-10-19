@@ -17,12 +17,12 @@ export function PermissionGate({
   fallback?: ReactNode
 }) {
   const session = useSession()
-  const permissions = session.permissions ?? session.roles
+  const permissions = session.permissions
   return <>{permissions.includes(authority) ? children : fallback}</>
 }
 
 /** 命令式判断当前用户是否持有某权限点。 */
 export function useHasAuthority(authority: string): boolean {
   const session = useSession()
-  return (session.permissions ?? session.roles).includes(authority)
+  return session.permissions.includes(authority)
 }

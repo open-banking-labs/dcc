@@ -77,9 +77,11 @@ export function TemplateListPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to={`/templates/${row.original.id}`}>查看</Link>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to={`/templates/${row.original.id}/edit`}>编辑</Link>
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/templates/${row.original.id}/edit`}>编辑</Link>
+            </Button>
+          </PermissionGate>
           <PermissionGate authority={PERMISSION.artifactDelete}>
             <Button
               size="sm"
@@ -116,10 +118,12 @@ export function TemplateListPage() {
         title="接口模板"
         description="接口模板：CRUD、版本、生命周期"
         actions={
-          <Button size="sm" onClick={() => navigate('/templates/new')}>
-            <Plus className="h-4 w-4" />
-            新建
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button size="sm" onClick={() => navigate('/templates/new')}>
+              <Plus className="h-4 w-4" />
+              新建
+            </Button>
+          </PermissionGate>
         }
       />
 

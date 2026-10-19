@@ -112,9 +112,11 @@ export function StandardDetailPage() {
         description={standard.content.name}
         actions={
           <>
-            <Button asChild size="sm" variant="outline">
-              <Link to={`/standards/${standard.id}/edit`}>编辑</Link>
-            </Button>
+            <PermissionGate authority={PERMISSION.artifactWrite}>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/standards/${standard.id}/edit`}>编辑</Link>
+              </Button>
+            </PermissionGate>
             {canTransition &&
               transitions.map((target) => (
                 <Button

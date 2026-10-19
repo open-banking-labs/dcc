@@ -1,9 +1,10 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
-import { auditApi, canRestore, restoreAuditEntity, type AuditPage } from '@/api/audit'
+import { auditApi, hasRestorePermission, restoreAuditEntity, type AuditPage } from '@/api/audit'
+import { useSession } from '@/auth/session'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { useHasAuthority } from '@/components/common/PermissionGate'
 import { CodeBlock } from '@/components/common/CodeBlock'
 import { DataTable } from '@/components/data/DataTable'
 import { useToast } from '@/components/feedback/Toast'
@@ -14,7 +15,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime } from '@/lib/format'
 import { AUDIT_ACTION_LABEL, AUDIT_ENTITY_LABEL } from '@/lib/labels'
-import { PERMISSION } from '@/lib/permissions'
 import type { AuditAction, AuditEntryView } from '@/types/audit'
 
 const PAGE_SIZE = 20
@@ -69,7 +69,7 @@ function HistoryDialog({
   onRestored: () => void
 }) {
   const toast = useToast()
-  const mayRestore = useHasAuthority(PERMISSION.artifactRestore)
+  const { permissions } = useSession()
   const { data, loading, error, reload } = useAsync(
     () => (target ? auditApi.history(target.entityType, target.entityId) : Promise.resolve([])),
     [target?.entityType, target?.entityId],
@@ -159,7 +159,7 @@ function HistoryDialog({
         )}
 
         <div className="mt-2 flex justify-end gap-2">
-          {mayRestore && deletedNow && (
+          {latest && hasRestorePermission(latest.entityType, permissions) && deletedNow && (
             <Button size="sm" variant="outline" disabled={restoring} onClick={() => void doRestore()}>
               {restoring ? '处理中…' : '恢复该对象'}
             </Button>
@@ -214,15 +214,11 @@ function showEntityTitle(entry: AuditEntryView | null): string {
   return `#${entry.entityId} ${label}${entry.entityCode ? `（${entry.entityCode}）` : ''}`
 }
 
-/** 有恢复端点的对象类型（租户按 code 恢复，其余按 id）。 */
-function isRestorable(entry: AuditEntryView): boolean {
-  return canRestore(entry.entityType)
-}
-
 /** 审计日志（管理员）：谁在何时对哪行做了什么；删除过的行可在此恢复。 */
 export function AuditPage() {
+  const platform = useLocation().pathname === '/platform/audit'
   const toast = useToast()
-  const mayRestore = useHasAuthority(PERMISSION.artifactRestore)
+  const { permissions } = useSession()
 
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS)
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS)
@@ -242,7 +238,7 @@ export function AuditPage() {
     [applied, page],
   )
 
-  const { data, loading, error, reload } = useAsync(() => auditApi.search(query), [query])
+  const { data, loading, error, reload } = useAsync(() => auditApi.search(query, platform), [query, platform])
   const pageData = data as AuditPage | null
   const rows = pageData?.content ?? []
 
@@ -330,14 +326,14 @@ export function AuditPage() {
             <Button size="sm" variant="ghost" onClick={() => setDetail(entry)}>
               详情
             </Button>
-            <Button
+            {!platform && <Button
               size="sm"
               variant="ghost"
               onClick={() => setHistoryTarget({ entityType: entry.entityType, entityId: entry.entityId })}
             >
               链路
-            </Button>
-            {mayRestore && isRestorable(entry) && (
+            </Button>}
+            {!platform && entry.action === 'LOGICAL_DELETE' && hasRestorePermission(entry.entityType, permissions) && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -357,7 +353,7 @@ export function AuditPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <PageHeader title="审计日志" description="追加写入的操作历史：谁在何时对哪行做了什么（管理员）" />
+      <PageHeader title={platform ? '平台审计' : '审计日志'} description={platform ? '租户准入、授权目录与指导案例的操作记录' : '当前租户的数据资产操作记录'} />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
         <div className="w-36">
@@ -440,7 +436,7 @@ export function AuditPage() {
       </div>
 
       <DetailDialog entry={detail} onClose={() => setDetail(null)} />
-      <HistoryDialog target={historyTarget} onClose={() => setHistoryTarget(null)} onRestored={reload} />
+      {!platform && <HistoryDialog target={historyTarget} onClose={() => setHistoryTarget(null)} onRestored={reload} />}
 
       <ConfirmDialog
         open={restoreTarget !== null}

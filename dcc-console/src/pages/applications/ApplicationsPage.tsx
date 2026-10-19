@@ -10,6 +10,8 @@ import { FormDialog } from '@/components/form/FormDialog'
 import { Field, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PermissionGate } from '@/components/common/PermissionGate'
+import { PERMISSION } from '@/lib/permissions'
 import { useAsync } from '@/hooks/useAsync'
 import { dash, formatDateTime } from '@/lib/format'
 import type { ApplicationView } from '@/types'
@@ -122,6 +124,7 @@ export function ApplicationsPage() {
       header: '操作',
       enableSorting: false,
       cell: ({ row }) => (
+        <PermissionGate authority={PERMISSION.topologyWrite}>
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" onClick={() => openEdit(row.original)}>
             编辑
@@ -135,6 +138,7 @@ export function ApplicationsPage() {
             删除
           </Button>
         </div>
+        </PermissionGate>
       ),
     },
   ]
@@ -145,10 +149,12 @@ export function ApplicationsPage() {
         title="应用"
         description="租户内的应用（公共基础 / 账务系统 / 客户系统）"
         actions={
+          <PermissionGate authority={PERMISSION.topologyWrite}>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>
+          </PermissionGate>
         }
       />
 

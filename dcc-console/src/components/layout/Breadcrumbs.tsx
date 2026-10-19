@@ -12,6 +12,10 @@ const LABELS: Record<string, string> = {
   tenants: '租户',
   environments: '环境',
   applications: '应用',
+  cases: '指导案例',
+  directory: '授权目录',
+  audit: '审计日志',
+  platform: '平台',
   new: '新建',
   edit: '编辑',
 }
@@ -35,7 +39,7 @@ export function Breadcrumbs() {
       {crumbs.map((crumb) => (
         <span key={crumb.to} className="flex min-w-0 items-center gap-1">
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {crumb.isLast ? (
+          {crumb.isLast || crumb.to === '/platform' ? (
             <span className="truncate text-foreground">{crumb.label}</span>
           ) : (
             <Link to={crumb.to} className="truncate text-muted-foreground hover:text-foreground">

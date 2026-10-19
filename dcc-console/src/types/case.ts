@@ -44,7 +44,8 @@ export interface AdoptCaseBody {
 }
 
 export interface AdoptResult {
-  feature: ReferenceCaseFeature
+  /** 后端返回的是普通字符串（`String feature`），并非枚举。 */
+  feature: string
   adoptedFrom: string
   created: string[]
 }

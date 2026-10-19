@@ -41,7 +41,7 @@ export function MigrationDetailPage() {
   const toast = useToast()
   const { environments } = useResourceContext()
   const session = useSession()
-  const permissions = session.permissions ?? session.roles
+  const permissions = session.permissions
   const canApprove = permissions.includes(PERMISSION.migrationApprove)
 
   const { data: order, loading, error, reload } = useAsync(
@@ -123,6 +123,7 @@ export function MigrationDetailPage() {
             { label: '目标环境', value: envName(order.targetEnvironmentId) },
             { label: '目标产物 ID', value: dash(order.targetArtifactId) },
             { label: '目标版本', value: dash(order.targetVersion) },
+            { label: '提交人', value: dash(order.submittedBy) },
             { label: '创建时间', value: formatDateTime(order.createdAt) },
             { label: '更新时间', value: formatDateTime(order.updatedAt) },
             { label: '备注', value: dash(order.note) },

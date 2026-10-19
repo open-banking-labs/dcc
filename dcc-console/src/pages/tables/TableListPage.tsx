@@ -83,9 +83,11 @@ export function TableListPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to={`/tables/${row.original.id}`}>查看</Link>
           </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to={`/tables/${row.original.id}/edit`}>编辑</Link>
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/tables/${row.original.id}/edit`}>编辑</Link>
+            </Button>
+          </PermissionGate>
           <PermissionGate authority={PERMISSION.artifactDelete}>
             <Button
               size="sm"
@@ -122,10 +124,12 @@ export function TableListPage() {
         title="表结构"
         description="表结构：CRUD、版本、生命周期、DDL / Flyway SQL 生成"
         actions={
-          <Button size="sm" onClick={() => navigate('/tables/new')}>
-            <Plus className="h-4 w-4" />
-            新建
-          </Button>
+          <PermissionGate authority={PERMISSION.artifactWrite}>
+            <Button size="sm" onClick={() => navigate('/tables/new')}>
+              <Plus className="h-4 w-4" />
+              新建
+            </Button>
+          </PermissionGate>
         }
       />
 
