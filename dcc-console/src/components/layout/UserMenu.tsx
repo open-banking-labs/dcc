@@ -62,9 +62,9 @@ export function UserMenu() {
         <button
           type="button"
           aria-label={`账户：${session.displayName}`}
-          className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 text-[13px] text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25"
+          className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 text-[13px] text-header-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
         >
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-white/80">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-header-muted">
             <UserRound className="h-3.5 w-3.5" aria-hidden />
           </span>
           <span className="hidden max-w-[8rem] truncate sm:inline">{session.displayName}</span>
