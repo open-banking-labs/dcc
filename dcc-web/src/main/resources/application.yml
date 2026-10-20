@@ -2,6 +2,11 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      # Excel imports carry a whole standards sheet; the service caps rows separately.
+      max-file-size: 10MB
+      max-request-size: 10MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,6 +39,23 @@ dcc:
   # Path version for the /cli/<version> command API (dcc-cli must match via DCC_API_VERSION).
   api:
     version: v1
+  # Asynchronous Excel export (see docs/configuration.md). dcc-web is the only
+  # application that consumes the queue; dcc-mcp leaves worker-enabled off.
+  export:
+    worker-enabled: true
+    worker-delay-ms: 2000
+    presign-ttl: PT10M
+    retention: PT24H
+    max-rows: 50000
+    max-selected: 100
+    import-max-rows: 2000
+    s3:
+      endpoint: ${DCC_EXPORT_S3_ENDPOINT:http://localhost:9000}
+      region: ${DCC_EXPORT_S3_REGION:us-east-1}
+      access-key: ${DCC_EXPORT_S3_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
+      secret-key: ${DCC_EXPORT_S3_SECRET_KEY:${MINIO_ROOT_PASSWORD:}}
+      bucket: ${DCC_EXPORT_S3_BUCKET:dcc-exports}
+      path-style: ${DCC_EXPORT_S3_PATH_STYLE:true}
   # Tenant model defaults (see docs/configuration.md).
   tenant:
     default-tenant: default_tenant

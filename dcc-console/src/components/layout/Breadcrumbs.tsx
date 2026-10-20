@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 
 const LABELS: Record<string, string> = {
   standards: '数标管理',
+  maintenance: '数标维护',
+  'reference-analysis': '引用分析',
   tables: '表结构',
   interfaces: '接口',
   templates: '接口模板',

@@ -5,6 +5,7 @@ import {
   BookText,
   Boxes,
   Building2,
+  ChevronDown,
   History,
   Layers,
   LayoutDashboard,
@@ -14,8 +15,10 @@ import {
   Package,
   Plug,
   Radar,
+  Search,
   Table2,
   UserCog,
+  Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -28,13 +31,15 @@ import { cn } from '@/lib/utils'
 import { useSession } from '@/auth/session'
 
 interface NavItem {
-  to: string
+  /** 子菜单父项可以没有自己的路由。 */
+  to?: string
   label: string
   icon: LucideIcon
   /** 需要的权限点；入口可声明多个候选，命中任一即显示。 */
   authority?: string | string[]
   /** 精确匹配路由（"/" 必须开，否则每条路由下它都算选中）。 */
   end?: boolean
+  children?: NavItem[]
 }
 
 interface NavSection {
@@ -59,7 +64,16 @@ const NAV: NavSection[] = [
   {
     group: '数据资产',
     items: [
-      { to: '/standards', label: '数标管理', icon: BookText, authority: PERMISSION.artifactRead },
+      {
+        to: '/standards',
+        label: '数标管理',
+        icon: BookText,
+        authority: PERMISSION.artifactRead,
+        children: [
+          { to: '/standards', label: '数标查询', icon: Search, authority: PERMISSION.artifactRead, end: true },
+          { to: '/standards/maintenance', label: '数标维护', icon: Wrench, authority: PERMISSION.artifactRead, end: true },
+        ],
+      },
       { to: '/tables', label: '表结构', icon: Table2, authority: PERMISSION.artifactRead },
       { to: '/interfaces', label: '接口', icon: Plug, authority: PERMISSION.artifactRead },
       { to: '/templates', label: '接口模板', icon: LayoutTemplate, authority: PERMISSION.artifactRead },
@@ -90,15 +104,104 @@ const NAV: NavSection[] = [
   },
 ]
 
+/** 可展开的子菜单父项；子项命中当前路由时自动展开并高亮父项。 */
+function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  const { pathname } = useLocation()
+  const parentActive = item.to
+    ? pathname === item.to || pathname.startsWith(item.to + '/')
+    : false
+  const childActive = item.children?.some((child) => child.to && pathname === child.to) ?? false
+  const [open, setOpen] = useState(parentActive || childActive)
+
+  useEffect(() => {
+    if (parentActive || childActive) setOpen(true)
+  }, [parentActive, childActive])
+
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          'group relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors',
+          'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
+          parentActive
+            ? 'bg-accent font-semibold text-foreground'
+            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground',
+        )}
+      >
+        <item.icon
+          aria-hidden
+          className={cn(
+            'h-4 w-4 shrink-0',
+            parentActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+          )}
+        />
+        <span className="truncate">{item.label}</span>
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            'ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {open && (
+        <ul className="mt-0.5 space-y-0.5 pl-4">
+          {item.children?.map((child) => (
+            <li key={child.to}>
+              <NavLink
+                to={child.to!}
+                end={child.end}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  cn(
+                    'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
+                    isActive
+                      ? 'bg-accent font-semibold text-foreground'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground',
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <child.icon
+                      aria-hidden
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0',
+                        isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                      )}
+                    />
+                    <span className="truncate">{child.label}</span>
+                  </>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
 /** 侧栏导航内容，桌面侧栏与移动端抽屉共用。 */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const permissions = useSession().permissions
+  const allowed = (item: NavItem) =>
+    !item.authority
+    || (Array.isArray(item.authority) ? item.authority : [item.authority])
+      .some((permission) => permissions.includes(permission))
+
   const visible = NAV.map((section) => ({
     ...section,
-    items: section.items.filter((item) =>
-      !item.authority
-        || (Array.isArray(item.authority) ? item.authority : [item.authority])
-          .some((permission) => permissions.includes(permission))),
+    items: section.items
+      .map((item) =>
+        item.children ? { ...item, children: item.children.filter(allowed) } : item,
+      )
+      .filter((item) => allowed(item) && (!item.children || item.children.length > 0)),
   })).filter((section) => section.items.length > 0)
 
   return (
@@ -109,37 +212,41 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             {section.group}
           </div>
           <ul className="space-y-0.5">
-            {section.items.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    cn(
-                      'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
-                      isActive
-                        ? 'bg-accent font-semibold text-foreground before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-primary'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        aria-hidden
-                        className={cn(
-                          'h-4 w-4 shrink-0',
-                          isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
-                        )}
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
+            {section.items.map((item) =>
+              item.children ? (
+                <NavGroup key={item.label} item={item} onNavigate={onNavigate} />
+              ) : (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to!}
+                    end={item.end}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
+                        isActive
+                          ? 'bg-accent font-semibold text-foreground before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-primary'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground',
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          aria-hidden
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                          )}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              ),
+            )}
           </ul>
         </div>
       ))}

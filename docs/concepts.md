@@ -61,10 +61,14 @@ Publishing is **application-scoped**, not per-artifact: one release of a
 single downloadable **JAR**. There is no per-interface / per-standard export — you publish
 an application. Output is Thymeleaf-templated — see [templating.md](templating.md).
 
-Data standards are **exported**, not generated one by one: `GET /api/standards/export`
-returns the whole scope as JSON; validation classes are produced only inside a release
-bundle. PostgreSQL **DDL / Flyway SQL** for table structures is generated from the table
-artifact (`GET /api/tables/{id}/ddl`).
+Data standards are **exported**, not generated one by one: the console creates an
+asynchronous Excel export (`POST /api/standards/exports`) whose file is uploaded to
+S3-compatible object storage and handed back as a short-lived pre-signed link; the
+machine-oriented `GET /api/standards/export` still returns the whole scope as JSON for
+the CLI/MCP. The console can also import an edited workbook against a downloadable
+template. Validation classes are produced only inside a release bundle. PostgreSQL
+**DDL / Flyway SQL** for table structures is generated from the table artifact
+(`GET /api/tables/{id}/ddl`).
 
 ## Exposure
 

@@ -20,7 +20,15 @@ const lazyPage = <M extends object, K extends keyof M>(loader: () => Promise<M>,
 const DashboardPage = lazyPage(() => import('./pages/dashboard/DashboardPage'), 'DashboardPage')
 const AnnouncementsPage = lazyPage(() => import('./pages/announcements/AnnouncementsPage'), 'AnnouncementsPage')
 
-const StandardsListPage = lazyPage(() => import('./pages/standards/StandardsListPage'), 'StandardsListPage')
+const StandardsQueryPage = lazyPage(() => import('./pages/standards/StandardsQueryPage'), 'StandardsQueryPage')
+const StandardsMaintenancePage = lazyPage(
+  () => import('./pages/standards/StandardsMaintenancePage'),
+  'StandardsMaintenancePage',
+)
+const StandardReferenceAnalysisPage = lazyPage(
+  () => import('./pages/standards/StandardReferenceAnalysisPage'),
+  'StandardReferenceAnalysisPage',
+)
 const StandardFormPage = lazyPage(() => import('./pages/standards/StandardFormPage'), 'StandardFormPage')
 const StandardDetailPage = lazyPage(() => import('./pages/standards/StandardDetailPage'), 'StandardDetailPage')
 
@@ -86,7 +94,9 @@ export const router = createBrowserRouter([
               </RequirePermission>
             ),
           },
-          { path: 'standards', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardsListPage /></RequirePermission> },
+          { path: 'standards', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardsQueryPage /></RequirePermission> },
+          { path: 'standards/maintenance', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardsMaintenancePage /></RequirePermission> },
+          { path: 'standards/reference-analysis', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardReferenceAnalysisPage /></RequirePermission> },
           { path: 'standards/new', element: <RequirePermission permission={PERMISSION.artifactWrite}><StandardFormPage /></RequirePermission> },
           { path: 'standards/:id', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardDetailPage /></RequirePermission> },
           { path: 'standards/:id/edit', element: <RequirePermission permission={PERMISSION.artifactWrite}><StandardFormPage /></RequirePermission> },

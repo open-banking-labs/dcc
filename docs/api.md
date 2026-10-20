@@ -21,7 +21,7 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 
 | Group | Base path | Purpose |
 | --- | --- | --- |
-| Standards | `/api/standards` | CRUD, search, versioning (history/diff/rollback/verify), lifecycle transition, references, import/export |
+| Standards | `/api/standards` | CRUD, paged console search (`GET /page`, `keyword` matches code or name), batch summaries (`GET /summaries`), versioning (history/diff/rollback/verify), lifecycle transition, references, asynchronous Excel export (`POST /exports`, `GET /exports/{id}`, `GET /import-template`, `POST /import-excel`) and the machine-oriented JSON import/export |
 | Tables | `/api/tables` | CRUD, search, versioning, status, `GET /{id}/ddl` and `/{id}/ddl/alter` |
 | Interfaces | `/api/interfaces` | CRUD, search, versioning, status |
 | Templates | `/api/templates` | CRUD, search, versioning, status |
@@ -39,6 +39,19 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 | Announcements | `/api/announcements` | banner feed (`GET`, any authenticated caller: platform + own-tenant announcements, enabled and inside their visibility window) and tenant authoring (`GET /managed`, `POST`, `PUT /{id}`, `DELETE /{id}` behind `announcement.write`; the owning tenant always comes from the token, never the body) |
 | Platform announcements | `/api/platform/announcements` | system administrator (`announcement.write.platform`): the same CRUD over platform-wide announcements (`tenant_id is null`). The two scopes are disjoint at the query level — a tenant announcement is a 404 from here, and a platform one is a 404 from `/api/announcements` |
 | Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenants: `tenant.admit` (platform); environments/applications: `topology.read` / `topology.write` (tenant) |
+
+The console reads data standards through `GET /api/standards/page` (server-side paging;
+`keyword` is a case-insensitive fuzzy match on the code or the current version's name)
+and fetches only the selected rows' summaries with `GET /api/standards/summaries?ids=…`.
+Excel export is asynchronous: `POST /api/standards/exports` enqueues a job and returns
+`202`; `GET /api/standards/exports/{id}` is polled until `READY`, at which point it
+returns a short-lived pre-signed link to the file in S3-compatible storage (MinIO in
+development). One tenant may have at most one queued/running export at a time. The
+console's import flow downloads `GET /api/standards/import-template`, then uploads the
+edited workbook to `POST /api/standards/import-excel` (multipart, at most 2000 rows);
+all rows are validated before anything is written, and row errors are returned in the
+result. The JSON `GET /api/standards/export` / `POST /api/standards/import` pair remains
+for the CLI, MCP and other machine clients.
 
 Authorization is by **permission point**, not by role name (ADR 0005): every handler carries
 `@PreAuthorize("hasAuthority(@perms.<point>)")`, e.g. `artifact.write` for editing,
