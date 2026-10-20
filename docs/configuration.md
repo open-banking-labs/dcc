@@ -105,6 +105,41 @@ version — see [versioning.md](versioning.md).
 | --- | --- | --- |
 | `dcc.api.version` | `v1` | Path version of the `/cli/<version>` command API. `dcc-cli` must use the same value (via `DCC_API_VERSION`). |
 
+## Excel export (`dcc-application`, worker in `dcc-web`)
+
+### `dcc.export.*`
+
+Asynchronous data-standard export. A request enqueues an `export_job` row; the worker
+(`dcc.export.worker-enabled=true`, set only in `dcc-web`) writes the workbook to a temp
+file, uploads it to S3-compatible storage, and the API returns a short-lived pre-signed
+link. The application never streams the file itself. See [api.md](api.md).
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.export.worker-enabled` | `false` | Enables the scheduled worker. `dcc-web` sets it to `true`; `dcc-mcp` leaves it off. |
+| `dcc.export.worker-delay-ms` | `2000` | Delay between queue-polling passes. |
+| `dcc.export.cleanup-cron` | `0 15 * * * *` | Cron that deletes objects past their retention window and marks their jobs expired. |
+| `dcc.export.stale-after-minutes` | `30` | RUNNING jobs older than this are failed on startup (crash recovery). |
+| `dcc.export.presign-ttl` | `PT10M` | Lifetime of the generated download link. |
+| `dcc.export.retention` | `PT24H` | How long the generated object stays in the bucket. |
+| `dcc.export.max-rows` | `50000` | Hard cap on one export; larger results fail with a clear message. |
+| `dcc.export.max-selected` | `100` | Hard cap on explicitly selected ids in one export/reference-analysis request. |
+| `dcc.export.import-max-rows` | `2000` | Hard cap on one Excel import; all rows are validated before any write. |
+| `dcc.export.page-chunk-size` | `500` | Rows fetched per page while streaming an export. |
+| `dcc.export.s3.endpoint` | `http://localhost:9000` | S3-compatible endpoint; blank uses the AWS default. |
+| `dcc.export.s3.region` | `us-east-1` | Signing region. |
+| `dcc.export.s3.access-key` / `.secret-key` | MinIO defaults / empty | Static credentials; blank keys fall back to the default AWS credentials chain. |
+| `dcc.export.s3.bucket` | `dcc-exports` | Private bucket; auto-created on first upload. |
+| `dcc.export.s3.path-style` | `true` | Path-style addressing (required by MinIO). |
+
+Local development uses the optional MinIO service (`./scripts/dcc-start.sh --minio`).
+The bucket is private; the pre-signed URL carries `response-content-disposition:
+attachment`. If the storage is unreachable the export job becomes `FAILED` with the
+error exposed by `GET /api/standards/exports/{id}`; the rest of the console is unaffected.
+The `docker-compose.yml` `dcc-app` service receives `DCC_EXPORT_S3_*` from the
+`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` values; a host-run backend reads them after
+`set -a; source env/dev.env; set +a`.
+
 ## Audit trail (`dcc-core`)
 
 ### `dcc.audit.*`

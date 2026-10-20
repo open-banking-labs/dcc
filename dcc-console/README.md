@@ -13,8 +13,8 @@ React + TypeScript + Vite · Tailwind CSS + shadcn/ui · react-router · axios �
 src/
 ├── api/        各资源接口封装（standards / tables / interfaces / templates / migrations / tenancy / versioning / generation / audit）
 ├── auth/       会话抽象（session.tsx）、守卫、登录/回调页
-├── components/ layout（外壳/侧边栏/面包屑/环境应用切换）· ui（shadcn 原子）· data（DataTable/DiffView）· form（字段/编辑器）· feedback（Toast/状态）
-├── hooks/      useAsync · useResourceContext
+├── components/ layout（外壳/侧边栏/面包屑/环境应用切换）· ui（shadcn 原子）· data（DataTable/DiffView）· standards（数标表格/导入导出弹窗）· form（字段/编辑器）· feedback（Toast/状态）
+├── hooks/      useAsync · useResourceContext · useListRestoration
 ├── lib/        apiClient（axios 封装）· oidc · jwt · devToken（本地开发签发）· labels · format · permissions
 ├── pages/      各模块页面（含 audit 审计日志、directory 授权目录）
 ├── router.tsx  路由（页面按需加载）
@@ -26,8 +26,11 @@ src/
 ### 1. 后端（host，JDK 17 + 运行中的 Postgres）
 
 ```bash
-# 只启动 Postgres（若未运行）
-docker compose --env-file env/dev.env up -d postgres
+# 只启动 Postgres + MinIO（Excel 导出用；若未运行 MinIO，导出任务会显示失败）
+./scripts/dcc-start.sh --minio
+
+# 让后端读到 MinIO 凭据（DCC_EXPORT_S3_* 缺省回落到 MINIO_ROOT_*）
+set -a; source env/dev.env; set +a
 
 # 构建依赖模块并安装到本地仓库（一次即可）
 env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./mvnw -q -pl dcc-web -am -DskipTests install
@@ -36,7 +39,8 @@ env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./mvnw -q -pl dcc-web -am -DskipTe
 env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./mvnw -pl dcc-web spring-boot:run -Dspring-boot.run.profiles=dev,local
 ```
 
-后端起在 http://localhost:8080（Flyway 自动建表）。
+后端起在 http://localhost:8080（Flyway 自动建表）。Excel 导出的文件放在
+`dcc-exports` 桶里，前端拿到的是 10 分钟有效的预签名链接，下载不经过应用服务器。
 
 ### 2. 前端
 
@@ -80,7 +84,10 @@ npm test             # API 契约和权限会话隔离检查，无需后端
 
 ## 约定
 
-- 资产列表返回裸数组，分页/排序在前端（TanStack Table）；目录和审计接口使用服务端分页。
+- 其他资产列表返回裸数组，分页/排序在前端（TanStack Table）；数标查询/维护、目录和审计接口使用服务端分页。
+- 数标查询页与维护页把筛选、页码、页大小写入 URL；`useListRestoration` 记录列表地址与滚动位置，详情页据此返回原现场。
+- 数标查询页只读：检索、引用分析（左栏按分类分组，点击才加载引用，5 分钟/50 条前端缓存）与历史版本；批量入口在表格上方，无操作列。维护页负责新建、导入、编辑、删除与状态流转。
+- Excel 导出是异步任务：前端轮询 `/api/standards/exports/{id}`，完成后直接打开预签名链接下载；导入先下载模板，整表校验通过才写入。
 - 写操作的环境/应用上下文来自顶栏 `EnvAppSwitcher`，作为 query 参数带上。
 - 菜单及操作显隐以 `/api/me` 的有效权限点为准，不根据 JWT 角色推导权限。权限请求显式携带当前 Token；切换身份、请求失败或尚未返回时不沿用旧权限。
 - 前端权限判断仅用于界面展示；资源真实环境/应用范围与职责分离规则仍由服务端校验（ADR 0005）。

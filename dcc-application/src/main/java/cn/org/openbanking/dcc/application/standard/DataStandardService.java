@@ -2,9 +2,17 @@ package cn.org.openbanking.dcc.application.standard;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -33,6 +41,8 @@ import cn.org.openbanking.dcc.core.standard.version.VersionBump;
 import cn.org.openbanking.dcc.core.standard.version.VersionBumpPolicy;
 import cn.org.openbanking.dcc.core.standard.version.VersionChangeType;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +60,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class DataStandardService {
+
+    /** Upper bound for the console's batch summary/reference-analysis selections. */
+    public static final int MAX_BATCH_IDS = 100;
 
     private final DataStandardRepository standards;
     private final DataStandardVersionRepository versions;
@@ -99,6 +112,15 @@ public class DataStandardService {
             Instant createdAt, Instant updatedAt) {
     }
 
+    /**
+     * Lightweight row for the query/maintenance tables and the reference-analysis
+     * page. It deliberately omits the content snapshot so a page of results never
+     * drags every standard's full detail across the wire.
+     */
+    public record StandardSummaryView(Long id, Long environmentId, Long applicationId, String code, String name,
+            String category, String dataType, StandardStatus status, String currentVersion, Instant updatedAt) {
+    }
+
     public record VersionView(Long id, String version, VersionChangeType changeType, String changeSummary,
             StandardContent content, Long sourceEnvironmentId, String sourceVersion, Instant createdAt,
             String contentHash, String parentHash, String author, String message) {
@@ -108,7 +130,19 @@ public class DataStandardService {
             List<FieldChange> changes) {
     }
 
-    public record ImportResult(int created, int updated) {
+    /**
+     * Import outcome. When {@code errors} is non-empty nothing was written (the file
+     * is validated in full before the first row is applied); the two-argument form
+     * keeps the JSON import contract unchanged.
+     */
+    public record ImportResult(int created, int updated, List<RowError> errors) {
+        public ImportResult(int created, int updated) {
+            this(created, updated, List.of());
+        }
+    }
+
+    /** One rejected spreadsheet row: 1-based Excel row number and a human-readable reason. */
+    public record RowError(int row, String message) {
     }
 
     // ------------------------------------------------------------------ use cases
@@ -148,9 +182,74 @@ public class DataStandardService {
     @Transactional(readOnly = true)
     public List<StandardView> search(String tenantId, Long environmentId, Long applicationId,
             String category, StandardStatus status) {
-        return tenantScope.call(tenantId, () -> standards
-                .search(tenantId, environmentId, applicationId, category, status).stream()
-                .map(this::toView).toList());
+        return tenantScope.call(tenantId, () -> {
+            List<DataStandard> rows = standards.search(tenantId, environmentId, applicationId, category, status);
+            Map<Long, DataStandardVersion> current = currentVersions(tenantId, rows);
+            return rows.stream()
+                    .map(standard -> toView(standard, currentVersionOf(tenantId, standard, current)))
+                    .toList();
+        });
+    }
+
+    /**
+     * Paged console search. A page costs two queries: the page itself and one batch
+     * lookup of the current version snapshots (no per-row N+1).
+     */
+    @Transactional(readOnly = true)
+    public Page<StandardSummaryView> query(String tenantId, Long environmentId, Long applicationId,
+            String keyword, String category, StandardStatus status, int page, int size) {
+        String pattern = keywordPattern(keyword);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        int safePage = Math.max(0, page);
+        return tenantScope.call(tenantId, () -> {
+            Page<DataStandard> found = standards.searchPage(tenantId, environmentId, applicationId,
+                    category, status, pattern, PageRequest.of(safePage, safeSize));
+            Map<Long, DataStandardVersion> current = currentVersions(tenantId, found.getContent());
+            return found.map(standard -> toSummary(standard, current.get(standard.getCurrentVersionId())));
+        });
+    }
+
+    /**
+     * Lightweight summaries for an explicit id selection (reference analysis). Keeps
+     * the caller's order, drops ids the tenant cannot see, and caps the batch size.
+     */
+    @Transactional(readOnly = true)
+    public List<StandardSummaryView> summaries(String tenantId, Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Long> requested = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (requested.size() > MAX_BATCH_IDS) {
+            throw new ValidationException("at most " + MAX_BATCH_IDS + " standards can be selected");
+        }
+        return tenantScope.call(tenantId, () -> {
+            List<DataStandard> found = standards.findByTenantIdAndIdIn(tenantId, new LinkedHashSet<>(requested));
+            Map<Long, DataStandardVersion> current = currentVersions(tenantId, found);
+            Map<Long, StandardSummaryView> byId = found.stream()
+                    .collect(Collectors.toMap(DataStandard::getId,
+                            standard -> toSummary(standard, current.get(standard.getCurrentVersionId()))));
+            return requested.stream().map(byId::get).filter(Objects::nonNull).toList();
+        });
+    }
+
+    /**
+     * Escapes a user keyword into the lower-case {@code %pattern%} consumed by the
+     * repository's {@code like ... escape '!'} predicate. Returns {@code null} for a
+     * blank keyword (no constraint); {@code %} and {@code _} stay literal by design.
+     */
+    public static String keywordPattern(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        if (trimmed.length() > 128) {
+            throw new ValidationException("keyword is too long");
+        }
+        String escaped = trimmed.toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return "%" + escaped + "%";
     }
 
     /**
@@ -316,10 +415,12 @@ public class DataStandardService {
     @Transactional(readOnly = true)
     public List<StandardExportItem> export(String tenantId, Long environmentId, Long applicationId) {
         return tenantScope.call(tenantId, () -> {
-            List<StandardExportItem> items = new ArrayList<>();
-            for (DataStandard standard : standards.search(tenantId, environmentId, applicationId, null, null)) {
-                DataStandardVersion current = requireVersion(tenantId, standard.getId(), standard.getCurrentVersion());
-                items.add(new StandardExportItem(standard.getCode(), standard.getCategory(), current.content()));
+            List<DataStandard> rows = standards.search(tenantId, environmentId, applicationId, null, null);
+            Map<Long, DataStandardVersion> current = currentVersions(tenantId, rows);
+            List<StandardExportItem> items = new ArrayList<>(rows.size());
+            for (DataStandard standard : rows) {
+                DataStandardVersion version = currentVersionOf(tenantId, standard, current);
+                items.add(new StandardExportItem(standard.getCode(), standard.getCategory(), version.content()));
             }
             return items;
         });
@@ -377,12 +478,44 @@ public class DataStandardService {
         }
     }
 
+    /** Batch-loads the current snapshots for a page of standards (one query). */
+    private Map<Long, DataStandardVersion> currentVersions(String tenantId, Collection<DataStandard> rows) {
+        Set<Long> versionIds = rows.stream()
+                .map(DataStandard::getCurrentVersionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        return versions.findByTenantIdAndIdIn(tenantId, versionIds).stream()
+                .collect(Collectors.toMap(DataStandardVersion::getId, Function.identity()));
+    }
+
+    /** Falls back to a point lookup only when the batch did not carry the row. */
+    private DataStandardVersion currentVersionOf(String tenantId, DataStandard standard,
+            Map<Long, DataStandardVersion> current) {
+        DataStandardVersion version = current.get(standard.getCurrentVersionId());
+        return version != null ? version
+                : requireVersion(tenantId, standard.getId(), standard.getCurrentVersion());
+    }
+
     private StandardView toView(DataStandard standard) {
         DataStandardVersion current = requireVersion(standard.getTenantId(), standard.getId(),
                 standard.getCurrentVersion());
+        return toView(standard, current);
+    }
+
+    private StandardView toView(DataStandard standard, DataStandardVersion current) {
         return new StandardView(standard.getId(), standard.getTenantId(), standard.getEnvironmentId(),
                 standard.getApplicationId(), standard.getCode(), standard.getCategory(), standard.getStatus(),
                 standard.getCurrentVersion(), current.content(), standard.getCreatedAt(), standard.getUpdatedAt());
+    }
+
+    private static StandardSummaryView toSummary(DataStandard standard, DataStandardVersion current) {
+        return new StandardSummaryView(standard.getId(), standard.getEnvironmentId(), standard.getApplicationId(),
+                standard.getCode(), current == null ? null : current.getName(), standard.getCategory(),
+                current == null ? null : current.getDataType(), standard.getStatus(),
+                standard.getCurrentVersion(), standard.getUpdatedAt());
     }
 
     private static VersionView toVersionView(DataStandardVersion version) {

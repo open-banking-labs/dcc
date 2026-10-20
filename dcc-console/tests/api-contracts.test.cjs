@@ -13,6 +13,7 @@ function load(relativePath, dependencies) {
   const exports = {}
   vm.runInNewContext(outputText, {
     exports,
+    FormData,
     require: (name) => {
       assert.ok(name in dependencies, `Unexpected dependency: ${name}`)
       return dependencies[name]
@@ -29,6 +30,9 @@ function captureHttp() {
       return { permissions: ['artifact.read'] }
     },
   ]))
+  http.cleanParams = (params) => Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  )
   return { requests, http }
 }
 
@@ -122,4 +126,43 @@ test('effective permissions cannot leak across token changes or failed requests'
   await new Promise(setImmediate)
   assert.deepEqual(render('second'), { permissions: [], loading: false })
   assert.deepEqual(render(null), { permissions: [], loading: false })
+})
+
+test('standards query, summaries and export jobs keep their scope and server paging', async () => {
+  const { requests, http } = captureHttp()
+  const { standardsApi } = load('api/standards.ts', { '@/lib/apiClient': http })
+
+  await standardsApi.page({
+    environmentId: 3,
+    applicationId: 4,
+    keyword: 'acct',
+    category: '',
+    status: 'DRAFT',
+    page: 1,
+    size: 50,
+  })
+  assert.equal(requests[0].url, '/standards/page')
+  assert.deepEqual(requests[0].args[0].params, {
+    environmentId: 3,
+    applicationId: 4,
+    keyword: 'acct',
+    status: 'DRAFT',
+    page: 1,
+    size: 50,
+  })
+
+  await standardsApi.summaries([5, 6])
+  assert.equal(requests[1].url, '/standards/summaries')
+  assert.deepEqual(requests[1].args[0].params, { ids: '5,6' })
+
+  await standardsApi.createExport({ environmentId: 3, applicationId: 4, ids: [5, 6] })
+  assert.equal(requests[2].url, '/standards/exports')
+  assert.deepEqual(requests[2].args[0], { environmentId: 3, applicationId: 4, ids: [5, 6] })
+
+  await standardsApi.exportJob(9)
+  assert.equal(requests[3].url, '/standards/exports/9')
+
+  await standardsApi.importExcel(3, 4, { name: 'standards.xlsx' })
+  assert.equal(requests[4].url, '/standards/import-excel')
+  assert.deepEqual(requests[4].args[1].params, { environmentId: 3, applicationId: 4 })
 })

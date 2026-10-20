@@ -1,5 +1,6 @@
 package cn.org.openbanking.dcc.core.standard.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +16,7 @@ public interface DataStandardVersionRepository extends JpaRepository<DataStandar
     Optional<DataStandardVersion> findByTenantIdAndStandardIdAndVersion(String tenantId, Long standardId, String version);
 
     Optional<DataStandardVersion> findTopByTenantIdAndStandardIdOrderByIdDesc(String tenantId, Long standardId);
+
+    /** Batch-loads snapshots for a page of standards, so list views issue one query. */
+    List<DataStandardVersion> findByTenantIdAndIdIn(String tenantId, Collection<Long> ids);
 }
