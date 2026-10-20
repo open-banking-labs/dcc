@@ -26,9 +26,9 @@ const LEVEL_OPTIONS: { value: AnnouncementLevel; label: string }[] = [
 ]
 
 const LEVEL_STYLE: Record<AnnouncementLevel, string> = {
-  MAINTENANCE: 'border-red-300 bg-red-50 text-red-700',
-  WARNING: 'border-amber-300 bg-amber-50 text-amber-700',
-  INFO: 'border-blue-200 bg-blue-50 text-blue-700',
+  MAINTENANCE: 'border-status-danger/30 bg-status-danger-soft text-status-danger',
+  WARNING: 'border-status-warning/30 bg-status-warning-soft text-status-warning',
+  INFO: 'border-status-info/30 bg-status-info-soft text-status-info',
 }
 
 const LEVEL_LABEL: Record<AnnouncementLevel, string> = {
@@ -201,7 +201,7 @@ export function AnnouncementsPage() {
             : '租户公告：仅本租户的登录用户看到（平台公告由系统管理员发布）'
         }
         actions={
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" variant="primary" onClick={openCreate}>
             新建公告
           </Button>
         }
@@ -221,7 +221,7 @@ export function AnnouncementsPage() {
             <li key={announcement.id} className="flex items-start gap-3 px-3 py-2.5">
               <span
                 className={cn(
-                  'mt-0.5 shrink-0 rounded-sm border px-1.5 py-0.5 text-xs leading-none',
+                  'mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[12px] font-semibold leading-none',
                   LEVEL_STYLE[announcement.level],
                 )}
               >
@@ -229,7 +229,7 @@ export function AnnouncementsPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-foreground">{announcement.title}</span>
+                  <span className="truncate text-[14px] font-semibold text-foreground">{announcement.title}</span>
                   {!announcement.enabled && (
                     <span className="shrink-0 text-xs text-muted-foreground">已停用</span>
                   )}
@@ -273,7 +273,7 @@ export function AnnouncementsPage() {
             onChange={(event) =>
               setDraft({ ...draft, level: event.target.value as AnnouncementLevel })
             }
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            className="h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
           >
             {LEVEL_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -298,7 +298,7 @@ export function AnnouncementsPage() {
             rows={4}
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="开始时间" htmlFor="announcement-start" hint="留空表示立即生效">
             <TextField
               id="announcement-start"

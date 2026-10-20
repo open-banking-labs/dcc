@@ -18,15 +18,17 @@ export function CodeBlock({ code, language = 'text' }: { code: string; language?
   }
 
   return (
-    <div className="rounded-md border border-border">
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
-        <span className="text-xs text-muted-foreground">{language}</span>
+    <div className="overflow-hidden rounded-lg border border-border bg-secondary">
+      <div className="flex items-center justify-between border-b border-border bg-secondary py-1 pl-3 pr-1.5">
+        <span className="font-mono text-[12px] font-semibold text-muted-foreground">
+          {language}
+        </span>
         <Button size="sm" variant="ghost" onClick={() => void copy()}>
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
           {copied ? '已复制' : '复制'}
         </Button>
       </div>
-      <pre className="max-h-96 overflow-auto p-3 text-xs leading-relaxed">
+      <pre className="max-h-96 overflow-auto bg-secondary p-3 font-mono text-[12px] leading-relaxed">
         <code>{code}</code>
       </pre>
     </div>

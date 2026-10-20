@@ -35,10 +35,10 @@ interface Filters {
 const EMPTY_FILTERS: Filters = { entityType: '', entityId: '', actor: '', action: '', from: '', to: '' }
 
 const ACTION_CLASS: Record<AuditAction, string> = {
-  CREATE: 'font-medium text-green-700',
-  UPDATE: 'font-medium text-blue-700',
-  LOGICAL_DELETE: 'font-medium text-destructive',
-  RESTORE: 'font-medium text-green-700',
+  CREATE: 'font-medium text-status-success',
+  UPDATE: 'font-medium text-status-info',
+  LOGICAL_DELETE: 'font-medium text-status-danger',
+  RESTORE: 'font-medium text-status-success',
 }
 
 /** datetime-local 值 → ISO Instant；空值/非法值返回 null。 */
@@ -117,7 +117,7 @@ function HistoryDialog({
           <div
             className={
               verify.data.intact
-                ? 'rounded-md border border-border bg-muted/40 px-3 py-2 text-sm'
+                ? 'rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm'
                 : 'rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive'
             }
           >
@@ -190,7 +190,7 @@ function DetailDialog({ entry, onClose }: { entry: AuditEntryView | null; onClos
         {entry && (
           <div className="space-y-2 text-sm">
             <p className="text-xs text-muted-foreground">
-              链值 hash: <span className="font-mono">{entry.hash}</span>
+              链值 hash: <span className="break-all font-mono">{entry.hash}</span>
             </p>
             {entry.beforeState && (
               <CodeBlock code={prettyJson(entry.beforeState)} language="before_state" />
@@ -355,9 +355,9 @@ export function AuditPage() {
     <div className="space-y-4 p-6">
       <PageHeader title={platform ? '平台审计' : '审计日志'} description={platform ? '租户准入、授权目录与指导案例的操作记录' : '当前租户的数据资产操作记录'} />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 rounded-lg border border-border bg-secondary/60 px-4 py-3">
         <div className="w-36">
-          <label className="text-xs text-muted-foreground">对象类型</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">对象类型</label>
           <SelectField
             value={draft.entityType}
             onChange={(value) => setDraft({ ...draft, entityType: value })}
@@ -366,15 +366,15 @@ export function AuditPage() {
           />
         </div>
         <div className="w-24">
-          <label className="text-xs text-muted-foreground">对象 id</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">对象 id</label>
           <TextField value={draft.entityId} onChange={(value) => setDraft({ ...draft, entityId: value })} placeholder="如 3" />
         </div>
         <div className="w-32">
-          <label className="text-xs text-muted-foreground">执行者</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">执行者</label>
           <TextField value={draft.actor} onChange={(value) => setDraft({ ...draft, actor: value })} placeholder="精确匹配" />
         </div>
         <div className="w-32">
-          <label className="text-xs text-muted-foreground">操作</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">操作</label>
           <SelectField
             value={draft.action}
             onChange={(value) => setDraft({ ...draft, action: value })}
@@ -383,21 +383,21 @@ export function AuditPage() {
           />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">时间起</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">时间起</label>
           <input
             type="datetime-local"
             value={draft.from}
             onChange={(event) => setDraft({ ...draft, from: event.target.value })}
-            className="flex h-8 rounded-md border border-input bg-background px-2 text-sm"
+            className="flex h-8 rounded-md border border-input bg-background px-2.5 text-[13px] shadow-sm transition-[border-color,box-shadow] outline-none hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
           />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">时间止</label>
+          <label className="mb-1 block text-[12px] font-semibold text-muted-foreground">时间止</label>
           <input
             type="datetime-local"
             value={draft.to}
             onChange={(event) => setDraft({ ...draft, to: event.target.value })}
-            className="flex h-8 rounded-md border border-input bg-background px-2 text-sm"
+            className="flex h-8 rounded-md border border-input bg-background px-2.5 text-[13px] shadow-sm transition-[border-color,box-shadow] outline-none hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
           />
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -420,8 +420,8 @@ export function AuditPage() {
         emptyText="暂无审计记录"
       />
 
-      <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
-        <span>共 {pageData?.totalElements ?? 0} 条 · 第 {page + 1}/{totalPages} 页</span>
+      <div className="flex flex-wrap items-center justify-end gap-3 text-muted-foreground">
+        <span className="num text-[13px]">共 {pageData?.totalElements ?? 0} 条 · 第 {page + 1}/{totalPages} 页</span>
         <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
           上一页
         </Button>

@@ -163,7 +163,7 @@ export function StandardsListPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="数标管理"
-        description="数据标准：CRUD、版本、生命周期、引用与导入导出"
+        description="字段的统一口径：类型、长度与校验规则，可被表结构和接口字段引用。"
         actions={
           <>
             <Button size="sm" variant="outline" onClick={() => void handleExport()} disabled={exporting}>
@@ -171,7 +171,7 @@ export function StandardsListPage() {
               {exporting ? '导出中…' : '导出'}
             </Button>
             <PermissionGate authority={PERMISSION.artifactWrite}>
-              <Button size="sm" onClick={() => navigate('/standards/new')}>
+              <Button size="sm" variant="primary" onClick={() => navigate('/standards/new')}>
                 <Plus className="h-4 w-4" />
                 新建
               </Button>

@@ -88,7 +88,7 @@ export function GenerationPage() {
 
       <section className="space-y-3 rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-foreground">发布清单</h3>
+          <h3 className="text-[14px] font-semibold text-foreground">发布清单</h3>
           <Button size="sm" variant="outline" onClick={() => void loadManifest()} disabled={manifestLoading}>
             {manifestLoading ? '加载中…' : '刷新'}
           </Button>
@@ -139,7 +139,7 @@ export function GenerationPage() {
       </section>
 
       <section className="space-y-3 rounded-md border border-border bg-card p-4">
-        <h3 className="text-sm font-medium text-foreground">OpenAPI 文档</h3>
+        <h3 className="text-[14px] font-semibold text-foreground">OpenAPI 文档</h3>
         <Button size="sm" onClick={() => void genOpenApi()} disabled={openApiLoading || noScope}>
           {openApiLoading ? '生成中…' : '生成'}
         </Button>
@@ -147,7 +147,7 @@ export function GenerationPage() {
       </section>
 
       <section className="space-y-3 rounded-md border border-border bg-card p-4">
-        <h3 className="text-sm font-medium text-foreground">发布（打包 JAR）</h3>
+        <h3 className="text-[14px] font-semibold text-foreground">发布（打包 JAR）</h3>
         <p className="text-xs text-muted-foreground">
           一次发布打包该应用全部接口与数标，不提供单接口/单数标导出。
         </p>
@@ -155,7 +155,7 @@ export function GenerationPage() {
           <Field label="版本（可选）" htmlFor="rel-version" className="w-40">
             <TextField id="rel-version" value={version} onChange={setVersion} placeholder="留空取当前" />
           </Field>
-          <Button size="sm" onClick={() => void release()} disabled={releasing || noScope}>
+          <Button size="sm" variant="primary" onClick={() => void release()} disabled={releasing || noScope}>
             {releasing ? '发布中…' : '发布'}
           </Button>
         </div>

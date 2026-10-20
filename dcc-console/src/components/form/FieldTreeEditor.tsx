@@ -169,7 +169,7 @@ export function FieldTreeEditor({ fields, onChange, standards, variant }: FieldT
               <div className="w-40">
                 <Field label="引用数标">
                   <select
-                    className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
                     value={field.standardId ?? ''}
                     onChange={(event) => {
                       const value = event.target.value
@@ -249,10 +249,11 @@ export function FieldTreeEditor({ fields, onChange, standards, variant }: FieldT
                 type="button"
                 size="sm"
                 variant="ghost"
+                aria-label="删除这一项"
                 className="text-destructive hover:text-destructive"
                 onClick={() => remove(index)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </Button>
             </div>
             <div className="border-t border-border p-2 pl-4">
@@ -301,7 +302,7 @@ export function TemplateSectionEditor({ sections, onChange, standards }: Templat
               <div className="w-44">
                 <Field label="分层">
                   <select
-                    className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
                     value={section.code}
                     onChange={(event) => update(index, { code: event.target.value as TemplateSectionCode })}
                   >
@@ -322,10 +323,11 @@ export function TemplateSectionEditor({ sections, onChange, standards }: Templat
                 type="button"
                 size="sm"
                 variant="ghost"
+                aria-label="删除这一项"
                 className="text-destructive hover:text-destructive"
                 onClick={() => remove(index)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </Button>
             </div>
             <div className="p-2">

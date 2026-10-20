@@ -112,7 +112,7 @@ export function MigrationDetailPage() {
       />
 
       <div className="rounded-md border border-border bg-card p-4">
-        <h3 className="mb-3 text-sm font-medium text-foreground">基本信息</h3>
+        <h3 className="mb-3 text-[14px] font-semibold text-foreground">基本信息</h3>
         <KeyValueList
           items={[
             { label: '状态', value: <StatusBadge kind="migration" status={order.status} /> },

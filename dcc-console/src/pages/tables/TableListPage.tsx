@@ -122,10 +122,10 @@ export function TableListPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="表结构"
-        description="表结构：CRUD、版本、生命周期、DDL / Flyway SQL 生成"
+        description="当前环境/应用下的表结构；列可引用数标，需要时生成 DDL 与 Flyway 脚本。"
         actions={
           <PermissionGate authority={PERMISSION.artifactWrite}>
-            <Button size="sm" onClick={() => navigate('/tables/new')}>
+            <Button size="sm" variant="primary" onClick={() => navigate('/tables/new')}>
               <Plus className="h-4 w-4" />
               新建
             </Button>

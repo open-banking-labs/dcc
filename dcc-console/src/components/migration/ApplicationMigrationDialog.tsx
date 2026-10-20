@@ -4,6 +4,7 @@ import { migrationsApi } from '@/api/migrations'
 import { useToast } from '@/components/feedback/Toast'
 import { FormDialog } from '@/components/form/FormDialog'
 import { Field, TextField, SelectField } from '@/components/form/fields'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useResourceContext } from '@/hooks/useResourceContext'
 import type { ArtifactType } from '@/types'
 
@@ -105,7 +106,7 @@ export function ApplicationMigrationDialog({
       submitText="发起"
     >
       {errors.applicationId && <p className="text-xs text-destructive">{errors.applicationId}</p>}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="源环境" htmlFor="m-src" required error={errors.sourceEnv}>
           <SelectField
             id="m-src"
@@ -129,11 +130,10 @@ export function ApplicationMigrationDialog({
         <Field label="产物类型" error={errors.types} hint="缺省全部四类">
           <div className="flex flex-wrap gap-3 pt-1">
             {ALL_TYPES.map((type) => (
-              <label key={type} className="flex items-center gap-1.5 text-sm text-foreground">
-                <input
-                  type="checkbox"
+              <label key={type} className="flex items-center gap-1.5 text-[13px] text-foreground">
+                <Checkbox
                   checked={types.includes(type)}
-                  onChange={() => toggleType(type)}
+                  onCheckedChange={() => toggleType(type)}
                 />
                 {type}
               </label>

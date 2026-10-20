@@ -3,45 +3,165 @@
 @tailwind utilities;
 
 /*
- * DCC 管理端设计 token：中性灰 + 单一主色（蓝），圆角 <= 6px，无阴影/渐变。
- * 层级只用边框与背景色区分。
+ * DCC 管理端设计 token — GitHub Primer 风格。
+ *
+ * 基调：深色全局顶栏 + 浅灰画布 + 白色描边容器。层级主要靠 1px 边框、浅灰底和留白，
+ * 只有浮层（dialog/dropdown/toast）和控件用极轻阴影。圆角统一 6px。
+ *
+ * 文字角色（页内只用这五级，别再造第六级）：
+ *   .text-title    页面标题 20px/600
+ *   .text-section  区块标题 16px/600
+ *   .text-body     正文     14px/400
+ *   .text-meta     辅助信息 13px/400  muted
+ *   .text-label    标签/分组 12px/600
+ * 表格与数字用 .text-table：13px + 等宽数字，便于上下比较。
  */
 @layer base {
   :root {
+    color-scheme: light;
+
+    /* GitHub Primer 浅色画布 */
     --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
+    --canvas: 210 29% 97%; /* #f6f8fa */
+    --foreground: 216 13% 14%; /* #1f2328 */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
+    --card-foreground: 216 13% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
+    --popover-foreground: 216 13% 14%;
 
-    /* 主色：单一蓝（blue-600 #2563eb） */
-    --primary: 221 83% 53%;
+    /* 主色：GitHub 链接 / 焦点蓝 #0969da */
+    --primary: 212 92% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
+    --secondary: 210 29% 97%; /* #f6f8fa，默认灰底按钮 */
+    --secondary-foreground: 216 13% 14%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 210 29% 97%;
+    --muted-foreground: 210 11% 39%; /* #59636e */
 
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
+    --accent: 210 24% 93%; /* #eaeef2，悬停 / 选中底 */
+    --accent-foreground: 216 13% 14%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 356 72% 46%; /* #cf222e */
     --destructive-foreground: 0 0% 100%;
+    --destructive-emphasis: 356 80% 35%; /* #a40e26，危险按钮悬停 */
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 221 83% 53%;
+    --border: 206 18% 85%; /* #d1d9e0 */
+    --input: 206 18% 85%;
+    --ring: 212 92% 45%;
 
-    --sidebar: 240 5% 98%;
-    --sidebar-accent: 240 5% 91%;
-    --sidebar-foreground: 240 6% 26%;
+    /* 深色全局顶栏 */
+    --header: 214 13% 16%; /* #24292f */
+    --header-foreground: 0 0% 100%;
+    --header-muted: 210 13% 72%; /* #afb8c1 */
+    --header-border: 215 12% 27%;
+
+    --sidebar: 0 0% 100%;
+    --sidebar-accent: 210 29% 97%;
+    --sidebar-foreground: 210 11% 39%;
+
+    /* 状态色：语义固定，每个都配浅底，并同时用图标 + 文字表达 */
+    --success: 137 66% 30%; /* #1a7f37 */
+    --success-soft: 132 80% 92%; /* #dafbe1 */
+    --success-emphasis: 137 63% 32%; /* 主操作绿，比 GitHub #1f883d 略深以满足白字 4.5:1 */
+    --success-emphasis-hover: 137 66% 30%;
+    --warning: 40 100% 30%; /* #9a6700 */
+    --warning-soft: 51 100% 89%; /* #fff8c5 */
+    --info: 212 92% 44%; /* #0969da 略压深，保证 12px 状态文字对比度 */
+    --info-soft: 199 100% 93%; /* #ddf4ff */
+    --danger: 356 72% 46%;
+    --danger-soft: 4 100% 96%; /* #ffebe9 */
+    --danger-emphasis: 356 80% 35%;
+    --done: 260 51% 47%; /* #6639ba，合并 / 已完成，保证小字号对比度 */
+    --done-soft: 285 100% 97%; /* #fbefff */
+    --neutral: 210 11% 39%;
+    --neutral-soft: 210 29% 97%;
+
+    --accent-line: 11 97% 72%; /* #fd8c73，UnderlineNav 选中线 */
+
+    /* 浮层遮罩与阴影：深色主题下使用更深的投影与更实的 scrim */
+    --scrim: rgba(31, 35, 40, 0.4);
+    --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+    --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+    --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+    --shadow-popover: 0 8px 24px rgba(140, 149, 159, 0.2);
 
     --radius: 6px;
+  }
+
+  /*
+   * GitHub Primer 深色主题。
+   *
+   * 深色不是浅色的反相：画布、表面、边框、状态色分别取样，
+   * 并对 12px 状态文字与按钮白字重新做过对比度校验。
+   */
+  .dark {
+    color-scheme: dark;
+
+    --background: 216 28% 7%; /* #0d1117 */
+    --canvas: 216 28% 7%;
+    --foreground: 208 35% 93%; /* #e6edf3 */
+
+    --card: 215 21% 11%; /* #161b22 */
+    --card-foreground: 208 35% 93%;
+
+    --popover: 215 21% 11%;
+    --popover-foreground: 208 35% 93%;
+
+    --primary: 215 93% 58%; /* #2f81f7 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 10% 23%; /* #21262d */
+    --secondary-foreground: 208 35% 93%;
+
+    --muted: 215 21% 11%;
+    --muted-foreground: 212 9% 58%; /* #8b949e */
+
+    --accent: 215 10% 23%;
+    --accent-foreground: 208 35% 93%;
+
+    --destructive: 1 69% 53%; /* #da3633 */
+    --destructive-foreground: 0 0% 100%;
+    --destructive-emphasis: 0 68% 43%; /* #b62324 */
+
+    --border: 212 12% 21%; /* #30363d */
+    --input: 212 12% 21%;
+    --ring: 212 100% 67%; /* #58a6ff */
+
+    --header: 218 80% 2%; /* #010409 */
+    --header-foreground: 210 67% 96%; /* #f0f6fc */
+    --header-muted: 212 9% 58%;
+    --header-border: 212 12% 21%;
+
+    --sidebar: 216 28% 7%;
+    --sidebar-accent: 215 21% 11%;
+    --sidebar-foreground: 212 9% 58%;
+
+    --success: 128 49% 49%; /* #3fb950 */
+    --success-soft: 156 36% 11%; /* #12261e */
+    --success-emphasis: 132 59% 33%; /* #238636，白字 4.63:1 */
+    --success-emphasis-hover: 133 59% 30%; /* #1f7a33，悬停后白字仍 ≥4.5:1 */
+    --warning: 41 72% 48%; /* #d29922 */
+    --warning-soft: 48 28% 14%; /* #2e2a1a */
+    --info: 212 100% 67%; /* #58a6ff */
+    --info-soft: 210 73% 17%; /* #0c2d4d */
+    --danger: 3 93% 63%; /* #f85149 */
+    --danger-soft: 357 46% 16%; /* #3c1618 */
+    --danger-emphasis: 0 68% 43%;
+    --done: 262 89% 71%; /* #a371f7 */
+    --done-soft: 260 48% 20%; /* #2a1a4a */
+    --neutral: 212 9% 58%;
+    --neutral-soft: 215 21% 11%;
+
+    --accent-line: 11 90% 68%; /* #f78166 */
+
+    --scrim: rgba(1, 4, 9, 0.7);
+    --shadow-sm: 0 1px 0 rgba(1, 4, 9, 0.4);
+    --shadow-md: 0 3px 6px rgba(1, 4, 9, 0.6);
+    --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.8);
+    --shadow-popover: 0 8px 24px rgba(1, 4, 9, 0.8);
   }
 
   * {
@@ -49,23 +169,84 @@
   }
 
   html {
+    @apply bg-background;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
     font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-}
 
-@layer utilities {
-  /* 表格正文 13px，紧凑行高。 */
-  .text-table {
-    font-size: 13px;
-    line-height: 1.4;
+  ::selection {
+    background: hsl(var(--info-soft));
+    color: hsl(var(--foreground));
+  }
+
+  /* 键盘聚焦由各组件的 focus-visible ring 表达，这里只去掉鼠标点击的默认描边。 */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
+@layer utilities {
+  /* 页面标题：一屏只有一个，和区块标题拉开明显差距。 */
+  .text-title {
+    font-size: 20px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .text-section {
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .text-body {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .text-meta {
+    font-size: 13px;
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* 标签/分组名：比正文小，但不再往 9-11px 掉。 */
+  .text-label {
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* 表格正文 13px + 等宽数字，方便列内上下比较。 */
+  .text-table {
+    font-size: 13px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 指标数字：等宽数字，避免数字变化时页面抖动。 */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}

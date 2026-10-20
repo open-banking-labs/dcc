@@ -1,3 +1,5 @@
+import { ChevronDown } from 'lucide-react'
+
 import { useSession } from '@/auth/session'
 import { useResourceContext } from '@/hooks/useResourceContext'
 import { PERMISSION } from '@/lib/permissions'
@@ -19,13 +21,14 @@ export function EnvAppSwitcher() {
   if (!permissions.includes(PERMISSION.topologyRead)) return null
 
   const selectClass =
-    'h-7 max-w-[10rem] rounded-md border border-input bg-background px-1.5 text-xs text-foreground disabled:opacity-50'
+    'h-7 max-w-[4rem] cursor-pointer appearance-none rounded-md bg-transparent pl-1 pr-5 text-[12px] font-medium text-white outline-none transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30 disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[7rem] lg:max-w-[8.5rem] xl:max-w-[9rem] [&>option]:bg-background [&>option]:text-foreground'
 
   return (
-    <div className="flex items-center gap-2">
-      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        环境
+    <div className="flex items-center gap-0.5 rounded-md border border-white/20 bg-white/5 px-1">
+      <label className="relative flex min-w-0 items-center gap-1.5 pl-1">
+        <span className="hidden text-[12px] font-semibold text-header-muted xl:inline">环境</span>
         <select
+          aria-label="当前环境"
           className={selectClass}
           value={environmentId ?? ''}
           disabled={loading}
@@ -40,10 +43,16 @@ export function EnvAppSwitcher() {
             </option>
           ))}
         </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 text-header-muted"
+          aria-hidden
+        />
       </label>
-      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        应用
+      <span aria-hidden className="h-4 w-px bg-white/15" />
+      <label className="relative flex min-w-0 items-center gap-1.5 pl-1.5 pr-1">
+        <span className="hidden text-[12px] font-semibold text-header-muted xl:inline">应用</span>
         <select
+          aria-label="当前应用"
           className={selectClass}
           value={applicationId ?? ''}
           disabled={loading}
@@ -58,6 +67,10 @@ export function EnvAppSwitcher() {
             </option>
           ))}
         </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-header-muted"
+          aria-hidden
+        />
       </label>
     </div>
   )

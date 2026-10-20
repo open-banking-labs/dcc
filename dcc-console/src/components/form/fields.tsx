@@ -24,7 +24,7 @@ export function Field({
   children: ReactNode
 }) {
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('space-y-1.5', className)}>
       <Label htmlFor={htmlFor}>
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
@@ -144,7 +144,7 @@ export function SelectField({
       value={value ?? ''}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
-      className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground shadow-sm transition-[border-color,box-shadow] outline-none hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:bg-secondary disabled:opacity-60"
     >
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (

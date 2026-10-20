@@ -292,7 +292,7 @@ function LibraryPane({ toast }: { toast: Toast }) {
           案例是平台参考物：采纳只在租户内生成草稿，之后案例升级不会改写你的副本（只会在「我的采纳」里标记 stale）。
         </p>
         <PermissionGate authority={PERMISSION.caseWrite}>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" variant="primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建案例
           </Button>
@@ -329,7 +329,7 @@ function LibraryPane({ toast }: { toast: Toast }) {
         onSubmit={() => void save()}
         widthClass="max-w-2xl"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="功能" htmlFor="case-feature" required>
             <SelectField
               id="case-feature"
@@ -349,7 +349,7 @@ function LibraryPane({ toast }: { toast: Toast }) {
             />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="名称" htmlFor="case-name" required error={errors.name}>
             <TextField id="case-name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
           </Field>
@@ -389,7 +389,7 @@ function LibraryPane({ toast }: { toast: Toast }) {
         onSubmit={() => void adopt()}
       >
         {adopting && optingNeedsTarget(adopting.feature) && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="目标环境" htmlFor="adopt-env" required>
               <SelectField
                 id="adopt-env"

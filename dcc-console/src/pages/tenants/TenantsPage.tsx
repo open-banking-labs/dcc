@@ -164,7 +164,7 @@ export function TenantsPage() {
         description="平台级租户管理（隔离根）"
         actions={
           <PermissionGate authority={PERMISSION.tenantAdmit}>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" variant="primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>

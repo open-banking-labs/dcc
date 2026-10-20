@@ -157,7 +157,7 @@ export function ApplicationsPage() {
         description="租户内的应用（公共基础 / 账务系统 / 客户系统）"
         actions={
           <PermissionGate authority={PERMISSION.topologyWrite}>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" variant="primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>

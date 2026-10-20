@@ -1,3 +1,4 @@
+import { Boxes } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -5,6 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { decodeJwtPayload } from '@/lib/jwt'
 import {
   canIssueLocally,
@@ -32,11 +34,14 @@ export function LoginPage() {
 
   if (session.mode === 'oidc') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-        <div className="w-80 rounded-md border border-border bg-card p-6">
-          <h1 className="text-base font-medium text-foreground">DCC 管理端</h1>
-          <p className="mt-1 text-sm text-muted-foreground">请使用统一身份登录</p>
-          <Button className="mt-4 w-full" onClick={() => session.signin()}>
+      <div className="flex min-h-dvh items-center justify-center bg-canvas p-6">
+        <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-popover">
+          <Brand />
+          <h1 className="mt-4 text-[20px] font-semibold tracking-tight text-foreground">请使用统一身份登录</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            使用公司账号登录后，可访问你被授权的租户与模块。
+          </p>
+          <Button variant="primary" className="mt-5 w-full" onClick={() => session.signin()}>
             登录
           </Button>
         </div>
@@ -45,20 +50,39 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-      <div className="w-[30rem] rounded-md border border-border bg-card p-6">
-        <h1 className="text-base font-medium text-foreground">DCC 管理端</h1>
-        {canIssueLocally() ? (
-          <DevIdentityLogin returnTo={returnTo} />
-        ) : (
-          <DevTokenPaste
-            onDone={(token) => {
-              session.setDevToken?.(token)
-              navigate(returnTo, { replace: true })
-            }}
-          />
-        )}
+    <div className="flex min-h-dvh items-center justify-center bg-canvas p-6">
+      <div className="w-full max-w-[30rem] rounded-lg border border-border bg-card shadow-popover">
+        <div className="border-b border-border px-6 py-4">
+          <Brand />
+        </div>
+        <div className="px-6 py-5">
+          {canIssueLocally() ? (
+            <DevIdentityLogin returnTo={returnTo} />
+          ) : (
+            <DevTokenPaste
+              onDone={(token) => {
+                session.setDevToken?.(token)
+                navigate(returnTo, { replace: true })
+              }}
+            />
+          )}
+        </div>
       </div>
+    </div>
+  )
+}
+
+/** 登录页品牌块：与管理端侧栏的标识一致。 */
+function Brand() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-header text-white">
+        <Boxes className="h-4 w-4" aria-hidden />
+      </span>
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="text-[15px] font-semibold text-foreground">DCC 管理端</span>
+        <span className="text-[12px] text-muted-foreground">数据契约中心</span>
+      </span>
     </div>
   )
 }
@@ -119,12 +143,12 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
             void submit()
           }}
         >
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
             本地开发登录（未配置 OIDC）。选择身份后本页直接签发开发 Token（与
-            <code className="mx-1 text-foreground">scripts/dev-token.mjs</code>一致的 dev 密钥）。
+            <code className="mx-1 rounded-sm bg-secondary px-1 py-0.5 text-[12px] text-foreground">scripts/dev-token.mjs</code>一致的 dev 密钥）。
           </p>
           <div className="space-y-1.5">
-            <label htmlFor="dev-sub" className="text-xs text-muted-foreground">
+            <label htmlFor="dev-sub" className="text-[13px] font-semibold text-foreground">
               操作者
             </label>
             <Input
@@ -136,7 +160,7 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="dev-tenant" className="text-xs text-muted-foreground">
+            <label htmlFor="dev-tenant" className="text-[13px] font-semibold text-foreground">
               租户
             </label>
             <Input
@@ -147,8 +171,8 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
             />
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs text-muted-foreground">角色</span>
-            <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
+            <span className="text-[13px] font-semibold text-foreground">角色</span>
+            <div className="flex flex-col gap-2 rounded-md border border-border bg-secondary/60 p-3">
               {ROLE_OPTIONS.map((option) => (
                 <label key={option.value} className="flex items-center gap-2 text-sm text-foreground">
                   <Checkbox
@@ -161,14 +185,14 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="dev-hours" className="text-xs text-muted-foreground">
+            <label htmlFor="dev-hours" className="text-[13px] font-semibold text-foreground">
               有效期
             </label>
             <select
               id="dev-hours"
               value={identity.hours}
               onChange={(event) => setIdentity((prev) => ({ ...prev, hours: Number(event.target.value) }))}
-              className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              className="flex h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground shadow-sm transition-[border-color,box-shadow] outline-none hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
             >
               <option value={1}>1 小时</option>
               <option value={8}>8 小时</option>
@@ -176,12 +200,12 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
               <option value={72}>72 小时</option>
             </select>
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <p className="text-xs text-muted-foreground">
+          {error && <p className="text-[13px] text-destructive">{error}</p>}
+          <p className="text-[13px] text-muted-foreground">
             将以 <span className="font-mono text-foreground">{identity.sub}</span> @{' '}
             <span className="font-mono text-foreground">{identity.tenant}</span>（{roleSummary}）登录。
           </p>
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
             {submitting ? '签发中…' : '登录'}
           </Button>
         </form>
@@ -195,7 +219,7 @@ function DevIdentityLogin({ returnTo }: { returnTo: string }) {
       )}
       <button
         type="button"
-        className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+        className="mt-4 w-full rounded-sm text-center text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
         onClick={() => setMode(mode === 'identity' ? 'token' : 'identity')}
       >
         {mode === 'identity' ? '使用已生成的 Token 登录' : '返回身份登录'}
@@ -229,19 +253,19 @@ function DevTokenPaste({ onDone }: { onDone: (token: string) => void }) {
 
   return (
     <div className="mt-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[12px] text-muted-foreground">
         粘贴后端开发密钥签发的 JWT（可运行
-        <code className="mx-1 text-foreground">node scripts/dev-token.mjs</code>生成）。
+        <code className="mx-1 font-mono text-foreground">node scripts/dev-token.mjs</code>生成）。
       </p>
-      <textarea
-        className="mt-2 flex min-h-24 w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      <Textarea
+        className="mt-2 min-h-24 font-mono text-[12px]"
         rows={5}
         value={token}
         onChange={(event) => setToken(event.target.value)}
         placeholder="eyJhbGciOiJIUzI1NiIs..."
       />
       {token.trim() && parsed && !expired && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-[12px] text-muted-foreground">
           解析身份：<span className="font-mono text-foreground">{String(parsed.sub ?? '—')}</span> @{' '}
           <span className="font-mono text-foreground">{String(parsed.tenant ?? '—')}</span>
           {Array.isArray(parsed.roles) && (
@@ -249,8 +273,8 @@ function DevTokenPaste({ onDone }: { onDone: (token: string) => void }) {
           )}
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-      <Button type="submit" className="mt-3 w-full" onClick={submit} disabled={!token.trim()}>
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <Button type="submit" variant="primary" className="mt-3 w-full" onClick={submit} disabled={!token.trim()}>
         登录
       </Button>
     </div>

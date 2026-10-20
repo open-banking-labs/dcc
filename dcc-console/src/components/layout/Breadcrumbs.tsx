@@ -20,7 +20,7 @@ const LABELS: Record<string, string> = {
   edit: '编辑',
 }
 
-/** 由当前路径生成面包屑。 */
+/** 由当前路径生成面包屑，置于深色顶栏内。 */
 export function Breadcrumbs() {
   const { pathname } = useLocation()
   const segments = pathname.split('/').filter(Boolean)
@@ -32,17 +32,23 @@ export function Breadcrumbs() {
   })
 
   return (
-    <nav className="flex min-w-0 items-center gap-1 text-sm">
-      <Link to="/" className="shrink-0 text-muted-foreground hover:text-foreground">
+    <nav aria-label="面包屑" className="flex min-w-0 items-center gap-1 text-[12px]">
+      <Link
+        to="/"
+        className="shrink-0 rounded-sm text-header-muted transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25"
+      >
         首页
       </Link>
       {crumbs.map((crumb) => (
         <span key={crumb.to} className="flex min-w-0 items-center gap-1">
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-header-muted/60" aria-hidden />
           {crumb.isLast || crumb.to === '/platform' ? (
-            <span className="truncate text-foreground">{crumb.label}</span>
+            <span className="truncate font-medium text-white">{crumb.label}</span>
           ) : (
-            <Link to={crumb.to} className="truncate text-muted-foreground hover:text-foreground">
+            <Link
+              to={crumb.to}
+              className="truncate rounded-sm text-header-muted transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25"
+            >
               {crumb.label}
             </Link>
           )}

@@ -3,6 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#24292f" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      ;(function () {
+        var mode = 'system'
+        try {
+          var stored = window.localStorage.getItem('dcc.theme')
+          if (stored === 'light' || stored === 'dark') mode = stored
+        } catch (error) {
+          /* 存储不可用时按系统主题处理 */
+        }
+        var systemDark =
+          typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches
+        var dark = mode === 'dark' || (mode === 'system' && systemDark)
+        var root = document.documentElement
+        root.classList.toggle('dark', dark)
+        root.style.colorScheme = dark ? 'dark' : 'light'
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', dark ? '#010409' : '#24292f')
+      })()
+    </script>
     <title>DCC 管理端</title>
   </head>
   <body>

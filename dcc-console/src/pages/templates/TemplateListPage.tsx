@@ -116,10 +116,10 @@ export function TemplateListPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="接口模板"
-        description="接口模板：CRUD、版本、生命周期"
+        description="把公共报文段（如协议头）抽成模板，新建接口时选用。"
         actions={
           <PermissionGate authority={PERMISSION.artifactWrite}>
-            <Button size="sm" onClick={() => navigate('/templates/new')}>
+            <Button size="sm" variant="primary" onClick={() => navigate('/templates/new')}>
               <Plus className="h-4 w-4" />
               新建
             </Button>

@@ -11,12 +11,12 @@ export function PageHeader({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
-        <h1 className="text-base font-medium text-foreground">{title}</h1>
-        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+        <h1 className="break-words text-title text-foreground">{title}</h1>
+        {description && <p className="mt-1 max-w-2xl break-words text-meta">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }

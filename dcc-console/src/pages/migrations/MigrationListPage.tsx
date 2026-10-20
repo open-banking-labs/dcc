@@ -109,7 +109,7 @@ export function MigrationListPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="迁移单"
-        description="环境间迁移及其审批流程（以应用为单位发起）"
+        description="以应用为单位发起的跨环境迁移；提交后需他人审批才能批准。"
         actions={
           <PermissionGate authority={PERMISSION.migrationWrite}>
             <Button

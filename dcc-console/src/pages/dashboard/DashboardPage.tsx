@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { dashboardApi } from '@/api/dashboard'
 import { useSession } from '@/auth/session'
-import { ErrorState, LoadingState } from '@/components/feedback/StateViews'
+import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/StateViews'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { useResourceContext } from '@/hooks/useResourceContext'
@@ -29,19 +29,32 @@ function StatCard({
 }) {
   const body = (
     <>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold tabular-nums text-foreground">{value}</span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[13px] font-medium text-muted-foreground">{label}</span>
         {pending !== undefined && pending > 0 && (
-          <span className="text-xs font-medium text-amber-600">{pending} 待审</span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-status-warning/30 bg-status-warning-soft px-1.5 py-[3px] text-[12px] font-semibold leading-none text-status-warning">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-status-warning" />
+            {pending} 待审
+          </span>
         )}
       </div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="num text-[28px] font-semibold leading-none tracking-tight text-foreground">
+          {value}
+        </span>
+      </div>
+      {hint && <div className="mt-2 text-[12px] text-muted-foreground">{hint}</div>}
     </>
   )
-  const className = 'rounded-md border border-border bg-card p-4'
+  const className = 'rounded-lg border border-border bg-card p-4 transition-colors'
   return to ? (
-    <Link to={to} className={cn(className, 'block hover:bg-accent/40')}>
+    <Link
+      to={to}
+      className={cn(
+        className,
+        'block hover:border-muted-foreground/40 hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
+      )}
+    >
       {body}
     </Link>
   ) : (
@@ -51,9 +64,9 @@ function StatCard({
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+    <section className="space-y-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-section text-foreground">{title}</h2>
         {action}
       </div>
       {children}
@@ -102,19 +115,22 @@ export function DashboardPage() {
   const hasAnything = Boolean(data.artifacts || data.migrations || data.audit || data.tenants)
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-7 p-6">
       <PageHeader title="工作台" description={`你好，${displayName} · 当前范围 ${scope}`} />
 
       {!hasAnything && (
-        <p className="rounded-md border border-border bg-card px-3 py-12 text-center text-sm text-muted-foreground">
-          当前账号没有可展示的看板数据，请从左侧菜单进入你有权限的模块。
-        </p>
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState
+            text="当前账号没有可展示的看板数据"
+            hint="从左侧菜单进入你有权限的模块；需要更多权限时请联系管理员。"
+          />
+        </div>
       )}
 
       {data.artifacts && (
         <Section
           title="数据资产"
-          action={<span className="text-xs text-muted-foreground">总览 / 待审数量</span>}
+          action={<span className="text-[12px] text-muted-foreground">总量 / 待审</span>}
         >
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {ARTIFACT_CARDS.map((card) => (
@@ -134,12 +150,15 @@ export function DashboardPage() {
         <Section
           title="变更与发布"
           action={
-            <Link to="/migrations" className="text-xs text-primary hover:underline">
+            <Link
+              to="/migrations"
+              className="text-[13px] font-medium text-primary underline-offset-2 hover:underline"
+            >
               全部迁移单
             </Link>
           }
         >
-          <div className="grid grid-cols-3 gap-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {MIGRATION_ROWS.map((row) => (
               <StatCard
                 key={row.key}
@@ -154,21 +173,23 @@ export function DashboardPage() {
 
       {data.recentMigrations && data.recentMigrations.length > 0 && (
         <Section title="最近迁移单">
-          <ul className="divide-y divide-border rounded-md border border-border bg-card">
+          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
             {data.recentMigrations.map((order) => (
               <li key={order.id}>
                 <Link
                   to={`/migrations/${order.id}`}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent/40"
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-ring/25"
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="shrink-0 text-[12px] text-muted-foreground">
                       {ARTIFACT_TYPE_LABEL[order.artifactType]}
                     </span>
-                    <span className="truncate text-foreground">{order.artifactCode ?? `#${order.id}`}</span>
+                    <span className="truncate text-[13px] text-foreground">
+                      {order.artifactCode ?? `#${order.id}`}
+                    </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="num whitespace-nowrap text-[12px] text-muted-foreground">
                       {new Date(order.updatedAt).toLocaleString()}
                     </span>
                     <StatusBadge status={order.status} kind="migration" />

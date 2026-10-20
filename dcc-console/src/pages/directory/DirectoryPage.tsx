@@ -121,7 +121,7 @@ function MembershipPane({ filters }: { filters: DirectoryFilters }) {
         <p className="text-xs text-muted-foreground">
           {platform ? '平台成员目录' : '当前租户成员'}
         </p>
-        {writable && <Button size="sm" onClick={() => setCreating(true)}>
+        {writable && <Button size="sm" variant="primary" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" />授权成员
         </Button>}
       </div>
@@ -286,7 +286,7 @@ function AssignmentPane({ filters }: { filters: DirectoryFilters }) {
         <p className="text-xs text-muted-foreground">
           {platform ? '平台角色指派' : '当前租户角色指派'}
         </p>
-        {writable && <Button size="sm" onClick={() => setCreating(true)}>
+        {writable && <Button size="sm" variant="primary" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" />指派角色
         </Button>}
       </div>
@@ -382,7 +382,7 @@ export function DirectoryPage() {
         description={platform ? '跨租户管理成员与角色指派' : '管理当前租户的成员与角色指派'}
       />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+      <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary/60 p-3">
         <Field label="操作者" className="w-44">
           <TextField value={draft.subject} onChange={(value) => setDraft({ ...draft, subject: value })} placeholder="精确匹配" />
         </Field>

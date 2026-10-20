@@ -3,20 +3,24 @@ import {
   ArrowRightLeft,
   BookMarked,
   BookText,
+  Boxes,
   Building2,
   History,
   Layers,
   LayoutDashboard,
   LayoutTemplate,
   Megaphone,
+  Menu,
   Package,
   Plug,
   Radar,
   Table2,
   UserCog,
+  X,
   type LucideIcon,
 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 
 import { PERMISSION } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
@@ -86,8 +90,8 @@ const NAV: NavSection[] = [
   },
 ]
 
-/** 左侧固定侧边栏：纯文字 + 图标，选中项用背景色；按 authority 过滤受限入口。 */
-export function Sidebar() {
+/** 侧栏导航内容，桌面侧栏与移动端抽屉共用。 */
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const permissions = useSession().permissions
   const visible = NAV.map((section) => ({
     ...section,
@@ -96,39 +100,135 @@ export function Sidebar() {
         || (Array.isArray(item.authority) ? item.authority : [item.authority])
           .some((permission) => permissions.includes(permission))),
   })).filter((section) => section.items.length > 0)
+
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
-      <div className="flex h-12 shrink-0 items-center border-b border-border px-4">
-        <span className="text-sm font-semibold text-foreground">DCC 管理端</span>
-      </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
-        {visible.map((section) => (
-          <div key={section.group} className="mb-3">
-            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">{section.group}</div>
-            <ul className="space-y-0.5">
-              {section.items.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                        isActive
-                          ? 'bg-sidebar-accent font-medium text-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
-                      )
-                    }
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+    <nav aria-label="主导航" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+      {visible.map((section) => (
+        <div key={section.group}>
+          <div className="mb-1.5 px-2.5 text-[12px] font-semibold leading-4 text-muted-foreground">
+            {section.group}
           </div>
-        ))}
-      </nav>
+          <ul className="space-y-0.5">
+            {section.items.map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    cn(
+                      'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25',
+                      isActive
+                        ? 'bg-accent font-semibold text-foreground before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-primary'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        aria-hidden
+                        className={cn(
+                          'h-4 w-4 shrink-0',
+                          isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                        )}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  )
+}
+
+/** 桌面端固定侧边栏；品牌信息在顶栏，避免重复。 */
+export function Sidebar() {
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+      <SidebarNav />
     </aside>
+  )
+}
+
+/** 移动端导航抽屉：从顶栏下方滑出，路由变化后自动关闭。 */
+export function MobileNav() {
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  const close = () => {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!open) return
+    closeRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="打开导航"
+        aria-expanded={open}
+        aria-controls="mobile-navigation"
+        onClick={() => setOpen(true)}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-header-muted transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25 lg:hidden"
+      >
+        <Menu className="h-4 w-4" aria-hidden />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 top-14 z-50 lg:hidden">
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-scrim"
+            onClick={close}
+          />
+          <div
+            id="mobile-navigation"
+            role="dialog"
+            aria-modal="true"
+            aria-label="主导航"
+            className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-popover"
+          >
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+                <Boxes className="h-4 w-4 text-muted-foreground" aria-hidden />
+                导航
+              </span>
+              <button
+                ref={closeRef}
+                type="button"
+                aria-label="关闭导航"
+                onClick={close}
+                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <SidebarNav onNavigate={close} />
+          </div>
+        </div>
+      )}
+    </>
   )
 }

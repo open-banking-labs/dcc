@@ -157,7 +157,7 @@ export function InterfaceDetailPage() {
         <TabsContent value="overview">
           <div className="space-y-4">
             <div className="rounded-md border border-border bg-card p-4">
-              <h3 className="mb-3 text-sm font-medium text-foreground">基本信息</h3>
+              <h3 className="mb-3 text-[14px] font-semibold text-foreground">基本信息</h3>
               <KeyValueList
                 items={[
                   { label: '状态', value: <StatusBadge kind="standard" status={iface.status} /> },
@@ -173,21 +173,21 @@ export function InterfaceDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-foreground">输入字段</h3>
+              <h3 className="text-[14px] font-semibold text-foreground">输入字段</h3>
               <CodeBlock code={JSON.stringify(iface.content.input, null, 2)} language="json" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-foreground">输出字段</h3>
+              <h3 className="text-[14px] font-semibold text-foreground">输出字段</h3>
               <CodeBlock code={JSON.stringify(iface.content.output, null, 2)} language="json" />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="history">
-          <div className="overflow-hidden rounded-md border border-border bg-card">
+          <div className="overflow-x-auto rounded-md border border-border bg-card">
             <table className="w-full border-collapse text-table">
               <thead>
-                <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
+                <tr className="border-b border-border bg-secondary text-left text-[12px] font-semibold text-muted-foreground">
                   <th className="px-3 py-2 font-medium">版本</th>
                   <th className="px-3 py-2 font-medium">级别</th>
                   <th className="px-3 py-2 font-medium">说明</th>

@@ -59,7 +59,7 @@ export function FormDialog({
             >
               取消
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
+            <Button type="submit" size="sm" variant="primary" disabled={submitting}>
               {submitting ? '保存中…' : submitText}
             </Button>
           </DialogFooter>

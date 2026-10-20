@@ -122,10 +122,10 @@ export function InterfaceListPage() {
     <div className="space-y-4 p-6">
       <PageHeader
         title="接口"
-        description="业务接口：CRUD、版本、生命周期"
+        description="业务接口的入参与出参定义，字段可引用数标，供生成 OpenAPI 与代码。"
         actions={
           <PermissionGate authority={PERMISSION.artifactWrite}>
-            <Button size="sm" onClick={() => navigate('/interfaces/new')}>
+            <Button size="sm" variant="primary" onClick={() => navigate('/interfaces/new')}>
               <Plus className="h-4 w-4" />
               新建
             </Button>

@@ -159,7 +159,7 @@ export function EnvironmentsPage() {
         description="租户内的环境（DEV / TEST / PROD，可自定义）"
         actions={
           <PermissionGate authority={PERMISSION.topologyWrite}>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" variant="primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             新建
           </Button>

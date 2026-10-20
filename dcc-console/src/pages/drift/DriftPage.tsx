@@ -62,10 +62,10 @@ export function DriftPage() {
           <p className="px-3 py-12 text-center text-sm text-muted-foreground">暂无数据</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border border-border bg-card">
+        <div className="overflow-x-auto rounded-md border border-border bg-card">
           <table className="w-full border-collapse text-table">
             <thead>
-              <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
+              <tr className="border-b border-border bg-secondary text-left text-[12px] font-semibold text-muted-foreground">
                 <th className="px-3 py-2 font-medium">产物类型</th>
                 <th className="px-3 py-2 font-medium">编码</th>
                 <th className="px-3 py-2 font-medium">版本</th>

@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { ChevronDown, LogOut, Monitor, Moon, Sun, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { directoryApi, type MembershipView } from '@/api/directory'
@@ -8,11 +8,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { decodeJwtPayload } from '@/lib/jwt'
 import { canIssueLocally, issueDevToken } from '@/lib/devToken'
+import { useTheme, type ThemeMode } from '@/theme/ThemeProvider'
 
 /**
  * 顶栏用户菜单：显示身份与角色，提供退出。目录模式下再展示「我的成员关系」，
@@ -21,6 +24,7 @@ import { canIssueLocally, issueDevToken } from '@/lib/devToken'
  */
 export function UserMenu() {
   const session = useSession()
+  const { mode, setMode } = useTheme()
   const [memberships, setMemberships] = useState<MembershipView[] | null>(null)
 
   useEffect(() => {
@@ -57,14 +61,17 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-foreground hover:bg-accent"
+          aria-label={`账户：${session.displayName}`}
+          className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 text-[13px] text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25"
         >
-          <UserRound className="h-4 w-4" />
-          <span className="max-w-[8rem] truncate">{session.displayName}</span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-white/80">
+            <UserRound className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <span className="hidden max-w-[8rem] truncate sm:inline">{session.displayName}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-header-muted" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 max-h-[70vh]">
         <DropdownMenuLabel>
           <div className="truncate text-sm">{session.displayName}</div>
           {session.roles.length > 0 && (
@@ -94,8 +101,30 @@ export function UserMenu() {
         )}
 
         <DropdownMenuSeparator />
+        <DropdownMenuLabel className="px-2 py-1 text-[12px] font-semibold text-muted-foreground">
+          外观
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={mode}
+          onValueChange={(value) => setMode(value as ThemeMode)}
+        >
+          <DropdownMenuRadioItem value="system">
+            <Monitor className="h-4 w-4" aria-hidden />
+            跟随系统
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="light">
+            <Sun className="h-4 w-4" aria-hidden />
+            浅色
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <Moon className="h-4 w-4" aria-hidden />
+            深色
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => session.signout()}>
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4" aria-hidden />
           退出登录
         </DropdownMenuItem>
       </DropdownMenuContent>

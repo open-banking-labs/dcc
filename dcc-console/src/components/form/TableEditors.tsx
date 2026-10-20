@@ -48,16 +48,16 @@ export function ColumnEditor({ columns, onChange, standards }: ColumnEditorProps
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full border-collapse text-table">
           <thead>
-            <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-              <th className="px-2 py-2 font-medium">列名</th>
-              <th className="px-2 py-2 font-medium">引用数标</th>
-              <th className="px-2 py-2 font-medium">类型</th>
-              <th className="px-2 py-2 font-medium">长度</th>
-              <th className="px-2 py-2 font-medium">精度</th>
-              <th className="px-2 py-2 font-medium">可空</th>
-              <th className="px-2 py-2 font-medium">主键</th>
-              <th className="px-2 py-2 font-medium">默认值</th>
-              <th className="px-2 py-2 font-medium">注释</th>
+            <tr className="border-b border-border bg-secondary text-left text-[12px] font-semibold text-muted-foreground">
+              <th className="px-2 py-2 font-semibold">列名</th>
+              <th className="px-2 py-2 font-semibold">引用数标</th>
+              <th className="px-2 py-2 font-semibold">类型</th>
+              <th className="px-2 py-2 font-semibold">长度</th>
+              <th className="px-2 py-2 font-semibold">精度</th>
+              <th className="px-2 py-2 font-semibold">可空</th>
+              <th className="px-2 py-2 font-semibold">主键</th>
+              <th className="px-2 py-2 font-semibold">默认值</th>
+              <th className="px-2 py-2 font-semibold">注释</th>
               <th className="px-2 py-2" />
             </tr>
           </thead>
@@ -80,7 +80,7 @@ export function ColumnEditor({ columns, onChange, standards }: ColumnEditorProps
                   </td>
                   <td className="p-1">
                     <select
-                      className="h-7 w-full rounded-md border border-input bg-background px-1 text-xs text-foreground"
+                      className="h-7 w-full cursor-pointer rounded-md border border-input bg-background px-1 text-[12px] text-foreground shadow-sm outline-none transition-[border-color,box-shadow] hover:border-muted-foreground/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
                       value={column.standardId ?? ''}
                       onChange={(event) => {
                         const value = event.target.value
@@ -164,8 +164,8 @@ export function ColumnEditor({ columns, onChange, standards }: ColumnEditorProps
                     />
                   </td>
                   <td className="p-1 text-center">
-                    <Button type="button" size="sm" variant="ghost" onClick={() => remove(index)}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button type="button" size="sm" variant="ghost" aria-label="删除列" onClick={() => remove(index)}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     </Button>
                   </td>
                 </tr>
@@ -200,10 +200,10 @@ export function IndexEditor({ indexes, onChange }: IndexEditorProps) {
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full border-collapse text-table">
           <thead>
-            <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-              <th className="px-2 py-2 font-medium">索引名</th>
-              <th className="px-2 py-2 font-medium">唯一</th>
-              <th className="px-2 py-2 font-medium">列（逗号分隔）</th>
+            <tr className="border-b border-border bg-secondary text-left text-[12px] font-semibold text-muted-foreground">
+              <th className="px-2 py-2 font-semibold">索引名</th>
+              <th className="px-2 py-2 font-semibold">唯一</th>
+              <th className="px-2 py-2 font-semibold">列（逗号分隔）</th>
               <th className="px-2 py-2" />
             </tr>
           </thead>
@@ -245,8 +245,8 @@ export function IndexEditor({ indexes, onChange }: IndexEditorProps) {
                     />
                   </td>
                   <td className="p-1 text-center">
-                    <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button type="button" size="sm" variant="ghost" aria-label="删除索引" onClick={() => remove(i)}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     </Button>
                   </td>
                 </tr>

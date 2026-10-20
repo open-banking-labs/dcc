@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { X } from 'lucide-react'
+import { Info, ShieldAlert, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 
 import { announcementsApi } from '@/api/announcements'
 import { useAsync } from '@/hooks/useAsync'
@@ -14,9 +14,15 @@ const ROTATE_MS = 8000
 const DISMISSED_KEY = 'dcc.dismissedAnnouncements'
 
 const LEVEL_STYLE: Record<AnnouncementLevel, string> = {
-  MAINTENANCE: 'border-red-300 bg-red-50 text-red-800',
-  WARNING: 'border-amber-300 bg-amber-50 text-amber-800',
-  INFO: 'border-blue-200 bg-blue-50 text-blue-800',
+  MAINTENANCE: 'border-status-danger/30 bg-status-danger-soft text-status-danger',
+  WARNING: 'border-status-warning/30 bg-status-warning-soft text-status-warning',
+  INFO: 'border-status-info/30 bg-status-info-soft text-status-info',
+}
+
+const LEVEL_ICON: Record<AnnouncementLevel, LucideIcon> = {
+  MAINTENANCE: ShieldAlert,
+  WARNING: TriangleAlert,
+  INFO: Info,
 }
 
 const LEVEL_LABEL: Record<AnnouncementLevel, string> = {
@@ -42,25 +48,29 @@ function prefersReducedMotion(): boolean {
 }
 
 function Banner({ announcement, onDismiss }: { announcement: AnnouncementView; onDismiss: () => void }) {
+  const Icon = LEVEL_ICON[announcement.level]
   return (
     <div
       className={cn(
-        'flex items-center gap-2 border-b px-4 py-1.5 text-sm',
+        'flex items-center gap-2 border-b px-4 py-2 text-[13px]',
         LEVEL_STYLE[announcement.level],
       )}
     >
-      <span className="shrink-0 rounded-sm border border-current/30 px-1.5 py-0.5 text-xs leading-none">
+      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="shrink-0 rounded-full border border-current px-2 py-0.5 text-[12px] font-semibold leading-none">
         {LEVEL_LABEL[announcement.level]}
       </span>
-      <span className="shrink-0 font-medium">{announcement.title}</span>
-      <span className="min-w-0 flex-1 truncate">{announcement.body}</span>
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-semibold">{announcement.title}</span>
+        <span className="ml-1.5">{announcement.body}</span>
+      </span>
       <button
         type="button"
         aria-label="本次会话不再显示这条公告"
         onClick={onDismiss}
-        className="shrink-0 rounded p-0.5 hover:bg-black/5"
+        className="shrink-0 rounded-md p-1 transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-3.5 w-3.5" aria-hidden />
       </button>
     </div>
   )

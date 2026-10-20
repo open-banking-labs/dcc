@@ -150,7 +150,7 @@ export function TableFormPage() {
             <Button size="sm" variant="outline" onClick={() => navigate(-1)} disabled={submitting}>
               取消
             </Button>
-            <Button size="sm" onClick={() => void handleSubmit()} disabled={submitting}>
+            <Button size="sm" variant="primary" onClick={() => void handleSubmit()} disabled={submitting}>
               {submitting ? '保存中…' : '保存'}
             </Button>
           </>
