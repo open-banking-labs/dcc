@@ -24,6 +24,8 @@ export const PERMISSION = {
   caseRead: 'case.read',
   caseAdopt: 'case.adopt',
   caseWrite: 'case.write',
+  announcementWrite: 'announcement.write',
+  announcementWritePlatform: 'announcement.write.platform',
   tenantAdmit: 'tenant.admit',
 } as const
 

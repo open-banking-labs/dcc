@@ -4,12 +4,13 @@ import { Outlet } from 'react-router-dom'
 
 import { LoadingState } from '@/components/feedback/StateViews'
 
+import { AnnouncementTicker } from './AnnouncementTicker'
 import { Breadcrumbs } from './Breadcrumbs'
 import { EnvAppSwitcher } from './EnvAppSwitcher'
 import { Sidebar } from './Sidebar'
 import { UserMenu } from './UserMenu'
 
-/** 管理端外壳：左固定侧边栏 + 顶栏（面包屑 / 上下文切换 / 用户）+ 内容区。 */
+/** 管理端外壳：左固定侧边栏 + 顶栏（面包屑 / 上下文切换 / 用户）+ 公告条 + 内容区。 */
 export function AppLayout() {
   return (
     <div className="flex h-screen bg-neutral-50">
@@ -22,6 +23,7 @@ export function AppLayout() {
             <UserMenu />
           </div>
         </header>
+        <AnnouncementTicker />
         <main className="min-w-0 flex-1 overflow-auto">
           <Suspense fallback={<div className="p-6"><LoadingState /></div>}>
             <Outlet />

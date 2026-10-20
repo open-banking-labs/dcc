@@ -6,7 +6,9 @@ import {
   Building2,
   History,
   Layers,
+  LayoutDashboard,
   LayoutTemplate,
+  Megaphone,
   Package,
   Plug,
   Radar,
@@ -25,8 +27,10 @@ interface NavItem {
   to: string
   label: string
   icon: LucideIcon
-  /** 需要的权限点；所有入口都必须显式声明，由服务端 /api/me 返回的权限过滤。 */
-  authority: string | string[]
+  /** 需要的权限点；入口可声明多个候选，命中任一即显示。 */
+  authority?: string | string[]
+  /** 精确匹配路由（"/" 必须开，否则每条路由下它都算选中）。 */
+  end?: boolean
 }
 
 interface NavSection {
@@ -35,6 +39,19 @@ interface NavSection {
 }
 
 const NAV: NavSection[] = [
+  {
+    group: '工作台',
+    items: [
+      // 不需权限点：看板的分区由服务端按权限裁剪，任何已认证用户都有东西可看
+      { to: '/', label: '工作台', icon: LayoutDashboard, end: true },
+      {
+        to: '/announcements',
+        label: '公告',
+        icon: Megaphone,
+        authority: [PERMISSION.announcementWrite, PERMISSION.announcementWritePlatform],
+      },
+    ],
+  },
   {
     group: '数据资产',
     items: [
@@ -75,8 +92,9 @@ export function Sidebar() {
   const visible = NAV.map((section) => ({
     ...section,
     items: section.items.filter((item) =>
-      (Array.isArray(item.authority) ? item.authority : [item.authority])
-        .some((permission) => permissions.includes(permission))),
+      !item.authority
+        || (Array.isArray(item.authority) ? item.authority : [item.authority])
+          .some((permission) => permissions.includes(permission))),
   })).filter((section) => section.items.length > 0)
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -92,6 +110,7 @@ export function Sidebar() {
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
+                    end={item.end}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',

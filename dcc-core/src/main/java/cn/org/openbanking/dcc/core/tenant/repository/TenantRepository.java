@@ -24,4 +24,7 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     /** Loads a tenant including logically-deleted ones so it can be restored (native query). */
     @Query(value = "select * from tenant where code = :code", nativeQuery = true)
     Optional<Tenant> findByCodeIncludingDeleted(@Param("code") String code);
+
+    /** Live, enabled tenants; used by the platform section of the workbench dashboard. */
+    long countByEnabledTrue();
 }

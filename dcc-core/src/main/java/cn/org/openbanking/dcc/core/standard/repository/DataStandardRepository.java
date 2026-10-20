@@ -51,4 +51,18 @@ public interface DataStandardRepository extends JpaRepository<DataStandard, Long
             @Param("applicationId") Long applicationId,
             @Param("category") String category,
             @Param("status") StandardStatus status);
+
+    /**
+     * Counts rows in one scope for the workbench dashboard. {@code environmentId},
+     * {@code applicationId} and {@code status} may be {@code null} to mean "no constraint".
+     */
+    @Query("select count(s) from DataStandard s "
+            + "where s.tenantId = :tenantId "
+            + "and (:environmentId is null or s.environmentId = :environmentId) "
+            + "and (:applicationId is null or s.applicationId = :applicationId) "
+            + "and (:status is null or s.status = :status)")
+    long countInScope(@Param("tenantId") String tenantId,
+            @Param("environmentId") Long environmentId,
+            @Param("applicationId") Long applicationId,
+            @Param("status") StandardStatus status);
 }

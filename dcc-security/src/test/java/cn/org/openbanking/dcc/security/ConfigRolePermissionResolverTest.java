@@ -58,9 +58,11 @@ class ConfigRolePermissionResolverTest {
         Set<String> authorities = resolver().authoritiesFor(List.of("DCC_TENANT_ADMIN"));
 
         assertThat(authorities).contains("migration.execute", "artifact.restore", "topology.write",
-                "directory.write", "audit.business");
+                "directory.write", "audit.business", "announcement.write");
         assertThat(authorities).doesNotContain("artifact.transition", "migration.approve",
-                "tenant.admit", "case.write", "directory.write.platform");
+                "tenant.admit", "case.write", "directory.write.platform",
+                // a tenant administrator may address its own tenant only, never every tenant
+                "announcement.write.platform");
     }
 
     @Test
@@ -68,7 +70,9 @@ class ConfigRolePermissionResolverTest {
         Set<String> authorities = resolver().authoritiesFor(List.of("DCC_PLATFORM_ADMIN"));
 
         assertThat(authorities).containsExactlyInAnyOrder("tenant.admit", "directory.read",
-                "directory.write.platform", "audit.platform", "case.write", "case.read");
+                "directory.write.platform", "audit.platform", "case.write", "case.read",
+                // platform-wide announcements are a platform plane, like the platform audit trail
+                "announcement.write.platform");
     }
 
     @Test

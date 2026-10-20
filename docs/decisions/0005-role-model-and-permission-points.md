@@ -143,6 +143,8 @@
 | `audit.platform` | 平台审计（准入 / 授权 / 案例） |
 | `case.read` / `case.adopt` | 案例读取 / 采纳 |
 | `case.write` | 案例维护 |
+| `announcement.write` | 本租户公告发布 / 停用 / 删除（读取无需权限点） |
+| `announcement.write.platform` | 平台公告发布（所有租户可见） |
 | `tenant.admit` | 租户创建 / 启停 / 注销 / 全量枚举 |
 
 ### D9 角色 → 权限包默认值
@@ -153,8 +155,8 @@
 | 维护者 | 读者 + `artifact.write` `artifact.delete` `migration.write` `generation.package` |
 | 审批者 | 读者 + `artifact.transition` `migration.approve` |
 | 环境管理员 | 读者 + `artifact.write` `artifact.delete` `migration.write` `migration.execute` `generation.package` |
-| 租户管理员 | 读者 + `artifact.restore` `migration.execute` `topology.write` `directory.read` `directory.write` `audit.business` `case.read` `case.adopt` |
-| 系统管理员 | `tenant.admit` `directory.read` `directory.write.platform` `audit.platform` `case.write` `case.read` |
+| 租户管理员 | 读者 + `artifact.restore` `migration.execute` `topology.write` `directory.read` `directory.write` `audit.business` `case.read` `case.adopt` `announcement.write` |
+| 系统管理员 | `tenant.admit` `directory.read` `directory.write.platform` `audit.platform` `case.write` `case.read` `announcement.write.platform` |
 
 系统管理员**不含** `artifact.read`：平台管理员看不到任何租户业务内容。
 

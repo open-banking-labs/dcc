@@ -312,6 +312,7 @@ public class DccSecurityProperties {
             "generation.read", "generation.package", "topology.read", "topology.write",
             "directory.read", "directory.write", "directory.write.platform",
             "audit.business", "audit.platform", "case.read", "case.adopt", "case.write",
+            "announcement.write", "announcement.write.platform",
             "tenant.admit");
 
     /** @return the declared permission-point catalog (ADR 0005 §D8). */
@@ -337,9 +338,10 @@ public class DccSecurityProperties {
                 "migration.execute", "generation.package"));
         bundles.put("DCC_TENANT_ADMIN", union(reader, "artifact.restore", "migration.execute",
                 "topology.write", "directory.read", "directory.write", "audit.business",
-                "case.read", "case.adopt"));
+                "case.read", "case.adopt", "announcement.write"));
         bundles.put("DCC_PLATFORM_ADMIN", List.of("tenant.admit", "directory.read",
-                "directory.write.platform", "audit.platform", "case.write", "case.read"));
+                "directory.write.platform", "audit.platform", "case.write", "case.read",
+                "announcement.write.platform"));
         return bundles;
     }
 

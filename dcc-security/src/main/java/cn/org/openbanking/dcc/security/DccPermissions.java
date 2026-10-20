@@ -142,6 +142,21 @@ public class DccPermissions {
         return permission("audit.business");
     }
 
+    // ------------------------------------------------------------------ announcements
+
+    /**
+     * Publish announcements to the caller's own tenant. Reading the banner needs no permission
+     * point: a notice nobody in the tenant is allowed to see is not a notice.
+     */
+    public String getAnnouncementWrite() {
+        return permission("announcement.write");
+    }
+
+    /** Publish platform-wide announcements, visible to every tenant. */
+    public String getAnnouncementWritePlatform() {
+        return permission("announcement.write.platform");
+    }
+
     // ------------------------------------------------------------------ platform plane
 
     /** Read the platform audit trail (tenant admission, grants, case changes). */

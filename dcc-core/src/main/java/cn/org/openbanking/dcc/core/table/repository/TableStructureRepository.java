@@ -36,4 +36,18 @@ public interface TableStructureRepository extends JpaRepository<TableStructure, 
             @Param("environmentId") Long environmentId,
             @Param("applicationId") Long applicationId,
             @Param("status") StandardStatus status);
+
+    /**
+     * Counts rows in one scope for the workbench dashboard. {@code environmentId},
+     * {@code applicationId} and {@code status} may be {@code null} to mean "no constraint".
+     */
+    @Query("select count(t) from TableStructure t "
+            + "where t.tenantId = :tenantId "
+            + "and (:environmentId is null or t.environmentId = :environmentId) "
+            + "and (:applicationId is null or t.applicationId = :applicationId) "
+            + "and (:status is null or t.status = :status)")
+    long countInScope(@Param("tenantId") String tenantId,
+            @Param("environmentId") Long environmentId,
+            @Param("applicationId") Long applicationId,
+            @Param("status") StandardStatus status);
 }

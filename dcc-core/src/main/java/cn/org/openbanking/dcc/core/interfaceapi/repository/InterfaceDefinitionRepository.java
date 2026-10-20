@@ -36,4 +36,18 @@ public interface InterfaceDefinitionRepository extends JpaRepository<InterfaceDe
             @Param("environmentId") Long environmentId,
             @Param("applicationId") Long applicationId,
             @Param("status") StandardStatus status);
+
+    /**
+     * Counts rows in one scope for the workbench dashboard. {@code environmentId},
+     * {@code applicationId} and {@code status} may be {@code null} to mean "no constraint".
+     */
+    @Query("select count(i) from InterfaceDefinition i "
+            + "where i.tenantId = :tenantId "
+            + "and (:environmentId is null or i.environmentId = :environmentId) "
+            + "and (:applicationId is null or i.applicationId = :applicationId) "
+            + "and (:status is null or i.status = :status)")
+    long countInScope(@Param("tenantId") String tenantId,
+            @Param("environmentId") Long environmentId,
+            @Param("applicationId") Long applicationId,
+            @Param("status") StandardStatus status);
 }

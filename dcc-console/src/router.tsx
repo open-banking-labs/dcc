@@ -9,12 +9,16 @@ import { LoginPage } from './auth/LoginPage'
 import { useSession } from './auth/session'
 import { FullPageMessage } from './components/common/FullPageMessage'
 import { RequirePermission } from './components/common/RequirePermission'
+import { LoadingState } from './components/feedback/StateViews'
 import { PERMISSION } from './lib/permissions'
 import { NotFoundPage } from './pages/NotFound'
 
 /** 按需加载页面组件（具名导出 → React.lazy），配合 AppLayout 的 Suspense 做代码分割。 */
 const lazyPage = <M extends object, K extends keyof M>(loader: () => Promise<M>, name: K) =>
   lazy(async () => ({ default: (await loader())[name] as ComponentType }))
+
+const DashboardPage = lazyPage(() => import('./pages/dashboard/DashboardPage'), 'DashboardPage')
+const AnnouncementsPage = lazyPage(() => import('./pages/announcements/AnnouncementsPage'), 'AnnouncementsPage')
 
 const StandardsListPage = lazyPage(() => import('./pages/standards/StandardsListPage'), 'StandardsListPage')
 const StandardFormPage = lazyPage(() => import('./pages/standards/StandardFormPage'), 'StandardFormPage')
@@ -43,21 +47,21 @@ const ApplicationsPage = lazyPage(() => import('./pages/applications/Application
 const AuditPage = lazyPage(() => import('./pages/audit/AuditPage'), 'AuditPage')
 const CasesPage = lazyPage(() => import('./pages/cases/CasesPage'), 'CasesPage')
 const DirectoryPage = lazyPage(() => import('./pages/directory/DirectoryPage'), 'DirectoryPage')
-
-/** 按服务端返回的权限点选择首个可访问入口，避免无业务权限的管理员落到 403 首页。 */
-function HomeRedirect() {
-  const { permissions } = useSession()
-  const target = [
-    [PERMISSION.artifactRead, '/standards'],
-    [PERMISSION.tenantAdmit, '/tenants'],
-    [PERMISSION.topologyRead, '/environments'],
-    [PERMISSION.auditBusiness, '/audit'],
-    [PERMISSION.auditPlatform, '/platform/audit'],
-    [PERMISSION.directoryRead, '/directory'],
-    [PERMISSION.caseRead, '/cases'],
-    [PERMISSION.generationRead, '/generation'],
-  ].find(([permission]) => permissions.includes(permission))?.[1]
-  return <Navigate to={target ?? '/no-access'} replace />
+/**
+ * 登录后的首页：工作台看板。
+ *
+ * 聚合端点对任何已认证调用方开放（各 section 由服务端按权限点裁剪），所以这里只需挡掉
+ * 「一个权限点都没有」的账号：它们看到的是空看板，不如直接说清楚去找管理员。
+ */
+function HomePage() {
+  const { permissions, permissionsLoading } = useSession()
+  if (permissionsLoading) {
+    return <div className="p-6"><LoadingState /></div>
+  }
+  if (permissions.length === 0) {
+    return <Navigate to="/no-access" replace />
+  }
+  return <DashboardPage />
 }
 
 export const router = createBrowserRouter([
@@ -70,8 +74,18 @@ export const router = createBrowserRouter([
       {
         element: <App />,
         children: [
-          { index: true, element: <HomeRedirect /> },
+          { index: true, element: <HomePage /> },
           { path: 'no-access', element: <FullPageMessage text="当前账号没有任何可访问的菜单，请联系管理员授权。" /> },
+          {
+            path: 'announcements',
+            element: (
+              <RequirePermission
+                permission={[PERMISSION.announcementWrite, PERMISSION.announcementWritePlatform]}
+              >
+                <AnnouncementsPage />
+              </RequirePermission>
+            ),
+          },
           { path: 'standards', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardsListPage /></RequirePermission> },
           { path: 'standards/new', element: <RequirePermission permission={PERMISSION.artifactWrite}><StandardFormPage /></RequirePermission> },
           { path: 'standards/:id', element: <RequirePermission permission={PERMISSION.artifactRead}><StandardDetailPage /></RequirePermission> },
