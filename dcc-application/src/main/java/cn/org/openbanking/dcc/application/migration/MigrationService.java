@@ -1,6 +1,7 @@
 package cn.org.openbanking.dcc.application.migration;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import cn.org.openbanking.dcc.application.common.ChangeContext;
@@ -92,6 +93,19 @@ public class MigrationService {
             String submittedBy, Instant createdAt, Instant updatedAt) {
     }
 
+    /**
+     * Requests an application-level migration: every artifact of the application in the
+     * source environment becomes one migration order. {@code artifactTypes} optionally
+     * limits which kinds are migrated; null/empty means all four.
+     */
+    public record ApplicationMigrationCommand(@NotNull Long sourceEnvironmentId, @NotNull Long targetEnvironmentId,
+            @NotNull Long applicationId, List<ArtifactType> artifactTypes, String note) {
+    }
+
+    /** The result of an application-level migration request: created orders and skipped artifacts (already at that version). */
+    public record ApplicationMigrationResult(List<MigrationOrderView> created, List<String> skipped) {
+    }
+
     /** A migration result: the target artifact id/version and its version before the migration. */
     private record MigrationResult(Long targetId, String targetVersion, String previousTargetVersion) {
     }
@@ -102,12 +116,95 @@ public class MigrationService {
                 throw new ValidationException("source and target environment must differ");
             }
             String code = artifactCode(tenantId, command.artifactType(), command.artifactId());
-            MigrationOrder order = new MigrationOrder(command.sourceEnvironmentId(), command.targetEnvironmentId(),
-                    command.artifactType(), command.artifactId(), code, MigrationStatus.PENDING_SUBMISSION);
-            order.setTenantId(tenantId);
-            order.setNote(command.note());
-            return toView(orders.save(order));
+            return toView(saveOrder(tenantId, command.sourceEnvironmentId(), command.targetEnvironmentId(),
+                    command.artifactType(), command.artifactId(), code, command.note()));
         });
+    }
+
+    /**
+     * Requests a migration for a whole application: one order per artifact of the
+     * application in the source environment. Artifacts whose target copy is already at
+     * the source version are skipped (idempotent re-run). This is the natural entry
+     * point — you migrate an application, not a hand-typed artifact id.
+     */
+    public ApplicationMigrationResult createApplicationMigration(String tenantId,
+            ApplicationMigrationCommand command) {
+        return tenantScope.call(tenantId, () -> {
+            Long source = command.sourceEnvironmentId();
+            Long target = command.targetEnvironmentId();
+            Long appId = command.applicationId();
+            if (source.equals(target)) {
+                throw new ValidationException("source and target environment must differ");
+            }
+            List<ArtifactType> types = command.artifactTypes() == null || command.artifactTypes().isEmpty()
+                    ? List.of(ArtifactType.values())
+                    : command.artifactTypes();
+
+            List<MigrationOrderView> created = new ArrayList<>();
+            List<String> skipped = new ArrayList<>();
+
+            for (ArtifactType type : types) {
+                switch (type) {
+                    case DATA_STANDARD -> standards.search(tenantId, source, appId, null, null).forEach(standard -> {
+                        String targetVersion = standards
+                                .findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(tenantId, target, appId,
+                                        standard.getCode())
+                                .map(s -> s.getCurrentVersion()).orElse(null);
+                        if (standard.getCurrentVersion().equals(targetVersion)) {
+                            skipped.add("DATA_STANDARD:" + standard.getCode());
+                        } else {
+                            created.add(toView(saveOrder(tenantId, source, target, ArtifactType.DATA_STANDARD,
+                                    standard.getId(), standard.getCode(), command.note())));
+                        }
+                    });
+                    case TABLE_STRUCTURE -> tables.search(tenantId, source, appId, null).forEach(table -> {
+                        String targetVersion = tables
+                                .findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(tenantId, target, appId,
+                                        table.getCode())
+                                .map(t -> t.getCurrentVersion()).orElse(null);
+                        if (table.getCurrentVersion().equals(targetVersion)) {
+                            skipped.add("TABLE_STRUCTURE:" + table.getCode());
+                        } else {
+                            created.add(toView(saveOrder(tenantId, source, target, ArtifactType.TABLE_STRUCTURE,
+                                    table.getId(), table.getCode(), command.note())));
+                        }
+                    });
+                    case INTERFACE -> interfaces.search(tenantId, source, appId, null).forEach(iface -> {
+                        String targetVersion = interfaces
+                                .findByTenantIdAndEnvironmentIdAndInterfaceNo(tenantId, target, iface.getInterfaceNo())
+                                .map(i -> i.getCurrentVersion()).orElse(null);
+                        if (iface.getCurrentVersion().equals(targetVersion)) {
+                            skipped.add("INTERFACE:" + iface.getInterfaceNo());
+                        } else {
+                            created.add(toView(saveOrder(tenantId, source, target, ArtifactType.INTERFACE,
+                                    iface.getId(), iface.getInterfaceNo(), command.note())));
+                        }
+                    });
+                    case INTERFACE_TEMPLATE -> templates.search(tenantId, source, appId, null).forEach(template -> {
+                        String targetVersion = templates
+                                .findByTenantIdAndEnvironmentIdAndApplicationIdAndCode(tenantId, target, appId,
+                                        template.getCode())
+                                .map(t -> t.getCurrentVersion()).orElse(null);
+                        if (template.getCurrentVersion().equals(targetVersion)) {
+                            skipped.add("INTERFACE_TEMPLATE:" + template.getCode());
+                        } else {
+                            created.add(toView(saveOrder(tenantId, source, target, ArtifactType.INTERFACE_TEMPLATE,
+                                    template.getId(), template.getCode(), command.note())));
+                        }
+                    });
+                }
+            }
+            return new ApplicationMigrationResult(created, skipped);
+        });
+    }
+
+    private MigrationOrder saveOrder(String tenantId, Long sourceEnvironmentId, Long targetEnvironmentId,
+            ArtifactType artifactType, Long artifactId, String code, String note) {
+        MigrationOrder order = new MigrationOrder(sourceEnvironmentId, targetEnvironmentId, artifactType, artifactId,
+                code, MigrationStatus.PENDING_SUBMISSION);
+        order.setTenantId(tenantId);
+        order.setNote(note);
+        return orders.save(order);
     }
 
     /** Submits an order for approval and records who submitted it (four-eyes, ADR 0005 §D4). */

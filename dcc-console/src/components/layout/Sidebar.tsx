@@ -53,8 +53,8 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    group: '生成',
-    items: [{ to: '/generation', label: '产物生成', icon: Package, authority: PERMISSION.generationRead }],
+    group: '发布',
+    items: [{ to: '/generation', label: '应用发布', icon: Package, authority: PERMISSION.generationRead }],
   },
   {
     group: '平台管理',

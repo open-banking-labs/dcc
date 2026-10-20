@@ -55,22 +55,19 @@ class GenerationIntegrationTest extends AbstractIntegrationTest {
                         java.util.List.of(new InterfaceField("status", null, null, "VARCHAR", 8, null, true, false,
                                 java.util.List.of())))));
 
-        var validation = generationService.generateValidation(tenant, standard.id());
-        assertThat(validation.content()).contains("public final class AcctnoValidation");
-        assertThat(validation.content()).contains("LENGTH = 32");
+        var summary = generationService.summarizeRelease(tenant, environment.id(), application.id());
+        assertThat(summary.interfaceNos()).contains("IF0001");
+        assertThat(summary.standardCodes()).contains("acctno");
 
-        var dto = generationService.generateDto(tenant, definition.id());
-        assertThat(dto).extracting("fileName").contains("cn/org/openbanking/dcc/generated/dto/IF0001Request.java");
-
-        String openApi = generationService.generateOpenApi(tenant, environment.id(), application.id());
-        assertThat(openApi).contains("\"openapi\": \"3.0.3\"");
-        assertThat(openApi).contains("/transfer");
-        assertThat(openApi).contains("IF0001Request");
-
-        var bundle = generationService.exportJar(tenant, environment.id(), application.id(), "2.0.0");
-        assertThat(bundle.fileName()).isEqualTo("dcc-" + tenant + "-env" + environment.id() + "-2.0.0.jar");
-        try (var in = new java.util.jar.JarInputStream(new ByteArrayInputStream(bundle.content()))) {
-            assertThat(in.getNextJarEntry()).isNotNull();
+        var release = generationService.releaseApplication(tenant, environment.id(), application.id(), "2.0.0");
+        assertThat(release.version()).isEqualTo("2.0.0");
+        assertThat(release.interfaceNos()).contains("IF0001");
+        assertThat(release.standardCodes()).contains("acctno");
+        assertThat(release.bundle().fileName()).isEqualTo(
+                "dcc-" + tenant + "-env" + environment.id() + "-app" + application.id() + "-2.0.0.jar");
+        try (var in = new java.util.jar.JarInputStream(new ByteArrayInputStream(release.bundle().content()))) {
+            java.util.jar.JarEntry entry = in.getNextJarEntry();
+            assertThat(entry).isNotNull();
         }
     }
 }

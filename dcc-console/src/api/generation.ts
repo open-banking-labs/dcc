@@ -1,13 +1,10 @@
 import { apiClient, cleanParams, httpGet } from '@/lib/apiClient'
-import type { GeneratedSource } from '@/types/generation'
+import type { ReleaseSummary } from '@/types/generation'
 
 export const generationApi = {
-  /** 数标 → 校验类源码。 */
-  validation: (standardId: number) =>
-    httpGet<GeneratedSource>(`/generation/standards/${standardId}/validation`),
-
-  /** 接口 → DTO 源码（可能多个文件）。 */
-  dto: (interfaceId: number) => httpGet<GeneratedSource[]>(`/generation/interfaces/${interfaceId}/dto`),
+  /** 环境 + 应用 → 发布清单（将打包的接口 / 数标）。 */
+  manifest: (environmentId: number, applicationId: number) =>
+    httpGet<ReleaseSummary>('/generation/manifest', { params: { environmentId, applicationId } }),
 
   /** 环境 + 应用 → OpenAPI 文档（原始 JSON 文本）。 */
   openApi: async (environmentId: number, applicationId: number): Promise<string> => {
@@ -20,9 +17,9 @@ export const generationApi = {
     return data
   },
 
-  /** 环境 + 应用 → 生成的 JAR 二进制（用于浏览器下载）。 */
-  downloadJar: async (environmentId: number, applicationId: number, version?: string) => {
-    const { data } = await apiClient.get<Blob>('/generation/jar', {
+  /** 环境 + 应用 → 发布（生成并下载 JAR 二进制）。 */
+  release: async (environmentId: number, applicationId: number, version?: string) => {
+    const { data } = await apiClient.get<Blob>('/generation/release', {
       params: cleanParams({ environmentId, applicationId, version }),
       responseType: 'blob',
     })

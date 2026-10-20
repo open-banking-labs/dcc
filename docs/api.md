@@ -25,8 +25,8 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 | Tables | `/api/tables` | CRUD, search, versioning, status, `GET /{id}/ddl` and `/{id}/ddl/alter` |
 | Interfaces | `/api/interfaces` | CRUD, search, versioning, status |
 | Templates | `/api/templates` | CRUD, search, versioning, status |
-| Generation | `/api/generation` | `GET /standards/{id}/validation`, `/interfaces/{id}/dto`, `/openapi`, `/jar` |
-| Migration | `/api/migrations` | create, search, `submit`, `approve`, `reject`, `execute`, `rollback` |
+| Release | `/api/generation` | `GET /manifest` (发布清单), `/openapi`, `GET /release` (应用发布 JAR). Publishing is **application-scoped**; there is no per-interface / per-standard export |
+| Migration | `/api/migrations` | `POST /application` (以应用为单位批量建单), search, `submit`, `approve`, `reject`, `execute`, `rollback` |
 | Versioning | `/api/versioning` | `GET /{type}/{id}/hash`, `POST /{type}/hash`, `GET /{type}/{id}/diff`, `/{id}/bump`, `GET /drift` |
 | Audit | `/api/audit` | tenant administrator (`audit.business`): `GET /` filtered+paged search (entity/id/actor/action, `from`/`to` windows), `GET /{entityType}/{entityId}` full history, `GET /{entityType}/{entityId}/verify` recomputed hash chain |
 | Platform audit | `/api/platform/audit` | system administrator (`audit.platform`): the same filtered+paged search over platform-level rows (`tenant_id is null`: tenant admission, grants, reference cases) |

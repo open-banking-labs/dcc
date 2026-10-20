@@ -49,12 +49,22 @@ A **migration order** promotes artifacts from one environment to a migration-tar
 environment (e.g. `PROD`), with an approval flow (`submit → approve → execute`), and is
 itself tenant-scoped and versioned.
 
-## Generation
+Migration is requested **per application** (`POST /api/migrations/application`), not by
+hand-typing an artifact id: it creates one order per artifact of the application in the
+source environment (artifacts already at the source version in the target are skipped).
 
-From the central model, `dcc-generator` produces: Java **validation classes**,
-request/response **DTO records**, PostgreSQL **DDL / Flyway SQL**, an **OpenAPI**
-document, and a downloadable **JAR bundle**. Output is Thymeleaf-templated — see
-[templating.md](templating.md).
+## Release (应用发布)
+
+Publishing is **application-scoped**, not per-artifact: one release of a
+`环境 + 应用` bundles *all* its interfaces' request/response **DTO records**, the Java
+**validation classes** of the data standards they use, and an **OpenAPI** document into a
+single downloadable **JAR**. There is no per-interface / per-standard export — you publish
+an application. Output is Thymeleaf-templated — see [templating.md](templating.md).
+
+Data standards are **exported**, not generated one by one: `GET /api/standards/export`
+returns the whole scope as JSON; validation classes are produced only inside a release
+bundle. PostgreSQL **DDL / Flyway SQL** for table structures is generated from the table
+artifact (`GET /api/tables/{id}/ddl`).
 
 ## Exposure
 

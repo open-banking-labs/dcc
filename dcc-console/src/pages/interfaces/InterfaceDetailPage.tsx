@@ -5,6 +5,7 @@ import { interfacesApi } from '@/api/interfaces'
 import { CodeBlock } from '@/components/common/CodeBlock'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { KeyValueList } from '@/components/common/KeyValueList'
+import { ApplicationMigrationDialog } from '@/components/migration/ApplicationMigrationDialog'
 import { PermissionGate, useHasAuthority } from '@/components/common/PermissionGate'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { FieldChangeList } from '@/components/data/DiffView'
@@ -33,9 +34,11 @@ export function InterfaceDetailPage() {
   )
   const { data: history } = useAsync(() => interfacesApi.history(numericId), [numericId])
   const canTransition = useHasAuthority(PERMISSION.artifactTransition)
+  const canMigrate = useHasAuthority(PERMISSION.migrationWrite)
 
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [migrateOpen, setMigrateOpen] = useState(false)
   const [diffFrom, setDiffFrom] = useState('')
   const [diffTo, setDiffTo] = useState('')
   const [diffChanges, setDiffChanges] = useState<FieldChange[] | null>(null)
@@ -125,6 +128,11 @@ export function InterfaceDetailPage() {
                   转为 {STANDARD_STATUS_LABEL[target]}
                 </Button>
               ))}
+            {canMigrate && (
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => setMigrateOpen(true)}>
+                发起迁移
+              </Button>
+            )}
             <PermissionGate authority={PERMISSION.artifactDelete}>
               <Button
                 size="sm"
@@ -265,6 +273,12 @@ export function InterfaceDetailPage() {
             navigate('/interfaces')
           }, '已删除')
         }
+      />
+
+      <ApplicationMigrationDialog
+        open={migrateOpen}
+        onOpenChange={setMigrateOpen}
+        applicationId={iface.applicationId}
       />
     </div>
   )

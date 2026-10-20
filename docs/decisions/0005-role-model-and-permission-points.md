@@ -214,8 +214,8 @@ dcc:
 | `/api/directory/my-memberships` | 旧 user authority | `directory.read` | T |
 | `/api/cases` 读写（新增） | — | `case.read` / `case.write` | P/T |
 | `POST /api/cases/{id}/adopt`（新增） | — | `case.adopt` | T |
-| `/api/generation/{validation,dto,openapi}` | 无 | `generation.read` | T |
-| `/api/generation/jar` | 无 | `generation.package` | T |
+| `/api/generation/{manifest,openapi}` | 无 | `generation.read` | T |
+| `/api/generation/release` | 无 | `generation.package` | T |
 | `/api/versioning/*` | 无 | `artifact.read` | T |
 | `/cli/v1/{hash,diff,bump,validate,drift}` | 无 | `artifact.read` | T |
 | `/cli/v1/export/*` | 无 | `generation.package` | T |

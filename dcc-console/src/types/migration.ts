@@ -37,3 +37,19 @@ export interface CreateMigrationBody {
   targetEnvironmentId: number
   note?: string | null
 }
+
+/** `MigrationService.ApplicationMigrationCommand`。 */
+export interface CreateApplicationMigrationBody {
+  sourceEnvironmentId: number
+  targetEnvironmentId: number
+  applicationId: number
+  /** 可选，限定产物类型；缺省为全部四类。 */
+  artifactTypes?: ArtifactType[] | null
+  note?: string | null
+}
+
+/** `MigrationService.ApplicationMigrationResult`。 */
+export interface ApplicationMigrationResult {
+  created: MigrationOrderView[]
+  skipped: string[]
+}

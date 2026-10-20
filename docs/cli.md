@@ -39,6 +39,12 @@ Exit codes: `0` success, `1` failure (invalid model, drift detected, transport e
 exits non-zero when any stored snapshot no longer matches its recorded hash — suitable
 for a PR/pipeline gate.
 
+> **Publishing vs exporting.** `dcc export` is a low-level, single-model projection
+> (one standard's validation class, one table's Flyway SQL) for pipelines and inspection.
+> The user-facing "publish" is **application-scoped**: `GET /api/generation/release`
+> bundles all of an application's interface DTOs + data-standard validations + an OpenAPI
+> document into one JAR. There is no per-interface / per-standard export in the console.
+
 ## Build and run
 
 ```bash

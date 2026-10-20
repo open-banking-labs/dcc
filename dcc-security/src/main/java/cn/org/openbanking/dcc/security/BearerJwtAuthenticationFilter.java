@@ -43,7 +43,8 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Set<String> EXPLICIT_SCOPE_PATHS = Set.of(
             "/api/standards", "/api/standards/export", "/api/standards/import",
             "/api/tables", "/api/interfaces", "/api/templates",
-            "/api/generation/openapi", "/api/generation/jar", "/api/versioning/drift");
+            "/api/generation/openapi", "/api/generation/manifest", "/api/generation/release",
+            "/api/versioning/drift");
 
     private final JwtDecoder jwtDecoder;
     private final DccSecurityProperties properties;

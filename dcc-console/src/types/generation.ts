@@ -1,5 +1,7 @@
-/** 单个生成产物（`GeneratedSource`）。 */
-export interface GeneratedSource {
-  fileName: string
-  content: string
+/** 应用发布清单（`GenerationService.ReleaseSummary`）。 */
+export interface ReleaseSummary {
+  environmentId: number
+  applicationId: number
+  interfaceNos: string[]
+  standardCodes: string[]
 }

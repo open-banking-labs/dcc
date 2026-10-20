@@ -232,10 +232,9 @@ async function main() {
     check('创建接口 201', res.status === 201, `${res.status} ${JSON.stringify(res.data)}`)
   } else check('接口已存在，复用', true)
 
-  const validation = await call('GET', `/api/generation/standards/${std.id}/validation`)
-  check('生成校验类', typeof validation.data?.content === 'string' && validation.data.content.length > 0, validation.status)
-  const dto = await call('GET', `/api/generation/interfaces/${iface.id}/dto`)
-  check('生成 DTO 数组', Array.isArray(dto.data), dto.status)
+  const manifest = await call('GET', `/api/generation/manifest?${scope}`)
+  check('应用发布清单含接口', Array.isArray(manifest.data?.interfaceNos) && manifest.data.interfaceNos.includes('IF_CUST_QUERY'), JSON.stringify(manifest.data))
+  check('应用发布清单含数标', Array.isArray(manifest.data?.standardCodes) && manifest.data.standardCodes.includes('CUST_NAME'))
   const openapi = await call('GET', `/api/generation/openapi?${scope}`)
   const openapiText = typeof openapi.data === 'string' ? openapi.data : JSON.stringify(openapi.data ?? '')
   check('生成 OpenAPI 文档', openapi.status === 200 && /openapi/i.test(openapiText), openapi.status)
@@ -244,19 +243,21 @@ async function main() {
   const drift = await call('GET', `/api/versioning/drift?${scope}`)
   check('漂移检查返回数组', Array.isArray(drift.data), JSON.stringify(drift.data))
 
-  await section('迁移单：创建 / 提交 / 审批')
-  const mig = await call('POST', '/api/migrations', {
-    artifactType: 'DATA_STANDARD',
-    artifactId: std.id,
+  await section('迁移单：以应用为单位发起 / 提交 / 审批')
+  const appMig = await call('POST', '/api/migrations/application', {
     sourceEnvironmentId: envId,
     targetEnvironmentId: test.id,
-    note: '冒烟测试迁移',
+    applicationId: appId,
+    artifactTypes: ['DATA_STANDARD', 'TABLE_STRUCTURE'],
+    note: '冒烟测试应用迁移',
   })
-  check('创建迁移单 201', mig.status === 201, `${mig.status} ${JSON.stringify(mig.data)}`)
-  if (mig.data?.id) {
-    const submitted = await call('POST', `/api/migrations/${mig.data.id}/submit`)
+  const created = Array.isArray(appMig.data?.created) ? appMig.data.created : []
+  check('应用迁移建单 201', appMig.status === 201 && Array.isArray(appMig.data?.created), `${appMig.status} ${JSON.stringify(appMig.data)}`)
+  check('应用迁移跳过列表存在', Array.isArray(appMig.data?.skipped))
+  if (created[0]?.id) {
+    const submitted = await call('POST', `/api/migrations/${created[0].id}/submit`)
     check('提交迁移单 → 待审批', submitted.data?.status === 'PENDING_APPROVAL', JSON.stringify(submitted.data))
-    const approved = await call('POST', `/api/migrations/${mig.data.id}/approve`)
+    const approved = await call('POST', `/api/migrations/${created[0].id}/approve`)
     check('审批迁移单 → 已批准', approved.data?.status === 'APPROVED', JSON.stringify(approved.data))
   }
 

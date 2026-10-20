@@ -9,6 +9,7 @@ import { useToast } from '@/components/feedback/Toast'
 import { FormDialog } from '@/components/form/FormDialog'
 import { Field, TextField } from '@/components/form/fields'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { ApplicationMigrationDialog } from '@/components/migration/ApplicationMigrationDialog'
 import { Button } from '@/components/ui/button'
 import { PermissionGate } from '@/components/common/PermissionGate'
 import { PERMISSION } from '@/lib/permissions'
@@ -36,6 +37,7 @@ export function ApplicationsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ApplicationView | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [migrateApp, setMigrateApp] = useState<ApplicationView | null>(null)
 
   const openCreate = () => {
     setEditing(null)
@@ -124,21 +126,26 @@ export function ApplicationsPage() {
       header: '操作',
       enableSorting: false,
       cell: ({ row }) => (
-        <PermissionGate authority={PERMISSION.topologyWrite}>
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" onClick={() => openEdit(row.original)}>
-            编辑
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setDeleteTarget(row.original)}
-          >
-            删除
-          </Button>
+          <PermissionGate authority={PERMISSION.migrationWrite}>
+            <Button size="sm" variant="ghost" onClick={() => setMigrateApp(row.original)}>
+              发起迁移
+            </Button>
+          </PermissionGate>
+          <PermissionGate authority={PERMISSION.topologyWrite}>
+            <Button size="sm" variant="ghost" onClick={() => openEdit(row.original)}>
+              编辑
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteTarget(row.original)}
+            >
+              删除
+            </Button>
+          </PermissionGate>
         </div>
-        </PermissionGate>
       ),
     },
   ]
@@ -207,6 +214,14 @@ export function ApplicationsPage() {
         description={deleteTarget ? `确认删除「${deleteTarget.code}」？删除为逻辑删除（合规保留），可稍后在「审计日志」页恢复。` : undefined}
         loading={deleting}
         onConfirm={() => void doDelete()}
+      />
+
+      <ApplicationMigrationDialog
+        open={migrateApp !== null}
+        onOpenChange={(open) => {
+          if (!open) setMigrateApp(null)
+        }}
+        applicationId={migrateApp?.id ?? null}
       />
     </div>
   )

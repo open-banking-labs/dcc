@@ -60,6 +60,16 @@ public class GenerationService {
         this.tenantScope = tenantScope;
     }
 
+    /** Interfaces + data standards that a release of the scope would bundle (发布清单). */
+    public record ReleaseSummary(Long environmentId, Long applicationId, List<String> interfaceNos,
+            List<String> standardCodes) {
+    }
+
+    /** The downloadable bundle produced by an application release, with its manifest. */
+    public record ApplicationRelease(GeneratedBundle bundle, List<String> interfaceNos, List<String> standardCodes,
+            String version) {
+    }
+
     public GeneratedSource generateValidation(String tenantId, Long standardId) {
         return tenantScope.call(tenantId, () -> {
             var standard = standardService.get(tenantId, standardId);
@@ -82,27 +92,81 @@ public class GenerationService {
                         interfaceSpecs(tenantId, environmentId, applicationId)));
     }
 
-    /** One JAR per tenant + environment, carrying a pom with Maven coordinates. */
+    /**
+     * A preview of what an application release would bundle: the interfaces and the
+     * data standards the whole environment+application scope contains. This is the
+     * "发布清单" surfaced before an actual release, so publishing is a deliberate,
+     * reviewed, application-level action rather than an ad-hoc per-artifact export.
+     */
+    public ReleaseSummary summarizeRelease(String tenantId, Long environmentId, Long applicationId) {
+        return tenantScope.call(tenantId, () -> {
+            List<String> interfaceNos = interfaceService.search(tenantId, environmentId, applicationId, null).stream()
+                    .map(InterfaceService.InterfaceView::interfaceNo).toList();
+            List<String> standardCodes = standardService.search(tenantId, environmentId, applicationId, null, null)
+                    .stream().map(DataStandardService.StandardView::code).toList();
+            return new ReleaseSummary(environmentId, applicationId, interfaceNos, standardCodes);
+        });
+    }
+
+    /**
+     * Releases an application: bundles <em>all</em> its interfaces (DTOs) plus the
+     * validation classes of the data standards they use into one JAR with a manifest.
+     * This is the single "generate/publish" verb for interfaces — there is no
+     * per-interface export. One JAR per environment + application, carrying a pom with
+     * Maven coordinates.
+     */
+    public ApplicationRelease releaseApplication(String tenantId, Long environmentId, Long applicationId,
+            String version) {
+        String effectiveVersion = (version == null || version.isBlank()) ? generatorProperties.getDefaultVersion()
+                : version;
+        return tenantScope.call(tenantId, () -> {
+            Collected collected = collectSources(tenantId, environmentId, applicationId, effectiveVersion);
+
+            String artifactId = "dcc-" + sanitize(tenantId) + "-env" + environmentId + "-app" + applicationId;
+            GeneratedBundle bundle = jarBundleGenerator.generate(generatorProperties.getBundleGroup(), artifactId,
+                    effectiveVersion, collected.sources());
+            return new ApplicationRelease(bundle, collected.interfaceNos(), collected.standardCodes(),
+                    effectiveVersion);
+        });
+    }
+
+    /**
+     * @deprecated kept only for internal bundle reuse and compatibility; prefer
+     * {@link #releaseApplication}. One JAR per tenant + environment.
+     */
+    @Deprecated
     public GeneratedBundle exportJar(String tenantId, Long environmentId, Long applicationId, String version) {
         String effectiveVersion = (version == null || version.isBlank()) ? generatorProperties.getDefaultVersion()
                 : version;
         return tenantScope.call(tenantId, () -> {
-            List<GeneratedSource> sources = new ArrayList<>();
-            standardService.search(tenantId, environmentId, applicationId, null, null).forEach(standard ->
-                    sources.add(validationGenerator.generate(generatorProperties.getValidationPackage(),
-                            JavaTypes.capitalize(standard.code()) + "Validation", standard.code(),
-                            standard.content())));
-            interfaceService.search(tenantId, environmentId, applicationId, null).forEach(definition ->
-                    sources.addAll(dtoGenerator.generate(generatorProperties.getDtoPackage(), definition.interfaceNo(),
-                            definition.content())));
-            sources.add(new GeneratedSource("openapi.json",
-                    openApiGenerator.generate("DCC contracts", effectiveVersion,
-                            interfaceSpecs(tenantId, environmentId, applicationId))));
-
+            Collected collected = collectSources(tenantId, environmentId, applicationId, effectiveVersion);
             String artifactId = "dcc-" + sanitize(tenantId) + "-env" + environmentId;
             return jarBundleGenerator.generate(generatorProperties.getBundleGroup(), artifactId, effectiveVersion,
-                    sources);
+                    collected.sources());
         });
+    }
+
+    /** Collects every generated source for the scope, plus the interfaces/standards it covered. */
+    private Collected collectSources(String tenantId, Long environmentId, Long applicationId, String version) {
+        List<GeneratedSource> sources = new ArrayList<>();
+        List<String> standardCodes = new ArrayList<>();
+        standardService.search(tenantId, environmentId, applicationId, null, null).forEach(standard -> {
+            sources.add(validationGenerator.generate(generatorProperties.getValidationPackage(),
+                    JavaTypes.capitalize(standard.code()) + "Validation", standard.code(), standard.content()));
+            standardCodes.add(standard.code());
+        });
+        List<String> interfaceNos = new ArrayList<>();
+        interfaceService.search(tenantId, environmentId, applicationId, null).forEach(definition -> {
+            sources.addAll(dtoGenerator.generate(generatorProperties.getDtoPackage(), definition.interfaceNo(),
+                    definition.content()));
+            interfaceNos.add(definition.interfaceNo());
+        });
+        sources.add(new GeneratedSource("openapi.json", openApiGenerator.generate("DCC contracts", version,
+                interfaceSpecs(tenantId, environmentId, applicationId))));
+        return new Collected(sources, interfaceNos, standardCodes);
+    }
+
+    private record Collected(List<GeneratedSource> sources, List<String> interfaceNos, List<String> standardCodes) {
     }
 
     private List<InterfaceSpec> interfaceSpecs(String tenantId, Long environmentId, Long applicationId) {

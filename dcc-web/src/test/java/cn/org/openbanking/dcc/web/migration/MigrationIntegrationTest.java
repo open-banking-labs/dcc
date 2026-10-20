@@ -101,6 +101,38 @@ class MigrationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void applicationMigrationCreatesOneOrderPerArtifactAndSkipsUpToDate() {
+        Scope scope = newScope();
+        standardService.create(scope.tenant(), scope.dev(), scope.applicationId(),
+                new DataStandardService.CreateCommand("acctno", "account", content()));
+        standardService.create(scope.tenant(), scope.dev(), scope.applicationId(),
+                new DataStandardService.CreateCommand("cifno", "cif", content()));
+
+        var first = migrationService.createApplicationMigration(scope.tenant(),
+                new MigrationService.ApplicationMigrationCommand(scope.dev(), scope.prod(), scope.applicationId(),
+                        java.util.List.of(ArtifactType.DATA_STANDARD), "promote app"));
+        assertThat(first.created()).hasSize(2);
+        assertThat(first.skipped()).isEmpty();
+        assertThat(first.created()).allMatch(o -> o.status() == MigrationStatus.PENDING_SUBMISSION);
+        assertThat(first.created()).extracting(MigrationService.MigrationOrderView::artifactCode)
+                .containsExactly("acctno", "cifno");
+
+        // migrate + approve both
+        for (var order : first.created()) {
+            migrationService.submit(scope.tenant(), order.id());
+            migrationService.approve(scope.tenant(), order.id());
+            migrationService.execute(scope.tenant(), order.id());
+        }
+
+        // re-running skips both because PROD is now at the DEV version
+        var second = migrationService.createApplicationMigration(scope.tenant(),
+                new MigrationService.ApplicationMigrationCommand(scope.dev(), scope.prod(), scope.applicationId(),
+                        java.util.List.of(ArtifactType.DATA_STANDARD), "promote app"));
+        assertThat(second.created()).isEmpty();
+        assertThat(second.skipped()).containsExactly("DATA_STANDARD:acctno", "DATA_STANDARD:cifno");
+    }
+
+    @Test
     void rejectedOrderCannotBeExecuted() {
         Scope scope = newScope();
         var devStandard = standardService.create(scope.tenant(), scope.dev(), scope.applicationId(),

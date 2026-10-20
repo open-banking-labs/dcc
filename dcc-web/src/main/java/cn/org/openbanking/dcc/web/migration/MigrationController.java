@@ -3,6 +3,8 @@ package cn.org.openbanking.dcc.web.migration;
 import java.util.List;
 
 import cn.org.openbanking.dcc.application.migration.MigrationService;
+import cn.org.openbanking.dcc.application.migration.MigrationService.ApplicationMigrationCommand;
+import cn.org.openbanking.dcc.application.migration.MigrationService.ApplicationMigrationResult;
 import cn.org.openbanking.dcc.application.migration.MigrationService.CreateCommand;
 import cn.org.openbanking.dcc.application.migration.MigrationService.MigrationOrderView;
 import cn.org.openbanking.dcc.core.migration.MigrationStatus;
@@ -35,11 +37,28 @@ public class MigrationController extends AbstractTenantController {
         this.service = service;
     }
 
+    /**
+     * Single-artifact migration order. Prefer {@link #createForApplication} — artifacts
+     * migrate as part of their application, not one by one.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority(@perms.migrationWrite)")
     public MigrationOrderView create(@Valid @RequestBody CreateCommand command) {
         return service.create(currentTenantId(), command);
+    }
+
+    /**
+     * Requests a migration for a whole application: creates one order per artifact of the
+     * application in the source environment (artifacts already at the source version in
+     * the target are skipped). The natural entry point for publishing an application.
+     */
+    @PostMapping("/application")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority(@perms.migrationWrite)")
+    public ApplicationMigrationResult createForApplication(
+            @Valid @RequestBody ApplicationMigrationCommand command) {
+        return service.createApplicationMigration(currentTenantId(), command);
     }
 
     @GetMapping("/{id}")
