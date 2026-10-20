@@ -5,7 +5,7 @@
 /*
  * DCC 管理端设计 token — GitHub Primer 风格。
  *
- * 基调：深色全局顶栏 + 浅灰画布 + 白色描边容器。层级主要靠 1px 边框、浅灰底和留白，
+ * 基调：随主题切换的顶栏 + 浅灰画布 + 白色描边容器。层级主要靠 1px 边框、浅灰底和留白，
  * 只有浮层（dialog/dropdown/toast）和控件用极轻阴影。圆角统一 6px。
  *
  * 文字角色（页内只用这五级，别再造第六级）：
@@ -52,11 +52,13 @@
     --input: 206 18% 85%;
     --ring: 212 92% 45%;
 
-    /* 深色全局顶栏 */
-    --header: 214 13% 16%; /* #24292f */
-    --header-foreground: 0 0% 100%;
-    --header-muted: 210 13% 72%; /* #afb8c1 */
-    --header-border: 215 12% 27%;
+    /* 随主题切换的顶栏：浅色主题为白底深字 */
+    --header: 0 0% 100%; /* #ffffff */
+    --header-foreground: 216 13% 14%; /* #1f2328 */
+    --header-muted: 210 11% 39%; /* #59636e */
+    --header-border: 206 18% 85%; /* #d1d9e0 */
+    --header-brand: 210 24% 93%; /* #eaeef2 */
+    --header-brand-foreground: 216 13% 14%; /* #1f2328 */
 
     --sidebar: 0 0% 100%;
     --sidebar-accent: 210 29% 97%;
@@ -134,6 +136,8 @@
     --header-foreground: 210 67% 96%; /* #f0f6fc */
     --header-muted: 212 9% 58%;
     --header-border: 212 12% 21%;
+    --header-brand: 215 10% 23%; /* #21262d */
+    --header-brand-foreground: 210 67% 96%; /* #f0f6fc */
 
     --sidebar: 216 28% 7%;
     --sidebar-accent: 215 21% 11%;

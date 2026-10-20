@@ -42,12 +42,14 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // GitHub 式深色全局顶栏。
+        // 随主题切换的顶栏。
         header: {
           DEFAULT: 'hsl(var(--header))',
           foreground: 'hsl(var(--header-foreground))',
           muted: 'hsl(var(--header-muted))',
           border: 'hsl(var(--header-border))',
+          brand: 'hsl(var(--header-brand))',
+          'brand-foreground': 'hsl(var(--header-brand-foreground))',
         },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar))',

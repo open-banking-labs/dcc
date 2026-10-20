@@ -49,7 +49,7 @@ function applyTheme(mode: ThemeMode, systemDark: boolean) {
   root.style.colorScheme = dark ? 'dark' : 'light'
 
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-  if (meta) meta.content = dark ? '#010409' : '#24292f'
+  if (meta) meta.content = dark ? '#010409' : '#ffffff'
 }
 
 /**

@@ -76,7 +76,7 @@ export function LoginPage() {
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-header text-white">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-header-brand text-header-brand-foreground">
         <Boxes className="h-4 w-4" aria-hidden />
       </span>
       <span className="flex min-w-0 flex-col leading-tight">

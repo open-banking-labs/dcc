@@ -191,7 +191,7 @@ export function MobileNav() {
         aria-expanded={open}
         aria-controls="mobile-navigation"
         onClick={() => setOpen(true)}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-header-muted transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25 lg:hidden"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-header-muted transition-colors hover:bg-accent hover:text-header-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring lg:hidden"
       >
         <Menu className="h-4 w-4" aria-hidden />
       </button>

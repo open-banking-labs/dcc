@@ -12,34 +12,34 @@ import { MobileNav, Sidebar } from './Sidebar'
 import { UserMenu } from './UserMenu'
 
 /**
- * 管理端外壳：GitHub 式深色全局顶栏 + 左侧导航 + 公告条 + 内容区。
+ * 管理端外壳：随主题切换的全局顶栏 + 左侧导航 + 公告条 + 内容区。
  * 顶栏全宽，内容区独立滚动；移动端导航收进顶栏左侧的抽屉。
  */
 export function AppLayout() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-canvas">
-      <header className="flex h-14 shrink-0 items-center gap-2.5 bg-header px-3 text-header-foreground dark:border-b dark:border-header-border sm:gap-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-header-border bg-header px-3 text-header-foreground sm:gap-3 sm:px-4">
         <MobileNav />
         <Link
           to="/"
           aria-label="DCC 管理端首页"
-          className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/25"
+          className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-white text-header dark:bg-white/10 dark:text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-header-brand text-header-brand-foreground">
             <Boxes className="h-4 w-4" aria-hidden />
           </span>
           <span className="hidden min-w-0 flex-col leading-tight sm:flex">
-            <span className="truncate text-[14px] font-semibold text-white">DCC 管理端</span>
+            <span className="truncate text-[14px] font-semibold text-header-foreground">DCC 管理端</span>
             <span className="truncate text-[12px] text-header-muted">数据契约中心</span>
           </span>
         </Link>
-        <span aria-hidden className="hidden h-5 w-px shrink-0 bg-white/15 md:block" />
+        <span aria-hidden className="hidden h-5 w-px shrink-0 bg-header-border md:block" />
         <div className="hidden min-w-0 flex-1 md:block">
           <Breadcrumbs />
         </div>
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
           <EnvAppSwitcher />
-          <span aria-hidden className="hidden h-5 w-px bg-white/15 sm:block" />
+          <span aria-hidden className="hidden h-5 w-px bg-header-border sm:block" />
           <UserMenu />
         </div>
       </header>
