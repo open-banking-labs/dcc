@@ -86,3 +86,7 @@ application-local.yml
 
 # Local dev tokens
 *.jwt
+
+# Go CLI build output
+dcc-cli/bin/
+dcc-cli/dist/

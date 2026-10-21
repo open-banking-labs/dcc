@@ -15,11 +15,15 @@ boundaries.
 | `dcc-bootstrap` | Startup wiring: Flyway integration + warm-up framework | library |
 | `dcc-web` | REST + command API (owns the schema / runs Flyway) | application |
 | `dcc-mcp` | MCP server over the same logic (validates, never migrates) | application |
-| `dcc-cli` | Command-line execution client over the command API | application |
+| `dcc-cli` | Command-line client over `/api` and `/cli/<version>` (Go, independent module) | binary |
 
 Dependencies point inward: applications → `dcc-application` → `dcc-core` /
 `dcc-generator`. `dcc-security` and `dcc-bootstrap` are cross-cutting libraries reused
 by both applications. Module notes live under [modules/](modules/).
+
+`dcc-cli` is a standalone Go module under `dcc-cli/` (Go 1.24+, Cobra) and is **not**
+part of the Maven reactor. It still obeys the same boundary: it only calls the HTTP
+surface and holds no business logic.
 
 Runtime flow: the exposure layer authenticates the caller (`dcc-security`), then calls
 a `dcc-application` use case, which binds the tenant and works through `dcc-core`

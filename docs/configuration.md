@@ -103,7 +103,7 @@ version — see [versioning.md](versioning.md).
 
 | Property | Default | Description |
 | --- | --- | --- |
-| `dcc.api.version` | `v1` | Path version of the `/cli/<version>` command API. `dcc-cli` must use the same value (via `DCC_API_VERSION`). |
+| `dcc.api.version` | `v1` | Path version of the `/cli/<version>` command API. `dcc-cli` resolves it from `--api-version`, `DCC_API_VERSION`, `hosts.yml`, then `v1`. |
 
 ## Excel export (`dcc-application`, worker in `dcc-web`)
 

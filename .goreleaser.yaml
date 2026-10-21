@@ -1,0 +1,40 @@
+version: 2
+
+project_name: dcc
+
+builds:
+  - id: dcc
+    dir: dcc-cli
+    main: ./cmd/dcc
+    binary: dcc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/open-banking-labs/dcc/dcc-cli/internal/build.Version={{.Version}}
+      - -X github.com/open-banking-labs/dcc/dcc-cli/internal/build.Commit={{.ShortCommit}}
+      - -X github.com/open-banking-labs/dcc/dcc-cli/internal/build.Date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

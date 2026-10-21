@@ -13,7 +13,7 @@ DCC（Data Contract Center）是一个基于 Java 17 和 Spring Boot 4.1.1 的�
 - `dcc-security/`：共享安全（校验调用方 JWT、租户上下文、方法鉴权、操作级限流），被各暴露层复用。
 - `dcc-web/`：REST 暴露层 + 可执行应用，调用 `dcc-application`，包含 HTTP/OpenAPI、Actuator、Flyway 配置与环境配置。
 - `dcc-mcp/`：MCP 暴露层 + 可执行应用（Streamable HTTP），复用 `dcc-application`。
-- `dcc-cli/`：命令行执行客户端，通过 `/cli/<version>` 命令 API 调用后端（不含业务逻辑）。
+- `dcc-cli/`：Go 1.24+ 独立 module（Cobra），命令行客户端；维护操作走 `/api/*`，命令型操作走 `/cli/<version>/*`，不含业务逻辑，不参与 Maven reactor。
 - 边缘网关（`docker-compose.yml` 中的 Traefik 服务）：唯一对外入口，路由 `/api`、`/mcp` 并做粗粒度限流。
 - `docs/`：开发、运维及 Flyway 文档。
 - `scripts/`：启动和部署脚本。
@@ -23,6 +23,7 @@ DCC（Data Contract Center）是一个基于 Java 17 和 Spring Boot 4.1.1 的�
 ## 开发环境
 
 - Java 17
+- Go 1.24+（仅 `dcc-cli`）
 - Maven Wrapper：`./mvnw`（优先使用，不依赖本机 Maven 版本）
 - Spring Boot 4.1.1
 - PostgreSQL、Redis、RabbitMQ 等外部服务按 `docker-compose.yml` 和 `env/.env.example` 配置。
@@ -49,6 +50,11 @@ DCC（Data Contract Center）是一个基于 Java 17 和 Spring Boot 4.1.1 的�
 ./mvnw -pl dcc-web test
 ./mvnw -pl dcc-mcp test
 
+# CLI（Go 独立 module，不参与 Maven）
+make -C dcc-cli test
+make -C dcc-cli build
+make -C dcc-cli lint
+
 # 启动基础设施（按需执行）
 docker compose up -d
 ```
@@ -63,6 +69,7 @@ docker compose up -d
 - 新增功能应放在职责对应的模块中，不要把业务逻辑塞入 `dcc-web` / `dcc-mcp` 暴露层模块。
 - 优先复用现有配置、组件和测试模式；使用 Lombok 时保持与相邻代码一致。
 - 生成逻辑走 Thymeleaf 模板（`dcc-generator`）：新增生成目标或调整风格优先改模板与配置，而非改 Java；模板以 TEXT 模式渲染，不做 HTML 转义（`<`、`>`、`&`、`"` 原样输出）。
+- `dcc-cli` 使用 Go + Cobra：命令放在 `pkg/cmd/<noun>`，HTTP/配置/渲染在 `api/` 与 `internal/`；写命令必须提供 commit-message 格式的 `-m/--message`，经 `X-DCC-Change-Reason` 发送，后端字段不变。
 - 可调行为优先做成配置项（`dcc.*`），全部提供等价旧行为的默认值，并在 `docs/configuration.md` 里记录；类型映射走 `dcc.type-mapping.*` + `TypeMappingStrategy`（按方言）。
 - 配置按环境放在 `application.yml`、`application-dev.yml`、`application-prod.yml` 等文件中。不要把密码、Token、密钥或本地地址凭据写入源码或提交到仓库。
 - 修改 API 时同步更新相关测试和文档；保持向后兼容，除非任务明确要求破坏性变更。
@@ -79,6 +86,7 @@ docker compose up -d
 - 为新增或修改的行为补充单元测试或 Spring 集成测试，测试放在对应模块的 `src/test/java` 下。
 - 提交前至少运行受影响模块的测试；跨模块改动运行 `./mvnw clean verify`。
 - `dcc-web` / `dcc-mcp` 的上下文冒烟测试需要运行中的 PostgreSQL 和 `dev` profile（数据源配置在 `application-dev.yml`）；未准备时它会因缺少数据源而失败，先执行 `./scripts/dcc-start.sh` 并激活 profile。`dcc-core`、`dcc-generator`、`dcc-application`、`dcc-bootstrap`、`dcc-security` 为库模块；`dcc-generator`、`dcc-security` 有单元测试（无需基础设施）。
+- `dcc-cli` 是 Go module，运行 `make -C dcc-cli test`（或 `cd dcc-cli && go test ./...`）；命令测试使用 `httptest`，不需要基础设施。提交前同时运行 `gofmt -l .` 与 `go vet ./...`。
 - 测试失败时优先确认 Java/Maven 版本、外部服务和环境变量是否正确，再判断是否为代码回归。
 - 不要为了让测试通过而删除、跳过或弱化已有断言。
 
@@ -93,6 +101,7 @@ docker compose up -d
 - [ ] 代码放在正确模块，未引入无关重构
 - [ ] 已补充或更新相关测试
 - [ ] 已运行受影响测试；必要时运行完整 `verify`
+- [ ] dcc-cli 变更已运行 `make -C dcc-cli lint test`
 - [ ] Flyway 变更遵循命名和版本规则
 - [ ] 未提交真实凭据、生成文件或本地配置
 - [ ] 已检查 `git diff`、`git status` 及文档影响

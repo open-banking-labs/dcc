@@ -34,7 +34,6 @@
         <module>dcc-bootstrap</module>
         <module>dcc-security</module>
         <module>dcc-web</module>
-        <module>dcc-cli</module>
         <module>dcc-mcp</module>
     </modules>
 
