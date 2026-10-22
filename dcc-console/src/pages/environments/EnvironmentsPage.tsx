@@ -58,7 +58,6 @@ export function EnvironmentsPage() {
 
   const submit = async () => {
     const next: Record<string, string> = {}
-    if (!editing && !form.code.trim()) next.code = '编码不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -73,13 +72,13 @@ export function EnvironmentsPage() {
         })
         toast.success('已保存', editing.code)
       } else {
-        await environmentsApi.create({
+        const view = await environmentsApi.create({
           code: form.code.trim(),
           name: form.name.trim(),
           description: form.description.trim() || null,
           sortOrder: form.sortOrder ?? 0,
         })
-        toast.success('已创建', form.code)
+        toast.success('已创建', view.code)
       }
       setDialogOpen(false)
       reload()
@@ -183,13 +182,13 @@ export function EnvironmentsPage() {
         onSubmit={() => void submit()}
         submitting={submitting}
       >
-        <Field label="编码" htmlFor="e-code" required={!editing} error={errors.code}>
+        <Field label="编码" htmlFor="e-code" hint="留空自动生成，如 E001" error={errors.code}>
           <TextField
             id="e-code"
             value={form.code}
             onChange={(value) => setForm((prev) => ({ ...prev, code: value }))}
             disabled={editing !== null}
-            placeholder="如 DEV / TEST / PROD"
+            placeholder="留空自动生成"
           />
         </Field>
         <Field label="名称" htmlFor="e-name" required error={errors.name}>

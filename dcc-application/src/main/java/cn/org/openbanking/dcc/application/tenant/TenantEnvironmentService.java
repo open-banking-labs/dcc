@@ -10,6 +10,7 @@ import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
+import cn.org.openbanking.dcc.core.id.IdFactory;
 import cn.org.openbanking.dcc.core.tenant.TenantEnvironment;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantEnvironmentRepository;
 
@@ -25,16 +26,18 @@ public class TenantEnvironmentService {
     private final TenantEnvironmentRepository environments;
     private final TenantScope tenantScope;
     private final ChangeContext changeContext;
+    private final IdFactory idFactory;
 
     public TenantEnvironmentService(TenantEnvironmentRepository environments, TenantScope tenantScope,
-            ChangeContext changeContext) {
+            ChangeContext changeContext, IdFactory idFactory) {
         this.environments = environments;
         this.tenantScope = tenantScope;
         this.changeContext = changeContext;
+        this.idFactory = idFactory;
     }
 
     public record CreateCommand(
-            @NotBlank @Size(max = 32) String code,
+            @Size(max = 32) String code,
             @NotBlank @Size(max = 128) String name,
             @Size(max = 512) String description,
             Integer sortOrder) {
@@ -52,14 +55,29 @@ public class TenantEnvironmentService {
 
     public EnvironmentView create(String tenantId, CreateCommand command) {
         return tenantScope.call(tenantId, () -> {
-            if (environments.existsByTenantIdAndCode(tenantId, command.code())) {
-                throw new ConflictException("environment already exists in tenant: " + command.code());
-            }
-            TenantEnvironment environment = new TenantEnvironment(command.code(), command.name(),
+            String code = resolveCode(tenantId, command.code());
+            TenantEnvironment environment = new TenantEnvironment(code, command.name(),
                     command.description(), command.sortOrder() == null ? 0 : command.sortOrder());
             environment.setTenantId(tenantId);
             return toView(environments.save(environment));
         });
+    }
+
+    private String resolveCode(String tenantId, String requestedCode) {
+        if (requestedCode != null && !requestedCode.isBlank()) {
+            String code = requestedCode.trim();
+            if (environments.existsByTenantIdAndCode(tenantId, code)) {
+                throw new ConflictException("environment already exists in tenant: " + code);
+            }
+            return code;
+        }
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String code = idFactory.nextEnvironmentCode(tenantId);
+            if (!environments.existsByTenantIdAndCode(tenantId, code)) {
+                return code;
+            }
+        }
+        throw new ConflictException("unable to allocate an environment code in tenant " + tenantId);
     }
 
     @Transactional(readOnly = true)

@@ -104,7 +104,6 @@ export function InterfaceFormPage() {
 
   const handleSubmit = async () => {
     const next: Record<string, string> = {}
-    if (!isEdit && !form.interfaceNo.trim()) next.interfaceNo = '接口编号不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -172,13 +171,13 @@ export function InterfaceFormPage() {
 
       <div className="space-y-4 rounded-md border border-border bg-card p-4">
         <FieldRow columns={2}>
-          <Field label="接口编号" htmlFor="interfaceNo" required={!isEdit} error={errors.interfaceNo}>
+          <Field label="接口编号" htmlFor="interfaceNo" hint="留空自动生成，如 I00100200000001" error={errors.interfaceNo}>
             <TextField
               id="interfaceNo"
               value={form.interfaceNo}
               onChange={(value) => set('interfaceNo', value)}
               disabled={isEdit}
-              placeholder="如 IF_ACCT_QUERY"
+              placeholder="留空自动生成，或手工输入"
             />
           </Field>
           <Field label="模板" htmlFor="templateId">

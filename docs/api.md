@@ -39,6 +39,15 @@ unioned with the claim roles — see ADR 0003. Interactive docs: `/swagger-ui.ht
 | Announcements | `/api/announcements` | banner feed (`GET`, any authenticated caller: platform + own-tenant announcements, enabled and inside their visibility window) and tenant authoring (`GET /managed`, `POST`, `PUT /{id}`, `DELETE /{id}` behind `announcement.write`; the owning tenant always comes from the token, never the body) |
 | Platform announcements | `/api/platform/announcements` | system administrator (`announcement.write.platform`): the same CRUD over platform-wide announcements (`tenant_id is null`). The two scopes are disjoint at the query level — a tenant announcement is a 404 from here, and a platform one is a 404 from `/api/announcements` |
 | Tenancy | `/api/tenants`, `/api/environments`, `/api/applications` | tenants: `tenant.admit` (platform); environments/applications: `topology.read` / `topology.write` (tenant) |
+| Identifier sequences | `/api/platform/id-sequences` | platform administrator (`tenant.admit`): read-only `GET` of persisted sequence positions (`currentValue`, `maxValue`, `step`, `remaining`), optional `?prefix=artifact:` |
+
+Create commands for standards, interfaces, templates, tenants, applications and
+environments accept an omitted or blank `code` / `interfaceNo`; the server generates one
+from the identifier rules. A supplied code is still validated and used as-is. Manually
+supplied artifact codes that match the reserved generated format (for example
+`S00100200000001`) are rejected with `422`, because they would collide with future
+generated values; import, migration and reference-case adoption are treated as
+system-propagated and may preserve such a code. Sequence exhaustion is a `409`.
 
 The console reads data standards through `GET /api/standards/page` (server-side paging;
 `keyword` is a case-insensitive fuzzy match on the code or the current version's name)

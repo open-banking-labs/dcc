@@ -96,7 +96,6 @@ export function StandardFormPage() {
 
   const validate = (): boolean => {
     const next: Record<string, string> = {}
-    if (!isEdit && !form.code.trim()) next.code = '编码不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     if (!form.dataType.trim()) next.dataType = '数据类型不能为空'
     if (form.length !== null && form.length < 0) next.length = '长度不能为负'
@@ -175,13 +174,13 @@ export function StandardFormPage() {
 
       <div className="space-y-4 rounded-md border border-border bg-card p-4">
         <FieldRow columns={3}>
-          <Field label="编码" htmlFor="code" required={!isEdit} error={errors.code}>
+          <Field label="编码" htmlFor="code" hint="留空自动生成，如 S00100200000001" error={errors.code}>
             <TextField
               id="code"
               value={form.code}
               onChange={(value) => set('code', value)}
               disabled={isEdit}
-              placeholder="如 CUST_NAME"
+              placeholder="留空自动生成，或手工输入"
             />
           </Field>
           <Field label="分类" htmlFor="category">

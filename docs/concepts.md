@@ -3,6 +3,34 @@
 DCC manages **metadata about data** — never the data itself. Everything is scoped to a
 tenant and versioned.
 
+## Identifiers and codes
+
+Every aggregate has two distinct fields:
+
+- **`id`** — system-generated and immutable. Tenants use their three-digit identity
+  (`001`–`999`); applications also carry a per-tenant three-digit `appNo`.
+- **`code`** — the human/business identifier, optionally entered by the user. When it is
+  blank the identifier factory generates one.
+
+Generated artifact codes use the format
+`<type><tenant:3><application:3><sequence:8>`, with no separator by default:
+
+| Artifact | Example |
+| --- | --- |
+| Data standard | `S00100200000001` |
+| Interface | `I00100200000001` |
+| Interface template | `M00100200000001` |
+| Tenant code | `T001` |
+| Application code | `A002` |
+| Environment code | `E001` |
+
+The 8-digit sequence is per type + tenant + application, persisted in `id_sequence` and
+allocated in blocks. It never resets, so a value is never reused after a delete or a
+rollback; gaps are allowed. The numeric tenant id continues to be used for the code
+prefix, while `tenant_id` on every tenant-scoped row remains the shard key. Rules
+(prefix/suffix/separator/parts/sequence source) are configurable under `dcc.id.*`; see
+[configuration.md](configuration.md).
+
 ## Field Standard Library (数标)
 
 The **data standard** (`DataStandard`) is the reusable unit: one field definition with
