@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.org.openbanking.dcc.application.common.ArtifactCodeService;
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
 import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
@@ -15,6 +16,7 @@ import cn.org.openbanking.dcc.application.reference.ReferenceRecorder;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.common.error.ValidationException;
+import cn.org.openbanking.dcc.core.id.CodeType;
 import cn.org.openbanking.dcc.core.interfaceapi.InterfaceDefinition;
 import cn.org.openbanking.dcc.core.interfaceapi.InterfaceVersion;
 import cn.org.openbanking.dcc.core.interfaceapi.content.InterfaceContent;
@@ -35,7 +37,6 @@ import cn.org.openbanking.dcc.core.standard.version.SemVer;
 import cn.org.openbanking.dcc.core.standard.version.VersionBump;
 import cn.org.openbanking.dcc.core.standard.version.VersionChangeType;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -65,6 +66,7 @@ public class InterfaceService {
     private final ContentDigest digest;
     private final ChangeContext changeContext;
     private final SeparationOfDuties separationOfDuties;
+    private final ArtifactCodeService artifactCodeService;
 
     public InterfaceService(InterfaceDefinitionRepository interfaces,
             InterfaceVersionRepository versions,
@@ -77,7 +79,8 @@ public class InterfaceService {
             ScopeValidation scopeValidation,
             ContentDigest digest,
             ChangeContext changeContext,
-            SeparationOfDuties separationOfDuties) {
+            SeparationOfDuties separationOfDuties,
+            ArtifactCodeService artifactCodeService) {
         this.interfaces = interfaces;
         this.versions = versions;
         this.standards = standards;
@@ -90,9 +93,10 @@ public class InterfaceService {
         this.digest = digest;
         this.changeContext = changeContext;
         this.separationOfDuties = separationOfDuties;
+        this.artifactCodeService = artifactCodeService;
     }
 
-    public record CreateCommand(@NotBlank @Size(max = 64) String interfaceNo, Long templateId,
+    public record CreateCommand(@Size(max = 64) String interfaceNo, Long templateId,
             @NotNull InterfaceContent content) {
     }
 
@@ -114,16 +118,24 @@ public class InterfaceService {
     }
 
     public InterfaceView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
+        return create(tenantId, environmentId, applicationId, command, false);
+    }
+
+    /**
+     * @param allowReservedCode true for system-propagated codes (migration/reference-case
+     *                          adoption), which must keep a generated-looking code
+     */
+    public InterfaceView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command,
+            boolean allowReservedCode) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
         scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             InterfaceContent content = resolveContent(tenantId, command.content());
-            // interface number is unique within tenant + environment
-            if (interfaces.existsByTenantIdAndEnvironmentIdAndInterfaceNo(tenantId, environmentId, command.interfaceNo())) {
-                throw new ConflictException("interface number already exists in this environment: " + command.interfaceNo());
-            }
+            String interfaceNo = artifactCodeService.assign(CodeType.INTERFACE, tenantId, applicationId,
+                    command.interfaceNo(), allowReservedCode, candidate -> interfaces
+                            .existsByTenantIdAndEnvironmentIdAndInterfaceNo(tenantId, environmentId, candidate));
             InterfaceDefinition definition = new InterfaceDefinition(environmentId, applicationId,
-                    command.interfaceNo(), command.templateId(), StandardStatus.DRAFT, SemVer.INITIAL.value());
+                    interfaceNo, command.templateId(), StandardStatus.DRAFT, SemVer.INITIAL.value());
             definition.setTenantId(tenantId);
             definition = interfaces.save(definition);
 

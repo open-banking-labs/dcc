@@ -54,7 +54,6 @@ export function ApplicationsPage() {
 
   const submit = async () => {
     const next: Record<string, string> = {}
-    if (!editing && !form.code.trim()) next.code = '编码不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -68,12 +67,12 @@ export function ApplicationsPage() {
         })
         toast.success('已保存', editing.code)
       } else {
-        await applicationsApi.create({
+        const view = await applicationsApi.create({
           code: form.code.trim(),
           name: form.name.trim(),
           description: form.description.trim() || null,
         })
-        toast.success('已创建', form.code)
+        toast.success('已创建', view.code)
       }
       setDialogOpen(false)
       reload()
@@ -100,6 +99,11 @@ export function ApplicationsPage() {
   }
 
   const columns: ColumnDef<ApplicationView, any>[] = [
+    {
+      accessorKey: 'appNo',
+      header: '应用号',
+      cell: ({ row }) => <span className="font-mono text-xs">{String(row.original.appNo).padStart(3, '0')}</span>,
+    },
     {
       accessorKey: 'code',
       header: '编码',
@@ -181,12 +185,13 @@ export function ApplicationsPage() {
         onSubmit={() => void submit()}
         submitting={submitting}
       >
-        <Field label="编码" htmlFor="a-code" required={!editing} error={errors.code}>
+        <Field label="编码" htmlFor="a-code" hint="留空自动生成，如 A002" error={errors.code}>
           <TextField
             id="a-code"
             value={form.code}
             onChange={(value) => setForm((prev) => ({ ...prev, code: value }))}
             disabled={editing !== null}
+            placeholder="留空自动生成"
           />
         </Field>
         <Field label="名称" htmlFor="a-name" required error={errors.name}>

@@ -83,7 +83,6 @@ export function TemplateFormPage() {
 
   const handleSubmit = async () => {
     const next: Record<string, string> = {}
-    if (!isEdit && !form.code.trim()) next.code = '编码不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -144,13 +143,13 @@ export function TemplateFormPage() {
       />
 
       <div className="space-y-4 rounded-md border border-border bg-card p-4">
-        <Field label="编码" htmlFor="code" required={!isEdit} error={errors.code} className="max-w-sm">
+        <Field label="编码" htmlFor="code" hint="留空自动生成，如 M00100200000001" error={errors.code} className="max-w-sm">
           <TextField
             id="code"
             value={form.code}
             onChange={(value) => set('code', value)}
             disabled={isEdit}
-            placeholder="如 TPL_STD_HEADER"
+            placeholder="留空自动生成，或手工输入"
           />
         </Field>
         <Field label="名称" htmlFor="name" required error={errors.name} className="max-w-sm">

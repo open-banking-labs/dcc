@@ -253,7 +253,7 @@ public class ReferenceCaseService {
                     requireTarget(command);
                     var content = codec.read(referenceCase.getContent(), StandardContent.class);
                     var view = standards.create(tenantId, command.environmentId(), command.applicationId(),
-                            new DataStandardService.CreateCommand(codeOr(command, referenceCase), null, content));
+                            new DataStandardService.CreateCommand(codeOr(command, referenceCase), null, content), true);
                     yield new Created(referenceCase.getFeature(), view.id(), view.code(),
                             List.of("data-standard:" + view.code() + "@" + view.currentVersion()));
                 }
@@ -270,7 +270,7 @@ public class ReferenceCaseService {
                     var content = codec.read(referenceCase.getContent(), InterfaceContent.class);
                     var view = interfaces.create(tenantId, command.environmentId(), command.applicationId(),
                             new InterfaceService.CreateCommand(codeOr(command, referenceCase), command.templateId(),
-                                    content));
+                                    content), true);
                     yield new Created(referenceCase.getFeature(), view.id(), view.interfaceNo(),
                             List.of("interface:" + view.interfaceNo() + "@" + view.currentVersion()));
                 }
@@ -278,7 +278,7 @@ public class ReferenceCaseService {
                     requireTarget(command);
                     var content = codec.read(referenceCase.getContent(), TemplateContent.class);
                     var view = templates.create(tenantId, command.environmentId(), command.applicationId(),
-                            new TemplateService.CreateCommand(codeOr(command, referenceCase), content));
+                            new TemplateService.CreateCommand(codeOr(command, referenceCase), content), true);
                     yield new Created(referenceCase.getFeature(), view.id(), view.code(),
                             List.of("interface-template:" + view.code() + "@" + view.currentVersion()));
                 }
@@ -304,16 +304,16 @@ public class ReferenceCaseService {
         List<String> created = new ArrayList<>();
         if (payload.environments() != null) {
             for (EnvironmentSpec spec : payload.environments()) {
-                environments.create(tenantId, new TenantEnvironmentService.CreateCommand(
+                var environment = environments.create(tenantId, new TenantEnvironmentService.CreateCommand(
                         spec.code(), spec.name(), spec.description(), spec.sortOrder()));
-                created.add("environment:" + spec.code());
+                created.add("environment:" + environment.code());
             }
         }
         if (payload.applications() != null) {
             for (ApplicationSpec spec : payload.applications()) {
-                applications.create(tenantId, new TenantApplicationService.CreateCommand(
+                var application = applications.create(tenantId, new TenantApplicationService.CreateCommand(
                         spec.code(), spec.name(), spec.description()));
-                created.add("application:" + spec.code());
+                created.add("application:" + application.code());
             }
         }
         return created;

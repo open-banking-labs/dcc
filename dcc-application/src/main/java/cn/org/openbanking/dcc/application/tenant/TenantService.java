@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
+import cn.org.openbanking.dcc.core.id.IdFactory;
 import cn.org.openbanking.dcc.core.tenant.Tenant;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantRepository;
 
@@ -26,14 +27,16 @@ public class TenantService {
 
     private final TenantRepository tenants;
     private final ChangeContext changeContext;
+    private final IdFactory idFactory;
 
-    public TenantService(TenantRepository tenants, ChangeContext changeContext) {
+    public TenantService(TenantRepository tenants, ChangeContext changeContext, IdFactory idFactory) {
         this.tenants = tenants;
         this.changeContext = changeContext;
+        this.idFactory = idFactory;
     }
 
     public record CreateCommand(
-            @NotBlank @Size(max = 64) String code,
+            @Size(max = 64) String code,
             @NotBlank @Size(max = 128) String name,
             @Size(max = 512) String description) {
     }
@@ -49,11 +52,31 @@ public class TenantService {
     }
 
     public TenantView create(CreateCommand command) {
-        if (tenants.existsByCode(command.code())) {
-            throw new ConflictException("tenant code already exists: " + command.code());
+        String code = resolveCode(command.code());
+        Tenant tenant = new Tenant(code, command.name(), command.description());
+        try {
+            return toView(tenants.saveAndFlush(tenant));
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException("cannot create tenant '" + code
+                    + "': code already exists or the 3-digit tenant number space is exhausted");
         }
-        Tenant tenant = new Tenant(command.code(), command.name(), command.description());
-        return toView(tenants.save(tenant));
+    }
+
+    private String resolveCode(String requestedCode) {
+        if (requestedCode != null && !requestedCode.isBlank()) {
+            String code = requestedCode.trim();
+            if (tenants.existsByCode(code)) {
+                throw new ConflictException("tenant code already exists: " + code);
+            }
+            return code;
+        }
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String code = idFactory.nextTenantCode();
+            if (!tenants.existsByCode(code)) {
+                return code;
+            }
+        }
+        throw new ConflictException("unable to allocate a tenant code");
     }
 
     @Transactional(readOnly = true)

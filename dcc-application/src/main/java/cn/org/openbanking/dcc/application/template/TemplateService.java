@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.org.openbanking.dcc.application.common.ArtifactCodeService;
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
 import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
@@ -15,6 +16,7 @@ import cn.org.openbanking.dcc.application.reference.ReferenceRecorder;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.common.error.ValidationException;
+import cn.org.openbanking.dcc.core.id.CodeType;
 import cn.org.openbanking.dcc.core.reference.ReferenceType;
 import cn.org.openbanking.dcc.core.standard.DataStandard;
 import cn.org.openbanking.dcc.core.standard.DataStandardVersion;
@@ -37,7 +39,6 @@ import cn.org.openbanking.dcc.core.template.repository.InterfaceTemplateReposito
 import cn.org.openbanking.dcc.core.template.repository.TemplateVersionRepository;
 import cn.org.openbanking.dcc.core.template.version.TemplateVersionBumpPolicy;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -67,6 +68,7 @@ public class TemplateService {
     private final ContentDigest digest;
     private final ChangeContext changeContext;
     private final SeparationOfDuties separationOfDuties;
+    private final ArtifactCodeService artifactCodeService;
 
     public TemplateService(InterfaceTemplateRepository templates,
             TemplateVersionRepository versions,
@@ -79,7 +81,8 @@ public class TemplateService {
             ScopeValidation scopeValidation,
             ContentDigest digest,
             ChangeContext changeContext,
-            SeparationOfDuties separationOfDuties) {
+            SeparationOfDuties separationOfDuties,
+            ArtifactCodeService artifactCodeService) {
         this.templates = templates;
         this.versions = versions;
         this.standards = standards;
@@ -92,9 +95,10 @@ public class TemplateService {
         this.digest = digest;
         this.changeContext = changeContext;
         this.separationOfDuties = separationOfDuties;
+        this.artifactCodeService = artifactCodeService;
     }
 
-    public record CreateCommand(@NotBlank @Size(max = 128) String code, @NotNull TemplateContent content) {
+    public record CreateCommand(@Size(max = 128) String code, @NotNull TemplateContent content) {
     }
 
     public record UpdateCommand(@NotNull TemplateContent content) {
@@ -115,15 +119,24 @@ public class TemplateService {
     }
 
     public TemplateView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
+        return create(tenantId, environmentId, applicationId, command, false);
+    }
+
+    /**
+     * @param allowReservedCode true for system-propagated codes (migration/reference-case
+     *                          adoption), which must keep a generated-looking code
+     */
+    public TemplateView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command,
+            boolean allowReservedCode) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
         scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             TemplateContent content = resolveContent(tenantId, command.content());
-            if (templates.existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
-                    tenantId, environmentId, applicationId, command.code())) {
-                throw new ConflictException("interface template already exists: " + command.code());
-            }
-            InterfaceTemplate template = new InterfaceTemplate(environmentId, applicationId, command.code(),
+            String code = artifactCodeService.assign(CodeType.TEMPLATE, tenantId, applicationId,
+                    command.code(), allowReservedCode, candidate -> templates
+                            .existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
+                                    tenantId, environmentId, applicationId, candidate));
+            InterfaceTemplate template = new InterfaceTemplate(environmentId, applicationId, code,
                     StandardStatus.DRAFT, SemVer.INITIAL.value());
             template.setTenantId(tenantId);
             template = templates.save(template);

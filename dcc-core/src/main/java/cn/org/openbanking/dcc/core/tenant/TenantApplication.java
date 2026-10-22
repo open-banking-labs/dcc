@@ -28,6 +28,14 @@ import org.hibernate.annotations.Filter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TenantApplication extends TenantScopedEntity {
 
+    /**
+     * Per-tenant three-digit application number used by the identifier rules. It is
+     * independent of the global surrogate {@code id}; the same number may repeat under
+     * different tenants.
+     */
+    @Column(name = "app_no", nullable = false, updatable = false)
+    private int appNo;
+
     @Column(name = "code", nullable = false, length = 64)
     private String code;
 
@@ -37,7 +45,8 @@ public class TenantApplication extends TenantScopedEntity {
     @Column(name = "description", length = 512)
     private String description;
 
-    public TenantApplication(String code, String name, String description) {
+    public TenantApplication(int appNo, String code, String name, String description) {
+        this.appNo = appNo;
         this.code = code;
         this.name = name;
         this.description = description;

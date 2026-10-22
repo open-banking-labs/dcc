@@ -25,6 +25,7 @@ export interface EnvironmentView {
 export interface ApplicationView {
   id: number
   tenantId: string
+  appNo: number
   code: string
   name: string
   description: string | null

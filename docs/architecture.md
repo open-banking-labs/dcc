@@ -30,6 +30,7 @@ a `dcc-application` use case, which binds the tenant and works through `dcc-core
 
 - [0001 — Use PostgreSQL](decisions/0001-use-postgres.md)
 - [0002 — Retention (logical deletion) and an append-only audit trail](decisions/0002-retention-and-audit-trail.md)
+- [0006 — Rule-based identifier factory with a persisted global sequence](decisions/0006-identifier-factory.md)
 
 Add a new decision as `docs/decisions/NNNN-<slug>.md` (context, decision, consequences).
 

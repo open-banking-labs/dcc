@@ -283,7 +283,8 @@ public class MigrationService {
                 ? standardService.update(tenantId, existing.get().getId(),
                         new DataStandardService.UpdateCommand(source.category(), source.content()))
                 : standardService.create(tenantId, targetEnv, appId,
-                        new DataStandardService.CreateCommand(source.code(), source.category(), source.content())));
+                        new DataStandardService.CreateCommand(source.code(), source.category(), source.content()),
+                        true));
         return new MigrationResult(view.id(), view.currentVersion(), previous);
     }
 
@@ -312,7 +313,8 @@ public class MigrationService {
                 ? interfaceService.update(tenantId, existing.get().getId(),
                         new InterfaceService.UpdateCommand(source.templateId(), source.content()))
                 : interfaceService.create(tenantId, targetEnv, appId,
-                        new InterfaceService.CreateCommand(source.interfaceNo(), source.templateId(), source.content())));
+                        new InterfaceService.CreateCommand(source.interfaceNo(), source.templateId(), source.content()),
+                        true));
         return new MigrationResult(view.id(), view.currentVersion(), previous);
     }
 
@@ -327,7 +329,7 @@ public class MigrationService {
                 ? templateService.update(tenantId, existing.get().getId(),
                         new TemplateService.UpdateCommand(source.content()))
                 : templateService.create(tenantId, targetEnv, appId,
-                        new TemplateService.CreateCommand(source.code(), source.content())));
+                        new TemplateService.CreateCommand(source.code(), source.content()), true));
         return new MigrationResult(view.id(), view.currentVersion(), previous);
     }
 

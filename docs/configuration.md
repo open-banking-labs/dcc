@@ -97,6 +97,56 @@ The **version strategy** (semantic versioning) is code, not config: `VersionBump
 classifies a field-level diff as MAJOR/MINOR/PATCH and `SemVer.bump` produces the next
 version — see [versioning.md](versioning.md).
 
+## Identifier factory (`dcc-core`)
+
+### `dcc.id.*`
+
+The identifier factory assembles tenant/application/environment codes and artifact
+business codes from declarative rules. Built-in defaults are always present; an entry
+under `dcc.id.rules.<CODE>` replaces the default of that code **wholesale**.
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `dcc.id.rules.<CODE>.prefix` | rule-specific | Literal before the joined parts (`T` / `A` / `E` for scope codes; empty for artifacts). |
+| `dcc.id.rules.<CODE>.suffix` | `""` | Literal after the joined parts. |
+| `dcc.id.rules.<CODE>.separator` | `""` | Inserted between parts only; never around prefix/suffix. |
+| `dcc.id.rules.<CODE>.max-length` | rule-specific | Startup validation: the worst-case assembled length may not exceed it. |
+| `dcc.id.rules.<CODE>.parts[].type` | required | `LITERAL`, `TYPE`, `TENANT`, `APPLICATION`, `SEQUENCE`, `DATE`. |
+| `dcc.id.rules.<CODE>.parts[].width` | required for numeric parts | Zero-pad width; an overflowing value fails instead of being truncated. |
+| `dcc.id.rules.<CODE>.parts[].radix` | `10` | 2–36; values are stored as decimals and rendered in this radix. |
+| `dcc.id.rules.<CODE>.parts[].pad` | `0` | Padding character. |
+| `dcc.id.rules.<CODE>.parts[].value` | `""` | Value for a `LITERAL` part. |
+| `dcc.id.rules.<CODE>.parts[].pattern` / `.zone` | — | `DATE` pattern and optional IANA zone (UTC default). |
+| `dcc.id.rules.<CODE>.sequence.source` | `db-segment` | Sequence source SPI name. |
+| `dcc.id.rules.<CODE>.sequence.key` | required | Persisted key template; supports `{type}`, `{tenant}`, `{application}`. |
+| `dcc.id.rules.<CODE>.sequence.step` | `1` | Values reserved per database round trip. Larger values improve throughput but increase skipped values after a restart. |
+| `dcc.id.rules.<CODE>.sequence.max-value` | rule-specific | Inclusive upper bound; exhaustion returns HTTP 409 and never wraps. |
+
+```yaml
+dcc:
+  id:
+    rules:
+      DATA_STANDARD:
+        prefix: ""
+        separator: ""
+        parts:
+          - { type: TYPE }
+          - { type: TENANT, width: 3 }
+          - { type: APPLICATION, width: 3 }
+          - { type: SEQUENCE, width: 8 }
+        sequence:
+          source: db-segment
+          key: "artifact:{type}:{tenant}:{application}"
+          step: 1
+          max-value: 99999999
+```
+
+The default `db-segment` source persists high-water marks in `id_sequence` and reserves
+blocks atomically (`REQUIRES_NEW`), so multiple instances never share a value. It is a
+small adaptation of the Leaf-segment pattern. Sequence state survives restarts; unused
+values from an old in-memory block are skipped, never reissued. `GET
+/api/platform/id-sequences` exposes the persisted positions.
+
 ## API path version (`dcc-web`)
 
 ### `dcc.api.*`

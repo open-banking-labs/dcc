@@ -6,10 +6,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import cn.org.openbanking.dcc.application.common.ArtifactCodeService;
 import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.ContentDigest;
 import cn.org.openbanking.dcc.application.common.SeparationOfDuties;
@@ -19,6 +19,7 @@ import cn.org.openbanking.dcc.application.migration.MigrationPolicy;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
 import cn.org.openbanking.dcc.core.common.error.ValidationException;
+import cn.org.openbanking.dcc.core.id.CodeType;
 import cn.org.openbanking.dcc.core.standard.DataStandard;
 import cn.org.openbanking.dcc.core.standard.DataStandardVersion;
 import cn.org.openbanking.dcc.core.standard.StandardContent;
@@ -60,6 +61,7 @@ public class DataStandardService {
     private final ContentDigest digest;
     private final ChangeContext changeContext;
     private final SeparationOfDuties separationOfDuties;
+    private final ArtifactCodeService artifactCodeService;
 
     public DataStandardService(DataStandardRepository standards,
             DataStandardVersionRepository versions,
@@ -69,7 +71,8 @@ public class DataStandardService {
             ScopeValidation scopeValidation,
             ContentDigest digest,
             ChangeContext changeContext,
-            SeparationOfDuties separationOfDuties) {
+            SeparationOfDuties separationOfDuties,
+            ArtifactCodeService artifactCodeService) {
         this.standards = standards;
         this.versions = versions;
         this.tenantScope = tenantScope;
@@ -79,12 +82,13 @@ public class DataStandardService {
         this.digest = digest;
         this.changeContext = changeContext;
         this.separationOfDuties = separationOfDuties;
+        this.artifactCodeService = artifactCodeService;
     }
 
     // ------------------------------------------------------------------ records
 
     public record CreateCommand(
-            @NotBlank @Size(max = 128) String code,
+            @Size(max = 128) String code,
             @Size(max = 64) String category,
             @NotNull StandardContent content) {
     }
@@ -114,15 +118,24 @@ public class DataStandardService {
     // ------------------------------------------------------------------ use cases
 
     public StandardView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command) {
+        return create(tenantId, environmentId, applicationId, command, false);
+    }
+
+    /**
+     * @param allowReservedCode true for system-propagated codes (import/migration), which
+     *                          must keep a generated-looking code instead of being rejected
+     */
+    public StandardView create(String tenantId, Long environmentId, Long applicationId, CreateCommand command,
+            boolean allowReservedCode) {
         migrationPolicy.requireDirectMaintenanceAllowed(tenantId, environmentId);
         scopeValidation.requireSurface(tenantId, environmentId, applicationId);
         return tenantScope.call(tenantId, () -> {
             validateContent(command.content());
-            if (standards.existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
-                    tenantId, environmentId, applicationId, command.code())) {
-                throw new ConflictException("data standard already exists: " + command.code());
-            }
-            DataStandard standard = new DataStandard(environmentId, applicationId, command.code(),
+            String code = artifactCodeService.assign(CodeType.DATA_STANDARD, tenantId, applicationId,
+                    command.code(), allowReservedCode, candidate -> standards
+                            .existsByTenantIdAndEnvironmentIdAndApplicationIdAndCode(
+                                    tenantId, environmentId, applicationId, candidate));
+            DataStandard standard = new DataStandard(environmentId, applicationId, code,
                     command.category(), StandardStatus.DRAFT, SemVer.INITIAL.value());
             standard.setTenantId(tenantId);
             standard = standards.save(standard);
@@ -339,7 +352,7 @@ public class DataStandardService {
                     updated++;
                 } else {
                     create(tenantId, environmentId, applicationId,
-                            new CreateCommand(item.code(), item.category(), item.content()));
+                            new CreateCommand(item.code(), item.category(), item.content()), true);
                     created++;
                 }
             }

@@ -59,7 +59,6 @@ export function TenantsPage() {
 
   const submit = async () => {
     const next: Record<string, string> = {}
-    if (!editing && !form.code.trim()) next.code = '编码不能为空'
     if (!form.name.trim()) next.name = '名称不能为空'
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -74,12 +73,12 @@ export function TenantsPage() {
         })
         toast.success('已保存', editing.code)
       } else {
-        await tenantsApi.create({
+        const view = await tenantsApi.create({
           code: form.code.trim(),
           name: form.name.trim(),
           description: form.description.trim() || null,
         })
-        toast.success('已创建', form.code)
+        toast.success('已创建', view.code)
       }
       setDialogOpen(false)
       reload()
@@ -106,6 +105,11 @@ export function TenantsPage() {
   }
 
   const columns: ColumnDef<TenantView, any>[] = [
+    {
+      accessorKey: 'id',
+      header: '租户号',
+      cell: ({ row }) => <span className="font-mono text-xs">{String(row.original.id).padStart(3, '0')}</span>,
+    },
     {
       accessorKey: 'code',
       header: '编码',
@@ -188,12 +192,13 @@ export function TenantsPage() {
         onSubmit={() => void submit()}
         submitting={submitting}
       >
-        <Field label="编码" htmlFor="t-code" required={!editing} error={errors.code}>
+        <Field label="编码" htmlFor="t-code" hint="留空自动生成，如 T001" error={errors.code}>
           <TextField
             id="t-code"
             value={form.code}
             onChange={(value) => setForm((prev) => ({ ...prev, code: value }))}
             disabled={editing !== null}
+            placeholder="留空自动生成"
           />
         </Field>
         <Field label="名称" htmlFor="t-name" required error={errors.name}>

@@ -10,6 +10,7 @@ import cn.org.openbanking.dcc.application.common.ChangeContext;
 import cn.org.openbanking.dcc.application.common.TenantScope;
 import cn.org.openbanking.dcc.core.common.error.ConflictException;
 import cn.org.openbanking.dcc.core.common.error.ResourceNotFoundException;
+import cn.org.openbanking.dcc.core.id.IdFactory;
 import cn.org.openbanking.dcc.core.tenant.TenantApplication;
 import cn.org.openbanking.dcc.core.tenant.repository.TenantApplicationRepository;
 
@@ -25,16 +26,18 @@ public class TenantApplicationService {
     private final TenantApplicationRepository applications;
     private final TenantScope tenantScope;
     private final ChangeContext changeContext;
+    private final IdFactory idFactory;
 
     public TenantApplicationService(TenantApplicationRepository applications, TenantScope tenantScope,
-            ChangeContext changeContext) {
+            ChangeContext changeContext, IdFactory idFactory) {
         this.applications = applications;
         this.tenantScope = tenantScope;
         this.changeContext = changeContext;
+        this.idFactory = idFactory;
     }
 
     public record CreateCommand(
-            @NotBlank @Size(max = 64) String code,
+            @Size(max = 64) String code,
             @NotBlank @Size(max = 128) String name,
             @Size(max = 512) String description) {
     }
@@ -44,19 +47,40 @@ public class TenantApplicationService {
             @Size(max = 512) String description) {
     }
 
-    public record ApplicationView(Long id, String tenantId, String code, String name, String description,
+    public record ApplicationView(Long id, String tenantId, int appNo, String code, String name, String description,
             Instant createdAt, Instant updatedAt) {
     }
 
     public ApplicationView create(String tenantId, CreateCommand command) {
         return tenantScope.call(tenantId, () -> {
-            if (applications.existsByTenantIdAndCode(tenantId, command.code())) {
-                throw new ConflictException("application already exists in tenant: " + command.code());
-            }
-            TenantApplication application = new TenantApplication(command.code(), command.name(), command.description());
+            IdFactory.ApplicationIdentity identity = resolveIdentity(tenantId, command.code());
+            TenantApplication application = new TenantApplication(identity.number(), identity.code(),
+                    command.name(), command.description());
             application.setTenantId(tenantId);
-            return toView(applications.save(application));
+            try {
+                return toView(applications.saveAndFlush(application));
+            } catch (DataIntegrityViolationException ex) {
+                throw new ConflictException("application code or number already exists in tenant: "
+                        + identity.code());
+            }
         });
+    }
+
+    private IdFactory.ApplicationIdentity resolveIdentity(String tenantId, String requestedCode) {
+        if (requestedCode != null && !requestedCode.isBlank()) {
+            String code = requestedCode.trim();
+            if (applications.existsByTenantIdAndCode(tenantId, code)) {
+                throw new ConflictException("application already exists in tenant: " + code);
+            }
+            return new IdFactory.ApplicationIdentity(idFactory.nextApplication(tenantId).number(), code);
+        }
+        for (int attempt = 0; attempt < 10; attempt++) {
+            IdFactory.ApplicationIdentity identity = idFactory.nextApplication(tenantId);
+            if (!applications.existsByTenantIdAndCode(tenantId, identity.code())) {
+                return identity;
+            }
+        }
+        throw new ConflictException("unable to allocate an application code in tenant " + tenantId);
     }
 
     @Transactional(readOnly = true)
@@ -119,8 +143,8 @@ public class TenantApplicationService {
     }
 
     private static ApplicationView toView(TenantApplication application) {
-        return new ApplicationView(application.getId(), application.getTenantId(), application.getCode(),
-                application.getName(), application.getDescription(),
+        return new ApplicationView(application.getId(), application.getTenantId(), application.getAppNo(),
+                application.getCode(), application.getName(), application.getDescription(),
                 application.getCreatedAt(), application.getUpdatedAt());
     }
 }
