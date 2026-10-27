@@ -115,6 +115,21 @@ class ConfigRolePermissionResolverTest {
     }
 
     @Test
+    void grantsRoleFollowsBundleComposition() {
+        DccSecurityProperties properties = new DccSecurityProperties();
+        properties.getRoleBundles().put("DCC_PLATFORM_ADMIN", List.of("tenant.admit"));
+        properties.getRoleBundles().put("DCC_TENANT_ADMIN", List.of("directory.write"));
+        properties.getRoleBundles().put("PLATFORM_ADMINS", List.of("DCC_PLATFORM_ADMIN"));
+        properties.getRoleBundles().put("TENANT_ADMINS", List.of("DCC_TENANT_ADMIN"));
+
+        RolePermissionResolver resolver = resolver(properties);
+
+        assertThat(resolver.grantsRole(List.of("PLATFORM_ADMINS"), "DCC_PLATFORM_ADMIN")).isTrue();
+        assertThat(resolver.grantsRole(List.of("TENANT_ADMINS"), "DCC_TENANT_ADMIN")).isTrue();
+        assertThat(resolver.grantsRole(List.of("PLATFORM_ADMINS"), "DCC_TENANT_ADMIN")).isFalse();
+    }
+
+    @Test
     void bundlesAreConfigureOrTakeDefaults() {
         // nothing configured -> exactly the shipped six-role model
         assertThat(new DccSecurityProperties().effectiveRoleBundles()).containsOnlyKeys(

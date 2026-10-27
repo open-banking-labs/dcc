@@ -106,6 +106,41 @@ class BearerJwtAuthenticationFilterTest {
     }
 
     @Test
+    void tokenCannotCarryPlatformAndTenantAdminRolesTogether() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("admin", "tenant-a",
+                List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        filter.doFilter(request, response, (req, res) -> chained.set(true));
+
+        assertThat(chained).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("conflicting_admin_roles");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void roleAliasesCannotBypassAdminRoleExclusivity() throws Exception {
+        properties.getRoleBundles().put("DCC_PLATFORM_ADMIN", List.of("tenant.admit"));
+        properties.getRoleBundles().put("DCC_TENANT_ADMIN", List.of("directory.write"));
+        properties.getRoleBundles().put("PLATFORM_ADMINS", List.of("DCC_PLATFORM_ADMIN"));
+        properties.getRoleBundles().put("TENANT_ADMINS", List.of("DCC_TENANT_ADMIN"));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("admin", "tenant-a",
+                List.of("PLATFORM_ADMINS", "TENANT_ADMINS")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        filter.doFilter(request, response, (req, res) -> chained.set(true));
+
+        assertThat(chained).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("conflicting_admin_roles");
+    }
+
+    @Test
     void missingTokenIsLeftUnauthenticatedForTheChainToReject() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -342,6 +377,42 @@ class BearerJwtAuthenticationFilterTest {
         });
 
         assertThat(chained).isTrue();
+    }
+
+    @Test
+    void directoryRolesCannotCreateAnAdminRoleConflict() throws Exception {
+        properties.setDirectoryMode(true);
+        DirectoryAccessPolicy conflictingPolicy = new DirectoryAccessPolicy() {
+            @Override
+            public boolean isMember(String subject, String tenantId) {
+                return true;
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId) {
+                return Set.of("DCC_TENANT_ADMIN");
+            }
+
+            @Override
+            public Set<String> assignedRoles(String subject, String tenantId, String scopeType,
+                    String scopeCode, Long targetId) {
+                return Set.of();
+            }
+        };
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + sign("admin", "tenant-a",
+                List.of("DCC_PLATFORM_ADMIN")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chained = new AtomicBoolean(false);
+
+        new BearerJwtAuthenticationFilter(decoder, properties,
+                new ConfigRolePermissionResolver(properties), conflictingPolicy)
+                .doFilter(request, response, (req, res) -> chained.set(true));
+
+        assertThat(chained).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("conflicting_admin_roles");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test

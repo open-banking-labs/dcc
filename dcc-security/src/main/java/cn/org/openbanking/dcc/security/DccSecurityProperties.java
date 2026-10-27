@@ -36,6 +36,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "dcc.security")
 public class DccSecurityProperties {
 
+    public static final String TENANT_ADMIN_ROLE = "DCC_TENANT_ADMIN";
+    public static final String PLATFORM_ADMIN_ROLE = "DCC_PLATFORM_ADMIN";
+
     /**
      * HS256 secret used to verify bearer tokens when {@link #jwkSetUri} is not
      * set. The default is for local development only and must be replaced
@@ -99,7 +102,7 @@ public class DccSecurityProperties {
      * launder platform power through a tenant-scoped grant.
      */
     private List<String> tenantGrantableRoles = List.of(
-            "DCC_READER", "DCC_MAINTAINER", "DCC_APPROVER", "DCC_ENV_ADMIN", "DCC_TENANT_ADMIN");
+            "DCC_READER", "DCC_MAINTAINER", "DCC_APPROVER", "DCC_ENV_ADMIN", TENANT_ADMIN_ROLE);
 
     /**
      * Roles that may only be granted for one environment or application, never tenant-wide
@@ -114,7 +117,7 @@ public class DccSecurityProperties {
      * it, so no single administrator can create a platform or tenant administrator.
      *
      */
-    private List<String> dualControlRoles = List.of("DCC_PLATFORM_ADMIN", "DCC_TENANT_ADMIN");
+    private List<String> dualControlRoles = List.of(PLATFORM_ADMIN_ROLE, TENANT_ADMIN_ROLE);
 
     /**
      * How roles become authorities: {@code config} (default) uses {@link #roleBundles};
@@ -336,10 +339,10 @@ public class DccSecurityProperties {
         // without directory/audit/case.
         bundles.put("DCC_ENV_ADMIN", union(reader, "artifact.write", "artifact.delete", "migration.write",
                 "migration.execute", "generation.package"));
-        bundles.put("DCC_TENANT_ADMIN", union(reader, "artifact.restore", "migration.execute",
+        bundles.put(TENANT_ADMIN_ROLE, union(reader, "artifact.restore", "migration.execute",
                 "topology.write", "directory.read", "directory.write", "audit.business",
                 "case.read", "case.adopt", "announcement.write"));
-        bundles.put("DCC_PLATFORM_ADMIN", List.of("tenant.admit", "directory.read",
+        bundles.put(PLATFORM_ADMIN_ROLE, List.of("tenant.admit", "directory.read",
                 "directory.write.platform", "audit.platform", "case.write", "case.read",
                 "announcement.write.platform"));
         return bundles;

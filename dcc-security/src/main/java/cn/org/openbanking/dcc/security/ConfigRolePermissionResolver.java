@@ -57,6 +57,40 @@ public class ConfigRolePermissionResolver implements RolePermissionResolver {
         return authorities;
     }
 
+    @Override
+    public boolean grantsRole(Collection<String> roles, String role) {
+        if (roles == null || roles.isEmpty() || role == null) {
+            return false;
+        }
+        for (String candidate : roles) {
+            if (grantsRole(candidate, role, new LinkedHashSet<>())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean grantsRole(String candidate, String targetRole, Set<String> visiting) {
+        if (targetRole.equals(candidate)) {
+            return true;
+        }
+        Map<String, List<String>> bundles = properties.effectiveRoleBundles();
+        List<String> bundle = bundles == null ? null : bundles.get(candidate);
+        if (bundle == null || !visiting.add(candidate)) {
+            return false;
+        }
+        try {
+            for (String entry : bundle) {
+                if (bundles.containsKey(entry) && grantsRole(entry, targetRole, visiting)) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            visiting.remove(candidate);
+        }
+    }
+
     /**
      * Fails fast when a bundle entry names neither a role nor a declared permission point: a typo
      * would otherwise silently grant nothing, i.e. the role would look configured but confer no power.

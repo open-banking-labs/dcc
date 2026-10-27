@@ -92,9 +92,14 @@ const NAV: NavSection[] = [
     items: [{ to: '/generation', label: '应用发布', icon: Package, authority: PERMISSION.generationRead }],
   },
   {
+    group: '租户治理',
+    items: [
+      { to: '/tenants', label: '租户管理', icon: Building2, authority: PERMISSION.tenantAdmit },
+    ],
+  },
+  {
     group: '平台管理',
     items: [
-      { to: '/tenants', label: '租户', icon: Building2, authority: PERMISSION.tenantAdmit },
       { to: '/environments', label: '环境', icon: Layers, authority: PERMISSION.topologyRead },
       { to: '/applications', label: '应用', icon: AppWindow, authority: PERMISSION.topologyRead },
       { to: '/audit', label: '审计日志', icon: History, authority: PERMISSION.auditBusiness },
