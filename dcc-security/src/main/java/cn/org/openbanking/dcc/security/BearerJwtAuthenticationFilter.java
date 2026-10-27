@@ -86,6 +86,11 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
                 Jwt jwt = jwtDecoder.decode(header.substring(BEARER_PREFIX.length()));
                 List<String> roles = jwt.getClaimAsStringList(properties.getRolesClaim());
                 Set<String> roleSet = roles == null ? Set.of() : new HashSet<>(roles);
+                if (hasConflictingAdminRoles(roleSet)) {
+                    reject(response, "conflicting_admin_roles",
+                            "DCC_PLATFORM_ADMIN and DCC_TENANT_ADMIN cannot be assigned to the same identity");
+                    return;
+                }
                 String subject = jwt.getSubject();
                 String tenant = jwt.getClaimAsString(properties.getTenantClaim());
                 if (properties.isDirectoryMode()) {
@@ -113,6 +118,11 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
                         }
                     }
                 }
+                if (hasConflictingAdminRoles(roleSet)) {
+                    reject(response, "conflicting_admin_roles",
+                            "DCC_PLATFORM_ADMIN and DCC_TENANT_ADMIN cannot apply to the same identity");
+                    return;
+                }
                 InternalIdentity identity = new InternalIdentity(subject, tenant, roleSet);
                 Set<String> granted = new LinkedHashSet<>(rolePermissionResolver.authoritiesFor(roleSet));
                 granted.addAll(breakGlassAuthorities(request, subject));
@@ -134,6 +144,11 @@ public class BearerJwtAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private boolean hasConflictingAdminRoles(Set<String> roles) {
+        return rolePermissionResolver.grantsRole(roles, DccSecurityProperties.PLATFORM_ADMIN_ROLE)
+                && rolePermissionResolver.grantsRole(roles, DccSecurityProperties.TENANT_ADMIN_ROLE);
     }
 
     /**

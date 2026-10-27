@@ -69,6 +69,9 @@
 角色是**权限包**，端点判定的是**权限点**（D3）。六个角色之间非层叠：系统管理员不是任何角色
 的超集，租户管理员不持有维护/审批权限。
 
+`DCC_PLATFORM_ADMIN` 与 `DCC_TENANT_ADMIN` 在同一有效身份上互斥：JWT claim、IdP 组别名展开
+或目录授权合并后只要同时命中这两个角色，认证过滤器即以 `403 conflicting_admin_roles` 拒绝请求。
+
 ### D3 端点判权限点，角色是权限包
 
 - 权限点是可配置的 authority 字符串，由 `DccPermissions`（bean 名 `@perms`）暴露，

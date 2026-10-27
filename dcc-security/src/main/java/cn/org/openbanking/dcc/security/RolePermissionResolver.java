@@ -16,4 +16,13 @@ public interface RolePermissionResolver {
 
     /** @return the authorities granted by the given roles (never {@code null}). */
     Set<String> authoritiesFor(Collection<String> roles);
+
+    /**
+     * Reports whether the roles grant a specific canonical role. Implementations that use
+     * role aliases should follow their bundle composition so identity-provider groups and
+     * canonical roles are evaluated consistently.
+     */
+    default boolean grantsRole(Collection<String> roles, String role) {
+        return roles != null && role != null && roles.contains(role);
+    }
 }

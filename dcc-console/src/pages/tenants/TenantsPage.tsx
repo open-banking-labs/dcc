@@ -164,8 +164,8 @@ export function TenantsPage() {
   return (
     <div className="space-y-4 p-6">
       <PageHeader
-        title="租户"
-        description="平台级租户管理（隔离根）"
+        title="租户管理"
+        description="系统管理员维护租户准入与隔离根"
         actions={
           <PermissionGate authority={PERMISSION.tenantAdmit}>
           <Button size="sm" variant="primary" onClick={openCreate}>
